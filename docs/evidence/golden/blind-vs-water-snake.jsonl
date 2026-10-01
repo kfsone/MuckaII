@@ -1,0 +1,138 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:blind-vs-water-snake.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"n","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"Underground confluence","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":0,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":0,"text":"Underground confluence."}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"A slimy, slithering water-snake surfaces in front of you. ","style":{"fg":5,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":0,"exits":["up","down","out","swampward","south","northeast","northwest"]}
+{"ev":"prompt","rx":0,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":1,"text":"The water-snake1 slithers away.","style":{"fg":5,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":1,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":2,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"inventory","rx":3,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":4,"text":"k ws with bs","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"I don't know to what \"watersnake\" you're referring.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":5,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":6,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"inventory","rx":7,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":8,"text":"s","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":8,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":9,"text":"Underground stream","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":9,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":9,"text":"Underground stream."}
+{"ev":"line_end","rx":9,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":9,"exits":["up","down","out","swampward","south","north"]}
+{"ev":"prompt","rx":9,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":10,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"inventory","rx":11,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":12,"text":"n","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":12,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":13,"text":"Underground confluence","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":13,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":13,"text":"Underground confluence."}
+{"ev":"line_end","rx":13,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":13,"exits":["up","down","out","swampward","south","northeast","northwest"]}
+{"ev":"prompt","rx":13,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":14,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"inventory","rx":15,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":16,"text":"nw","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":16,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":17,"text":"Underground stream","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":17,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":17,"text":"Underground stream."}
+{"ev":"line_end","rx":17,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":17,"text":"A slimy, slithering water-snake surfaces in front of you. ","style":{"fg":5,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":17,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":17,"exits":["up","down","out","swampward","southeast","north"]}
+{"ev":"prompt","rx":17,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":18,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"text","rx":19,"text":"k ws with bs","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":19,"text":"You attack the water-snake1, using the broadsword as a weapon.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":19,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":20,"text":"value water-snake1","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":20,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"The value of the water-snake1 is 86 points.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":21,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":21,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":80,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"inventory","rx":21,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":22,"text":"You hit the water-snake1 (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":22,"family":8,"params":[1]}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":22,"text":"The water-snake1 looks fit.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":22,"text":"The water-snake1 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":22,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":23,"text":"blind ws1","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":23,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":24,"text":"Your spell failed!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":24,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":24,"text":"It works on you instead!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":24,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":24,"text":"You have suddenly and magically gone blind!","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":24,"family":11,"params":[0]}
+{"ev":"spell_phrase","rx":24,"id":"11 00","phrase":"You have suddenly and magically gone blind!"}
+{"ev":"line_end","rx":24,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":24,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":25,"source":"fes","stamina":120,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":42,"max_dexterity":100,"magic":73,"max_magic":120,"score":51689,"blind":true,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":10}
+{"ev":"text","rx":26,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":26,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"116","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":26,"family":8,"params":[3]}
+{"ev":"stats","rx":26,"source":"code","stamina":116,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":26,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":27,"source":"fes","stamina":116,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":42,"max_dexterity":100,"magic":73,"max_magic":120,"score":51689,"blind":true,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":2}
+{"ev":"inventory","rx":28,"room_state":"blind","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":29,"text":"unblind me","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":29,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":30,"text":"Your spell worked!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":30,"text":"You have suddenly and magically regained your sight!","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":30,"family":11,"params":[1]}
+{"ev":"spell_phrase","rx":30,"id":"11 01","phrase":"You have suddenly and magically regained your sight!"}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":30,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":31,"source":"fes","stamina":116,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":67,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":2}
+{"ev":"inventory","rx":32,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":33,"text":"You hit the water-snake1 (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":33,"family":8,"params":[1]}
+{"ev":"line_end","rx":33,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":33,"text":"The water-snake1 looks superficially injured.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":33,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":33,"text":"The water-snake1 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":33,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":33,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":34,"text":"blind ws1","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":34,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":35,"text":"Your spell worked!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":35,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":35,"text":"The water-snake1 has gone blind!","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":35,"family":11,"params":[0]}
+{"ev":"spell_phrase","rx":35,"id":"11 00","phrase":"The water-snake1 has gone blind!"}
+{"ev":"line_end","rx":35,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":35,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":36,"source":"fes","stamina":116,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":60,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":2}
+{"ev":"inventory","rx":37,"room_state":"listed","room":[],"carried":["phial0","key10","broadsword"]}
+{"ev":"text","rx":38,"text":"You hit the water-snake1 (15-19).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":38,"family":8,"params":[1]}
+{"ev":"line_end","rx":38,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":38,"text":"The water-snake1 looks to have minor injuries.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":38,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":38,"text":"The water-snake1 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":38,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":38,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":39,"source":"fes","stamina":116,"max_stamina":120,"strength":97,"max_strength":100,"dexterity":102,"max_dexterity":100,"magic":60,"max_magic":120,"score":51689,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":4,"weather":"T","stamina_colour":2}

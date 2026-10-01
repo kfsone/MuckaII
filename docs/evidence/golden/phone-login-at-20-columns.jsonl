@@ -1,0 +1,112 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:phone-login-at-20-columns.c1","start_in_game":true}
+{"ev":"stats","rx":0,"source":"fes","stamina":100,"max_stamina":100,"strength":99,"max_strength":99,"dexterity":100,"max_dexterity":100,"magic":0,"max_magic":100,"score":5902,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":19,"weather":"F","stamina_colour":10}
+{"ev":"text","rx":1,"text":"identify","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"fightbrief","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"auto fex","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"score","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"who","rx":1,"players":[{"name":"Kayfez the rover","fg":1}]}
+{"ev":"prompt","rx":1,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"inventory","rx":2,"room_state":"listed","room":[],"carried":["tea"]}
+{"ev":"text","rx":2,"text":"You're already","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"getting object","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"identification","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"numbers where","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"applicable.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":2,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":3,"text":"You're already","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"getting brief","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"descriptions of","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"fights.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":3,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":3,"text":"You will now get","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"an automatic","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"FEEXITS command","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"performed every","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"time you issue a","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"movement command.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"To cancel it, use","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"UNAUTO FEEXITS.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":3,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":4,"text":"name:   ","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        Kayfez","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"sex:    ","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        male","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"strength:       99","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"dexterity:      100","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"stamina:","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        ","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":"100","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"stats","rx":4,"source":"code","stamina":100,"max_stamina":null,"score":null}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        max:    ","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":"100","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"stats","rx":4,"source":"code","stamina":null,"max_stamina":100,"score":null}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"score:  5,902","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"points  this","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"game:   0","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"points  value:","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        1,255","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"points","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"level:  5","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        rover","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"weight carried:","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        200g","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        max:","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        99kg","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"objects","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"carried:","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        1","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"        max:    12","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"games played:   29","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":4,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"exits","rx":4,"exits":["swampward","north"]}
+{"ev":"stats","rx":4,"source":"fes","stamina":100,"max_stamina":100,"strength":99,"max_strength":99,"dexterity":100,"max_dexterity":100,"magic":0,"max_magic":100,"score":5902,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":19,"weather":"F","stamina_colour":10}
+{"ev":"inventory","rx":5,"room_state":"listed","room":[],"carried":["tea"]}
+{"ev":"stats","rx":5,"source":"fes","stamina":100,"max_stamina":100,"strength":99,"max_strength":99,"dexterity":100,"max_dexterity":100,"magic":0,"max_magic":100,"score":5902,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":19,"weather":"F","stamina_colour":10}
+{"ev":"inventory","rx":6,"room_state":"listed","room":[],"carried":["tea"]}

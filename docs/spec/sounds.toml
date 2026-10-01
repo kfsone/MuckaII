@@ -1,0 +1,1186 @@
+# docs/spec/sounds.toml
+#
+# FACT Every sound file in assets/sounds/, what fires it, how the user sees it in settings,
+# and the playback rules (gating, volume, timing, bell). Behaviour only.
+# source: reference
+#
+# Conventions in this file:
+# - Code notation is Bartle's decrypted form, e.g. "07 02 01" (each integer has 155 added on
+#   the wire and the sequence ends FF FF). source: bartle:FE4 section 3
+# - "params" = the integers after the family number, as sent.
+# - Every table carries tag, source and scope. open = an unresolved question for the director.
+# - category = the group heading the user sees in the Sounds settings tab.
+
+# ---------------------------------------------------------------------------
+# Playback rules
+# ---------------------------------------------------------------------------
+
+[[rule]]
+id = "file-from-code"
+tag = "FACT"
+text = "A server sound code maps to a file name by zero-padding each integer to two digits and concatenating: family only -> clio.FF.wav; family + 1 param -> clio.FFAA.wav; family + 2 params -> clio.FFAABB.wav. Any further params are ignored."
+source = "clio:src/sound.c"
+scope = "launch"
+
+[[rule]]
+id = "which-codes-sound"
+tag = "FACT"
+text = "Only these families ever produce a sound: 06, 07, 08 (01 and 03 only), 11 (except 11 06, 11 09, 11 14), 13, 14 03 02, 18 00..18 06. Codes 17 (music) and 20 (background noise) are documented by Bartle but neither Clio nor the reference plays anything for them, and no files exist."
+source = "clio:src/telnet.l"
+scope = "launch"
+
+[[rule]]
+id = "timing-line-complete"
+tag = "RULE"
+text = "A code-triggered sound is queued when its code is decoded and played when the line it introduces completes (newline, or a partial/prompt flush)."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "self-act-echo-silent"
+tag = "RULE"
+text = "In game mode, a line beginning 'OK, ' followed by whitespace (the game's acknowledgement of your own act/social, e.g. 'OK, you wave.') plays none of its queued sounds. The act's code announces the act to the room; hearing your own back is noise."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "session-end-drops-queue"
+tag = "RULE"
+text = "Sounds queued but not yet played when game mode ends (quit, reset, drop) are discarded, not played."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "text-triggers-game-mode"
+tag = "RULE"
+text = "Text-triggered sounds (see the sound rows with trigger_kind = text) fire only in game mode, on a line that starts with the given text."
+source = "clio:src/telnet.l"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "override-file"
+tag = "RULE"
+text = "When a file mucka.NNNN.wav exists for a code NNNN, it plays instead of clio.NNNN.wav. The code, settings row and volume stay those of the clio code. Only 13 07 has an override (mucka.1307.wav)."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "group-fallback"
+tag = "RULE"
+text = "When the server sends a code in a known group (06, 07, 08, 11, 13, 14, 18) whose file does not exist (e.g. 18 05, 07 01, 13 28), the group's chosen fallback sound plays. Each group has a fallback picker in settings listing '(none)' and the group's sounds; default '(none)', which is silent. Codes outside every group, or with no file and no fallback, are silent. Tells and Client alerts have no picker."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "gating"
+tag = "RULE"
+text = "A sound plays only if the master Sounds switch is on, its group is on, and its own row is on. Turning a group off greys out and silences all its rows. All are on by default; only the user's 'off' choices are stored."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "volume-inheritance"
+tag = "RULE"
+text = "Volume is 0-100, linear. Master default 75. A group slider follows the master until the user moves it; a sound slider follows its group until moved. Dragging a slider back onto its parent's value re-attaches it (it follows again). A sound plays at its own override, else its group's, else master. Each row has a play button that previews at exactly the volume that row will play at."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "reset-sounds"
+tag = "RULE"
+text = "The Sounds tab has a reset: master on, master volume 75, every group and row on, every slider re-attached, every fallback '(none)', bell un-muted."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "no-overlap-tells"
+tag = "RULE"
+text = "Tell alerts never overlap: while one tell alert is playing, further tell alerts are dropped (not queued). Other sounds may overlap freely, including several in one line."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "never-block"
+tag = "RULE"
+text = "Playing a sound never blocks or delays input, rendering or the socket reader (Invariant #1). A missing or unplayable file is silently skipped."
+source = "director"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "clio-sfx-levels"
+tag = "FACT"
+text = "Clio has a 3-level sound switch cycled by Ctrl+W: 0 = disabled, 1 = 'standard' (family 13 only, the in-world 'In the distance you hear...' sounds), 2 = 'extended' (all families; the default). The reference replaces this with master/group/row switches."
+source = "clio:src/sound.c"
+scope = "launch"
+
+[[rule]]
+id = "near-far"
+tag = "FACT"
+text = "Bartle lists every 13 NN code twice: third number 01 heard near, 02 heard far (13 01 01 and 13 01 02 are the ox lowing)."
+note = ""
+source = "bartle:FE4 code 13"
+scope = "launch"
+open = "Clio and the reference require exactly two params and play the same file at the same volume for near and far (the third integer is ignored). Should far be quieter? Director to decide; default is to keep identical."
+
+[[rule]]
+id = "theme-at-startup"
+tag = "FACT"
+text = "mucka_theme.wav plays once when the app window first opens, before any profile or settings are loaded, at volume 75. It is not gated by the master switch and has no settings row."
+source = "reference"
+scope = "launch"
+open = "Should the startup theme respect the master switch / a settings row in MuckaII? Should it play at all?"
+
+[[rule]]
+id = "mp3-in-wav"
+tag = "FACT"
+text = "clio.1324.wav is MP3 data in a WAV wrapper (format tag 0x55, mono, 11025 Hz). Every other file is PCM. The player must decode MP3-in-WAV or the file must be re-encoded to PCM before shipping."
+source = "reference"
+scope = "launch"
+
+[[rule]]
+id = "placeholder-clicks"
+tag = "FACT"
+text = "clio.070000.wav, clio.0703.wav, clio.0704.wav and clio.0705.wav are byte-identical, about 10 ms long (8-bit 22050 Hz): effectively a click. All 19 clio.11*.wav files are byte-identical (one 'spell' sound). clio.070100 = clio.070101; clio.070200 = clio.070201 = clio.070202."
+source = "reference"
+scope = "launch"
+
+# ---------------------------------------------------------------------------
+# Terminal bell
+# ---------------------------------------------------------------------------
+
+[bell]
+tag = "RULE"
+file = "beep.wav"
+trigger = "BEL byte 0x07 in the received stream"
+category = "Terminal bell (beep)"
+default_enabled = true
+text = "A received BEL plays beep.wav unless: the bell is muted for this session, or muted permanently, or the master Sounds switch is off. At most one bell per 2 seconds; bells inside that window are dropped. Volume = the bell row's slider (follows master until moved)."
+settings = "Bell row in the Sounds tab (on/off + volume + preview). Two checkboxes: 'mute for this session' and 'mute permanently'. Turning the bell row off sets both; turning it on clears both. Clearing session-mute also clears permanent-mute. Session mute starts each session equal to permanent mute. Permanent mute persists as mucka.ini [settings] mutebeep=yes|no; session mute is never persisted."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+# ---------------------------------------------------------------------------
+# Settings persistence (mucka.ini import keys; full format in mucka-ini.md)
+# ---------------------------------------------------------------------------
+
+[ini_keys]
+tag = "FACT"
+text = "Sound settings live in [settings] (or [settings:<profile>]). Only overrides are written."
+keys = [
+  "volume=<0-100>                    master volume, default 75",
+  "sounds=yes|no                     master switch, default yes",
+  "soundgroup.<group>=off            group switched off (group = 06, 07, 08, 11, 13, 14, 18, tell, alert, bell)",
+  "sound.<code>=off                  one row switched off (code = 0703, 070001, tell-wiz, alert-flee-failed ...)",
+  "sounddefault.<group>=<code>       group fallback choice",
+  "soundgroupvol.<group>=<0-100>     group volume override",
+  "soundvol.<code>=<0-100>           row volume override",
+  "mutebeep=yes|no                   bell muted permanently",
+]
+source = "reference"
+scope = "launch"
+open = "mucka-ini.md says <group> is a numeric code prefix or 'bell' (soundgroupvol.bell only; bell on/off is mutebeep) and <code> is numeric. This table also lists soundgroup.bell, groups 'tell' and 'alert', and codes 'tell-wiz' and 'alert-flee-failed'. Which key set did the reference read and write?"
+
+# ---------------------------------------------------------------------------
+# Sounds. One row per file in assets/sounds/.
+# trigger_kind: code | text | event
+# origin: clio (Clio MUD2 Client, Ian Peattie, MIT-style, assets/sounds/LICENSE) or as stated.
+# ---------------------------------------------------------------------------
+
+[[sound]]
+file = "clio.06.wav"
+trigger_kind = "code"
+trigger = "06 with any params (06, 06 00 .. 06 12 01)"
+description = "Information alert (unsolicited info: reset due, FYI, new year, reset postponed, etc.)"
+category = "Alerts"
+name = "Information alert"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.070000.wav"
+trigger_kind = "code"
+trigger = "07 (no params) or 07 00 00"
+description = "Isolated hit (generic)"
+category = "Combat hits"
+name = "Hit (generic)"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07; clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.070001.wav"
+trigger_kind = "code"
+trigger = "07 00 01"
+description = "Eros hits"
+category = "Combat hits"
+name = "Eros hits"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 00 01"
+scope = "launch"
+
+[[sound]]
+file = "clio.070002.wav"
+trigger_kind = "code"
+trigger = "07 00 02"
+description = "Hit against an inanimate object"
+category = "Combat hits"
+name = "Hit against an inanimate object"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 00 02"
+scope = "launch"
+
+[[sound]]
+file = "clio.070100.wav"
+trigger_kind = "code"
+trigger = "07 01 00"
+description = "Bite by a BITER-class object"
+category = "Combat hits"
+name = "Bite"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+evidence = "bartle:FE4 lists bites by BITER-class objects as 07 01, one param (which would map to clio.0701.wav, which does not exist)"
+open = "Which form does the server send for a generic bite, 07 01 or 07 01 00? No capture yet. With 07 01 the reference plays the Combat hits fallback (default silent)."
+
+[[sound]]
+file = "clio.070101.wav"
+trigger_kind = "code"
+trigger = "07 01 01"
+description = "Rat bites"
+category = "Combat hits"
+name = "Rat bite"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 01 01"
+scope = "launch"
+
+[[sound]]
+file = "clio.070200.wav"
+trigger_kind = "code"
+trigger = "07 02 00"
+description = "Sting by a STINGER-class object"
+category = "Combat hits"
+name = "Sting"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+evidence = "bartle:FE4 lists stings by STINGER-class objects as 07 02, one param"
+open = "Same question as 07 01: 07 02 or 07 02 00 on the wire?"
+
+[[sound]]
+file = "clio.070201.wav"
+trigger_kind = "code"
+trigger = "07 02 01"
+description = "Bee stings"
+category = "Combat hits"
+name = "Bee sting"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 02 01"
+scope = "launch"
+
+[[sound]]
+file = "clio.070202.wav"
+trigger_kind = "code"
+trigger = "07 02 02"
+description = "Jellyfish stings"
+category = "Combat hits"
+name = "Jellyfish sting"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 02 02"
+scope = "launch"
+
+[[sound]]
+file = "clio.070203.wav"
+trigger_kind = "code"
+trigger = "07 02 03"
+description = "Electric eel hits"
+category = "Combat hits"
+name = "Electric eel sting"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+evidence = "bartle:FE4 gives 07 02 02 twice: once for the jellyfish, once for the electric eel"
+open = "Is the eel's code 07 02 03 (Clio's reading) or 07 02 02? Unconfirmed by capture."
+
+[[sound]]
+file = "clio.0703.wav"
+trigger_kind = "code"
+trigger = "07 03"
+description = "Kicks"
+category = "Combat hits"
+name = "Kick"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 03"
+scope = "launch"
+
+[[sound]]
+file = "clio.0704.wav"
+trigger_kind = "code"
+trigger = "07 04"
+description = "Throws"
+category = "Combat hits"
+name = "Throw"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 04"
+scope = "launch"
+
+[[sound]]
+file = "clio.0705.wav"
+trigger_kind = "code"
+trigger = "07 05"
+description = "Being captured by a CAPTURER-class object (grizzly, octopus, ...)"
+category = "Combat hits"
+name = "Captured"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 05"
+scope = "launch"
+
+[[sound]]
+file = "clio.0706.wav"
+trigger_kind = "code"
+trigger = "07 06"
+description = "Hits by the ghost"
+category = "Combat hits"
+name = "Ghost hit"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 07 06"
+scope = "launch"
+
+[[sound]]
+file = "clio.0801.wav"
+trigger_kind = "code"
+trigger = "08 01"
+description = "You hit them (in a fight)"
+category = "Fight events"
+name = "You hit them"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 08 01; capture:dark-two-rats.c1"
+scope = "launch"
+
+[[sound]]
+file = "clio.0803.wav"
+trigger_kind = "code"
+trigger = "08 03"
+description = "They hit you (in a fight)"
+category = "Fight events"
+name = "They hit you"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 08 03; capture:dark-two-rats.c1"
+scope = "launch"
+
+[[sound]]
+file = "clio.1100.wav"
+trigger_kind = "code"
+trigger = "11 or 11 00"
+description = "Disabling spell starts (e.g. BLIND). Fires for spells on others too: the wire sends 11 00 before 'The water-snake1 has gone blind!' as well as before your own 'You have suddenly and magically gone blind!'."
+category = "Spells"
+name = "Disabling spell starts"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11; capture:blind-vs-water-snake.c1"
+scope = "launch"
+
+[[sound]]
+file = "clio.1101.wav"
+trigger_kind = "code"
+trigger = "11 01"
+description = "Disabling spell ends (wears off)"
+category = "Spells"
+name = "Disabling spell ends"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 01; capture:blind-vs-water-snake.c1"
+scope = "launch"
+
+[[sound]]
+file = "clio.1102.wav"
+trigger_kind = "code"
+trigger = "11 02"
+description = "Enhancing spell starts (e.g. STRENGTHEN)"
+category = "Spells"
+name = "Enhancing spell starts"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 02"
+scope = "launch"
+
+[[sound]]
+file = "clio.1103.wav"
+trigger_kind = "code"
+trigger = "11 03"
+description = "Enhancing spell ends (wears off)"
+category = "Spells"
+name = "Enhancing spell ends"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 03"
+scope = "launch"
+
+[[sound]]
+file = "clio.1104.wav"
+trigger_kind = "code"
+trigger = "11 04"
+description = "CHANGE spell"
+category = "Spells"
+name = "CHANGE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 04"
+scope = "launch"
+
+[[sound]]
+file = "clio.1105.wav"
+trigger_kind = "code"
+trigger = "11 05"
+description = "DETECT spell"
+category = "Spells"
+name = "DETECT spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 05"
+scope = "launch"
+
+[[sound]]
+file = "clio.1107.wav"
+trigger_kind = "code"
+trigger = "11 07"
+description = "FORCE spell"
+category = "Spells"
+name = "FORCE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 07"
+scope = "launch"
+
+[[sound]]
+file = "clio.1108.wav"
+trigger_kind = "code"
+trigger = "11 08"
+description = "IGNITE spell"
+category = "Spells"
+name = "IGNITE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 08"
+scope = "launch"
+
+[[sound]]
+file = "clio.1110.wav"
+trigger_kind = "code"
+trigger = "11 10"
+description = "REPAIR spell"
+category = "Spells"
+name = "REPAIR spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 10"
+scope = "launch"
+
+[[sound]]
+file = "clio.1111.wav"
+trigger_kind = "code"
+trigger = "11 11"
+description = "SLEEP spells"
+category = "Spells"
+name = "SLEEP spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 11"
+scope = "launch"
+
+[[sound]]
+file = "clio.1112.wav"
+trigger_kind = "code"
+trigger = "11 12"
+description = "SNOOP spell"
+category = "Spells"
+name = "SNOOP spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 12"
+scope = "launch"
+
+[[sound]]
+file = "clio.1113.wav"
+trigger_kind = "code"
+trigger = "11 13"
+description = "UNSNOOP spell"
+category = "Spells"
+name = "UNSNOOP spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 13"
+scope = "launch"
+
+[[sound]]
+file = "clio.1115.wav"
+trigger_kind = "code"
+trigger = "11 15"
+description = "TRACK spell"
+category = "Spells"
+name = "TRACK spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 15"
+scope = "launch"
+
+[[sound]]
+file = "clio.1116.wav"
+trigger_kind = "code"
+trigger = "11 16"
+description = "UNTRACK spell"
+category = "Spells"
+name = "UNTRACK spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 16"
+scope = "launch"
+
+[[sound]]
+file = "clio.1117.wav"
+trigger_kind = "code"
+trigger = "11 17"
+description = "UNSITE spell"
+category = "Spells"
+name = "UNSITE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 17"
+scope = "launch"
+
+[[sound]]
+file = "clio.1118.wav"
+trigger_kind = "code"
+trigger = "11 18"
+description = "CHANCE spell"
+category = "Spells"
+name = "CHANCE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 18"
+scope = "launch"
+
+[[sound]]
+file = "clio.1119.wav"
+trigger_kind = "code"
+trigger = "11 19"
+description = "DIAGNOSE spell"
+category = "Spells"
+name = "DIAGNOSE spell"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 19"
+scope = "launch"
+
+[[sound]]
+file = "clio.1120.wav"
+trigger_kind = "code"
+trigger = "11 20"
+description = "Super disabling spell starts (e.g. SUPERBLIND)"
+category = "Spells"
+name = "Super disabling spell starts"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 20"
+scope = "launch"
+
+[[sound]]
+file = "clio.1121.wav"
+trigger_kind = "code"
+trigger = "11 21"
+description = "Super disabling spell ends"
+category = "Spells"
+name = "Super disabling spell ends"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 11 21"
+scope = "launch"
+
+[[sound]]
+file = "clio.1301.wav"
+trigger_kind = "code"
+trigger = "13 01 xx"
+description = "OX's \"MOO\""
+category = "Distant sounds"
+name = "Ox's \"MOO\""
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 01"
+scope = "launch"
+
+[[sound]]
+file = "clio.1302.wav"
+trigger_kind = "code"
+trigger = "13 02 xx"
+description = "Swamp gas ignited by a burning brand"
+category = "Distant sounds"
+name = "Swamp gas ignited by a burning brand"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 02"
+scope = "launch"
+
+[[sound]]
+file = "clio.1303.wav"
+trigger_kind = "code"
+trigger = "13 03 xx"
+description = "LION's \"ROARRRR\""
+category = "Distant sounds"
+name = "Lion's \"ROARRRR\""
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 03"
+scope = "launch"
+
+[[sound]]
+file = "clio.1304.wav"
+trigger_kind = "code"
+trigger = "13 04 xx"
+description = "Rumble of thunder"
+category = "Distant sounds"
+name = "Rumble of thunder"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 04"
+scope = "launch"
+
+[[sound]]
+file = "clio.1305.wav"
+trigger_kind = "code"
+trigger = "13 05 xx"
+description = "Crack of thunder"
+category = "Distant sounds"
+name = "Crack of thunder"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 05"
+scope = "launch"
+
+[[sound]]
+file = "clio.1306.wav"
+trigger_kind = "code"
+trigger = "13 06 xx"
+description = "Piercing scream"
+category = "Distant sounds"
+name = "Piercing scream"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 06"
+scope = "launch"
+
+[[sound]]
+file = "clio.1307.wav"
+trigger_kind = "code"
+trigger = "13 07 xx"
+description = "A huge explosion. Shadowed: mucka.1307.wav plays instead when present (it is shipped)."
+category = "Distant sounds"
+name = "Huge explosion"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 07"
+scope = "launch"
+
+[[sound]]
+file = "clio.1308.wav"
+trigger_kind = "code"
+trigger = "13 08 xx"
+description = "A bell tolls for a dead magic-user"
+category = "Distant sounds"
+name = "Bell tolling for a dead magic-user"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 08"
+scope = "launch"
+
+[[sound]]
+file = "clio.1309.wav"
+trigger_kind = "code"
+trigger = "13 09 xx"
+description = "BANGERs' \"BANG\""
+category = "Distant sounds"
+name = "Bangers' \"BANG\""
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 09"
+scope = "launch"
+
+[[sound]]
+file = "clio.1310.wav"
+trigger_kind = "code"
+trigger = "13 10 xx"
+description = "WOLF's \"AAAOOOOOOHHHH\""
+category = "Distant sounds"
+name = "Wolf's \"AAAOOOOOOHHHH\""
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 10"
+scope = "launch"
+
+[[sound]]
+file = "clio.1311.wav"
+trigger_kind = "code"
+trigger = "13 11 xx"
+description = "DRAGON's \"RHOAAAUUUAURRRRGGGGGGHGHHHGHHHH\""
+category = "Distant sounds"
+name = "Dragon's roar"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 11"
+scope = "launch"
+
+[[sound]]
+file = "clio.1312.wav"
+trigger_kind = "code"
+trigger = "13 12 xx"
+description = "Someone strikes the bell"
+category = "Distant sounds"
+name = "The bell being struck"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 12"
+scope = "launch"
+
+[[sound]]
+file = "clio.1313.wav"
+trigger_kind = "code"
+trigger = "13 13 xx"
+description = "The cannon fires"
+category = "Distant sounds"
+name = "The cannon's >CRACK<"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 13"
+scope = "launch"
+
+[[sound]]
+file = "clio.1313.wav"
+trigger_kind = "text"
+trigger = "line starts: Out from the end of the cannon flies a projectile, which smashes"
+description = "Cannon fired at you / near you (no code is sent for this line). Same settings row as 13 13."
+category = "Distant sounds"
+name = "The cannon's >CRACK<"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.1314.wav"
+trigger_kind = "code"
+trigger = "13 14 xx"
+description = "The FLUTE"
+category = "Distant sounds"
+name = "The flute"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 14"
+scope = "launch"
+
+[[sound]]
+file = "clio.1315.wav"
+trigger_kind = "code"
+trigger = "13 15 xx"
+description = "Clear tones of HORN"
+category = "Distant sounds"
+name = "Clear tones of the horn"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 15"
+scope = "launch"
+
+[[sound]]
+file = "clio.1316.wav"
+trigger_kind = "code"
+trigger = "13 16 xx"
+description = "Badly-tuned HORN"
+category = "Distant sounds"
+name = "Badly-tuned horn"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 16"
+scope = "launch"
+
+[[sound]]
+file = "clio.1317.wav"
+trigger_kind = "code"
+trigger = "13 17 xx"
+description = "The CONCH"
+category = "Distant sounds"
+name = "The conch"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 17"
+scope = "launch"
+
+[[sound]]
+file = "clio.1318.wav"
+trigger_kind = "code"
+trigger = "13 18 xx"
+description = "Thunderous roar of a FOD"
+category = "Distant sounds"
+name = "Thunderous roar of a FOD"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 18"
+scope = "launch"
+
+[[sound]]
+file = "clio.1319.wav"
+trigger_kind = "code"
+trigger = "13 19 xx"
+description = "A failed FOD whistles"
+category = "Distant sounds"
+name = "A failed FOD whistles"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 19"
+scope = "launch"
+
+[[sound]]
+file = "clio.1320.wav"
+trigger_kind = "code"
+trigger = "13 20 xx"
+description = "A tin drum being banged"
+category = "Distant sounds"
+name = "Tin drum"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 20"
+scope = "launch"
+
+[[sound]]
+file = "clio.1321.wav"
+trigger_kind = "code"
+trigger = "13 21 xx"
+description = "Terrifying sound of rock splitting"
+category = "Distant sounds"
+name = "Rock splitting"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 21"
+scope = "launch"
+
+[[sound]]
+file = "clio.1322.wav"
+trigger_kind = "code"
+trigger = "13 22 xx"
+description = "Someone blows a whistle"
+category = "Distant sounds"
+name = "Whistle"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 22"
+scope = "launch"
+
+[[sound]]
+file = "clio.1323.wav"
+trigger_kind = "code"
+trigger = "13 23 xx"
+description = "A warning siren"
+category = "Distant sounds"
+name = "Warning siren"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 23"
+scope = "launch"
+
+[[sound]]
+file = "clio.1324.wav"
+trigger_kind = "code"
+trigger = "13 24 xx"
+description = "Bottle \">POP<\" (champagne). MP3-in-WAV, see rule mp3-in-wav."
+category = "Distant sounds"
+name = "Bottle >POP<"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 24"
+scope = "launch"
+
+[[sound]]
+file = "clio.1325.wav"
+trigger_kind = "code"
+trigger = "13 25 xx"
+description = "Dragon's \"HAWUMPH\""
+category = "Distant sounds"
+name = "Dragon's \"HAWUMPH\""
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 25"
+scope = "launch"
+
+[[sound]]
+file = "clio.1325.wav"
+trigger_kind = "text"
+trigger = "line starts: HAWUMPH! The dragon incinerates you with its fiery breath."
+description = "The dragon breathes on you. Same settings row as 13 25."
+category = "Distant sounds"
+name = "Dragon's \"HAWUMPH\""
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.1326.wav"
+trigger_kind = "code"
+trigger = "13 26 xx"
+description = "Mine flooding"
+category = "Distant sounds"
+name = "Mine flooding"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 26"
+scope = "launch"
+
+[[sound]]
+file = "clio.1326.wav"
+trigger_kind = "text"
+trigger = "line starts: You hear a near-deafening crash, as if millions of gallons of water"
+description = "Mine flooding heard directly. Same settings row as 13 26."
+category = "Distant sounds"
+name = "Mine flooding"
+default_enabled = true
+origin = "clio"
+source = "clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.1327.wav"
+trigger_kind = "code"
+trigger = "13 27 xx"
+description = "Mine emptying (flushing)"
+category = "Distant sounds"
+name = "Mine emptying"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 13 27"
+scope = "launch"
+
+[[sound]]
+file = "clio.140302.wav"
+trigger_kind = "code"
+trigger = "14 03 02"
+description = "Rain heard falling on trees. No other 14 code sounds (no 14 03 03 snow-on-trees file)."
+category = "Weather"
+name = "Rain on the trees"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 14 03 02; clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.1800.wav"
+trigger_kind = "code"
+trigger = "18 00"
+description = "Touchstone success"
+category = "Touchstones & chutes"
+name = "Touchstone success"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 00; clio:src/telnet.l"
+scope = "launch"
+
+[[sound]]
+file = "clio.1801.wav"
+trigger_kind = "code"
+trigger = "18 01"
+description = "Touchstone failure"
+category = "Touchstones & chutes"
+name = "Touchstone failure"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 01"
+scope = "launch"
+
+[[sound]]
+file = "clio.1802.wav"
+trigger_kind = "code"
+trigger = "18 02"
+description = "A lever pulled, then a fall into the chute"
+category = "Touchstones & chutes"
+name = "Fall into the chute"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 02"
+scope = "launch"
+
+[[sound]]
+file = "clio.1803.wav"
+trigger_kind = "code"
+trigger = "18 03"
+description = "Bump in chute"
+category = "Touchstones & chutes"
+name = "Bump in the chute"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 03"
+scope = "launch"
+
+[[sound]]
+file = "clio.1804.wav"
+trigger_kind = "code"
+trigger = "18 04"
+description = "Emerge from chute"
+category = "Touchstones & chutes"
+name = "Emerge from the chute"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 04"
+scope = "launch"
+
+[[sound]]
+file = "clio.1806.wav"
+trigger_kind = "code"
+trigger = "18 06"
+description = "A safe landing below the cliff. (18 05, the jump, has no file: group fallback.)"
+category = "Touchstones & chutes"
+name = "Land safely below the cliff"
+default_enabled = true
+origin = "clio"
+source = "bartle:FE4 code 18 06"
+scope = "launch"
+
+[[sound]]
+file = "mucka.1307.wav"
+trigger_kind = "code"
+trigger = "13 07 xx (override of clio.1307.wav, see rule override-file)"
+description = "Replacement explosion. Uses the 13 07 settings row."
+category = "Distant sounds"
+name = "Huge explosion"
+default_enabled = true
+origin = "Mucka; shipped with the tell-alert sounds. Author and licence undocumented."
+source = "reference"
+scope = "launch"
+open = "Origin/licence of mucka.1307.wav is not recorded anywhere. Director to confirm (own production?)."
+
+[[sound]]
+file = "tell.wav"
+trigger_kind = "event"
+trigger = "game mode; a line opened by code 09 03 (told message) whose completed text is an inbound tell not starting 'Someone powerful tells you' or 'Someone tells you'"
+description = "Someone tells you something (named sender)"
+category = "Tells"
+name = "Tell (normal)"
+default_enabled = true
+origin = "Mucka. Author and licence undocumented."
+source = "bartle:FE4 code 09 03; reference"
+scope = "launch"
+notes = "Lines starting 'You tell your listeners' (your own tell echoed back; every outbound tell echoes this way) play no tell alert. Tell alerts never overlap (rule no-overlap-tells)."
+open = "Origin/licence of tell.wav, tell-invis.wav, tell-wiz.wav not documented. Director to confirm."
+
+[[sound]]
+file = "tell-invis.wav"
+trigger_kind = "event"
+trigger = "game mode; 09 03 line whose text starts 'Someone tells you'"
+description = "An invisible player tells you something"
+category = "Tells"
+name = "Tell (invisible)"
+default_enabled = true
+origin = "Mucka. Author and licence undocumented."
+source = "reference"
+scope = "launch"
+
+[[sound]]
+file = "tell-wiz.wav"
+trigger_kind = "event"
+trigger = "game mode; 09 03 line whose text starts 'Someone powerful tells you'"
+description = "An invisible wizard tells you something"
+category = "Tells"
+name = "Tell (wizard)"
+default_enabled = true
+origin = "Mucka. Author and licence undocumented."
+source = "reference"
+scope = "launch"
+
+[[sound]]
+file = "mucka.flee_failed.wav"
+trigger_kind = "text"
+trigger = "line: You have fled by trying to go <dir>."
+description = "Your flee failed: points charged, possible level loss, weapon dropped, fights ended, and you are still in the room."
+category = "Client alerts"
+name = "Your flee failed"
+default_enabled = true
+origin = "Owner-supplied (the director's own recording/production), 44.1 kHz 16-bit stereo, 470 ms."
+source = "reference"
+scope = "launch"
+notes = "Gated by master, the Client alerts group and its own row, like every sound. Not tied to any panel being visible. Plays as soon as the line completes."
+open = "The reference detects this through its combat tracker; confirm it should fire on the bare line regardless of whether a fight is believed open."
+
+[[sound]]
+file = "beep.wav"
+trigger_kind = "event"
+trigger = "BEL 0x07 received (see [bell])"
+description = "Terminal bell"
+category = "Terminal bell (beep)"
+name = "Terminal bell (beep)"
+default_enabled = true
+origin = "Mucka. Author and licence undocumented."
+source = "reference"
+scope = "launch"
+open = "Origin/licence of beep.wav not documented."
+
+[[sound]]
+file = "mucka_theme.wav"
+trigger_kind = "event"
+trigger = "app start (first window opens)"
+description = "Mucka theme jingle, about 11 s"
+category = "(none - no settings row)"
+name = ""
+default_enabled = true
+origin = "Mucka. Author and licence undocumented."
+source = "reference"
+scope = "launch"
+open = "See rule theme-at-startup. Origin/licence not documented."
+
+[[sound]]
+file = "Perc_Stick_hi.wav"
+trigger_kind = "event"
+trigger = "combat metronome: a fixed lead before each combat tick"
+description = "Pre-tick click"
+category = "(combat rail switch, not the Sounds tab)"
+name = ""
+default_enabled = true
+origin = "Percussion sample. Author and licence undocumented."
+source = "reference"
+scope = "later"
+notes = "Only sounds while the combat rail is visible; its only switch is on the rail."
+open = "Licence of the percussion samples not documented."
+
+[[sound]]
+file = "Perc_Stick_lo.wav"
+trigger_kind = "event"
+trigger = "combat metronome: a fixed lag after each combat tick"
+description = "After-tick click"
+category = "(combat rail switch, not the Sounds tab)"
+name = ""
+default_enabled = true
+origin = "Percussion sample. Author and licence undocumented."
+source = "reference"
+scope = "later"

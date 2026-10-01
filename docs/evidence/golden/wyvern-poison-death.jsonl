@@ -1,0 +1,59 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:wyvern-poison-death.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"The wyvern is staring at you ferociously.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":0,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":1,"text":"The wyvern misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"You miss the wyvern.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":1,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":2,"text":"The wyvern stings you with its venomous tail.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":2,"family":7,"params":[2,0]}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"Stamina=","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":2,"text":"84","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":2,"text":"/","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":2,"text":"99","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":2,"text":".","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":2,"source":"code","stamina":84,"max_stamina":99,"score":null}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"You hit the wyvern (20-29).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":2,"family":8,"params":[1]}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":2,"text":"The wyvern looks superficially injured.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":2,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":2,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":3,"text":"The wyvern stings you with its venomous tail.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":3,"family":7,"params":[2,0]}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"Stamina=","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":3,"text":"64","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":"/","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":3,"text":"99","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":".","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":3,"source":"code","stamina":64,"max_stamina":99,"score":null}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"You miss the wyvern.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":3,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":4,"text":"The wyvern hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":"57","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":"99","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":4,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":4,"family":8,"params":[3]}
+{"ev":"stats","rx":4,"source":"code","stamina":57,"max_stamina":99,"score":null}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"You hit the wyvern (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":4,"family":8,"params":[1]}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":4,"text":"The wyvern looks close to death.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":4,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":5,"text":"The wyvern drops dead, poisoned...","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"The wyvern has just passed on.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"You can fight the wyvern no longer.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"fight_end","chat_continues":false}
+{"ev":"prompt","rx":5,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}

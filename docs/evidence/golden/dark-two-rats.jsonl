@@ -1,0 +1,219 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:dark-two-rats.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"Steps to cellar","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":0,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":0,"text":"Steps to cellar."}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"You are on some granite steps leading downwards to the cellar. There is a hallway above to the","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"room_long","rx":0,"text":"You are on some granite steps leading downwards to the cellar. There is a hallway above to the"}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"northeast, and below is a dank cellar. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":0,"exits":["up","in","down","out","swampward","southwest","northeast"]}
+{"ev":"prompt","rx":0,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":0,"text":"Cellar","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":0,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":0,"text":"Cellar."}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"This is a dank, murky cellar, its granite-faced walls stained with mould and dust. Upwards to the","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"room_long","rx":0,"text":"This is a dank, murky cellar, its granite-faced walls stained with mould and dust. Upwards to the"}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"northeast are steps, whence comes light enough to see by. To the south is a crack in the wall,","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"room_long","rx":0,"text":"northeast are steps, whence comes light enough to see by. To the south is a crack in the wall,"}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"leading to a small, earthen tunnel, although it looks very cramped and you might not be able to","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"room_long","rx":0,"text":"leading to a small, earthen tunnel, although it looks very cramped and you might not be able to"}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"turn round and come back were you to enter it. To the west is the doorway to the coal bunker. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":0,"text":"An","style":{"fg":5,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"evil, black rat (rat18) bares its razor-sharp incisors at you. ","style":{"fg":5,"bg":0,"attrs":[]}}
+{"ev":"text","rx":0,"text":"An old, woodsman's axe has been","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":0,"text":"left within reach. The door is locked shut. There is a large stick on the ground. ","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":0,"exits":["up","out","swampward","south","northeast"]}
+{"ev":"prompt","rx":0,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":1,"text":"It's too dark to see now.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":1,"exits":[]}
+{"ev":"prompt","rx":1,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":2,"source":"fes","stamina":67,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":3,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":4,"text":"Something is about to attack you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":4,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":5,"text":"n","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":6,"text":"You can't just leave in the middle of a fight! You have to flee!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":6,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":6,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":6,"source":"fes","stamina":67,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":7,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"stats","rx":8,"source":"fes","stamina":67,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":9,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":10,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":10,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":10,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":10,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":10,"text":"Something is about to attack you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":10,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":10,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":11,"text":"use staff","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":12,"text":"You are now using the staff0 to fight!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":12,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":12,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":13,"source":"fes","stamina":67,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":14,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":15,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"You hit something (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":15,"family":8,"params":[1]}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":15,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":16,"source":"fes","stamina":67,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":17,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":18,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"65","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":18,"family":8,"params":[3]}
+{"ev":"stats","rx":18,"source":"code","stamina":65,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":18,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":18,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":18,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":18,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":19,"source":"fes","stamina":65,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":20,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":21,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":21,"text":"60","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":21,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":21,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":21,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":21,"family":8,"params":[3]}
+{"ev":"stats","rx":21,"source":"code","stamina":60,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"You hit something (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":21,"family":8,"params":[1]}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":21,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":22,"source":"fes","stamina":60,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":23,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"inventory","rx":24,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":25,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":25,"text":"57","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":25,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":25,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":25,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":25,"family":8,"params":[3]}
+{"ev":"stats","rx":25,"source":"code","stamina":57,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":25,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":25,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":25,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":25,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":26,"source":"fes","stamina":57,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":27,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"stats","rx":28,"source":"fes","stamina":57,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2468,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":29,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":30,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":30,"text":"55","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":30,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":30,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":30,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":30,"family":8,"params":[3]}
+{"ev":"stats","rx":30,"source":"code","stamina":55,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":30,"text":"You hit something (15-19).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":30,"family":8,"params":[1]}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":30,"text":"You have killed the rat18.","style":{"fg":0,"bg":1,"attrs":[]}}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":30,"text":"(Persona saved on +22 = ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":30,"text":"2,490","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":30,"text":").","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":30,"source":"code","stamina":null,"max_stamina":null,"score":2490}
+{"ev":"line_end","rx":30,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":30,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":31,"source":"fes","stamina":56,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":32,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":33,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":33,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":33,"text":"You hit something (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":33,"family":8,"params":[1]}
+{"ev":"line_end","rx":33,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":33,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":34,"source":"fes","stamina":56,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":35,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":36,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":36,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":36,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":36,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":36,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":37,"source":"fes","stamina":56,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":38,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":39,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":39,"text":"55","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":39,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":39,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":39,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":39,"family":8,"params":[3]}
+{"ev":"stats","rx":39,"source":"code","stamina":55,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":39,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":39,"text":"You hit something (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":39,"family":8,"params":[1]}
+{"ev":"line_end","rx":39,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":39,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":40,"source":"fes","stamina":55,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":41,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":42,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":42,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":42,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":42,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":42,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":43,"source":"fes","stamina":55,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":44,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":45,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":45,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":45,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":45,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":45,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":46,"source":"fes","stamina":55,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":47,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":48,"text":"Something hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":48,"text":"54","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":48,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":48,"text":"90","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":48,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":48,"family":8,"params":[3]}
+{"ev":"stats","rx":48,"source":"code","stamina":54,"max_stamina":90,"score":null}
+{"ev":"line_end","rx":48,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":48,"text":"You hit something (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":48,"family":8,"params":[1]}
+{"ev":"line_end","rx":48,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":48,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":49,"source":"fes","stamina":54,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":45,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":50,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"inventory","rx":51,"room_state":"dark","room":[],"carried":["staff0"]}
+{"ev":"text","rx":52,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":52,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":52,"text":"You miss something.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":52,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":52,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":53,"source":"fes","stamina":54,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2490,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":44,"weather":"R","stamina_colour":11}
+{"ev":"who","rx":54,"players":[{"name":"Kayfez the scout","fg":1}]}
+{"ev":"text","rx":55,"text":"Something misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":55,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":55,"text":"You hit something (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":55,"family":8,"params":[1]}
+{"ev":"line_end","rx":55,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":55,"text":"You have killed the rat19.","style":{"fg":0,"bg":1,"attrs":[]}}
+{"ev":"line_end","rx":55,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":55,"text":"(Persona saved on +22 = ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":55,"text":"2,512","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":55,"text":").","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":55,"source":"code","stamina":null,"max_stamina":null,"score":2512}
+{"ev":"line_end","rx":55,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":55,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":56,"source":"fes","stamina":54,"max_stamina":90,"strength":83,"max_strength":89,"dexterity":36,"max_dexterity":91,"magic":0,"max_magic":90,"score":2512,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":44,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":57,"room_state":"dark","room":[],"carried":["staff0"]}

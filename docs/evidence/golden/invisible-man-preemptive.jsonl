@@ -1,0 +1,132 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:invisible-man-preemptive.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"nw,k old man","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"Small tunnel","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":1,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":1,"text":"Small tunnel."}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":1,"text":"You are in a small, claustrophobic, earthen tunnel, curving from the west to the southeast. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":1,"exits":["southeast","west"]}
+{"ev":"prompt","rx":1,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":1,"text":"I don't know to what \"man\" you're referring.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":1,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":1,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":2,"source":"fes","stamina":30,"max_stamina":69,"strength":71,"max_strength":71,"dexterity":67,"max_dexterity":70,"magic":0,"max_magic":69,"score":752,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":3,"room_state":"listed","room":[],"carried":[]}
+{"ev":"text","rx":4,"text":"w,k old man","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":4,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"Small tunnel","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":5,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":5,"text":"Small tunnel."}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"You are in a small, claustrophobic, earthen tunnel, curving from the north to the east. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":5,"exits":["east","north"]}
+{"ev":"prompt","rx":5,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":5,"text":"You attack someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":5,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":6,"text":"value someone","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":6,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":7,"text":"For you, treasure is worth 100% of its minimum value.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":7,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":7,"text":"Your value is 225 points.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":7,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":7,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":8,"source":"fes","stamina":31,"max_stamina":69,"strength":71,"max_strength":71,"dexterity":67,"max_dexterity":70,"magic":0,"max_magic":69,"score":752,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":9,"room_state":"listed","room":[],"carried":[]}
+{"ev":"stats","rx":10,"source":"fes","stamina":31,"max_stamina":69,"strength":71,"max_strength":71,"dexterity":67,"max_dexterity":70,"magic":0,"max_magic":69,"score":752,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":11}
+{"ev":"inventory","rx":10,"room_state":"listed","room":[],"carried":[]}
+{"ev":"text","rx":11,"text":"You miss someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":11,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"20","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"69","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":11,"family":8,"params":[3]}
+{"ev":"stats","rx":11,"source":"code","stamina":20,"max_stamina":69,"score":null}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":11,"text":"You might like to consider fleeing, eg. F O to FLEE OUT.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":11,"text":"A small, stoppered vial stands here, labelled: \"","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"POTION 1","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"\". ","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":11,"text":"A small, stoppered vial stands here, labelled: \"","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"POTION 0","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":11,"text":"\". ","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":11,"text":"Someone has started to use something to fight!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":11,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":11,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":12,"source":"fes","stamina":20,"max_stamina":69,"strength":66,"max_strength":71,"dexterity":64,"max_dexterity":70,"magic":0,"max_magic":69,"score":752,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":3}
+{"ev":"inventory","rx":13,"room_state":"listed","room":["vial0","vial1"],"carried":[]}
+{"ev":"text","rx":14,"text":"flee n","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":14,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"(Persona saved on -50 = ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":15,"text":"702","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":").","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":15,"source":"code","stamina":null,"max_stamina":null,"score":702}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"You have fled by going north.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"fight_end","chat_continues":false}
+{"ev":"text","rx":15,"text":"Small tunnel","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":15,"text":"Small tunnel."}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"You are in a small, claustrophobic, earthen tunnel, curving from the northwest to the south. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":15,"exits":["south","northwest"]}
+{"ev":"prompt","rx":15,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":15,"text":"Someone is about to attack you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":15,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":16,"source":"fes","stamina":20,"max_stamina":69,"strength":66,"max_strength":71,"dexterity":64,"max_dexterity":70,"magic":0,"max_magic":69,"score":702,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":3}
+{"ev":"inventory","rx":17,"room_state":"listed","room":[],"carried":[]}
+{"ev":"stats","rx":18,"source":"fes","stamina":20,"max_stamina":69,"strength":66,"max_strength":71,"dexterity":64,"max_dexterity":70,"magic":0,"max_magic":69,"score":702,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":3}
+{"ev":"text","rx":19,"text":"Someone misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":19,"text":"You hit someone (9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":19,"family":8,"params":[1]}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":19,"text":"A small, stoppered vial stands here, labelled: \"","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"text","rx":19,"text":"POTION 1","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":19,"text":"\". ","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":19,"text":"A small, stoppered vial stands here, labelled: \"","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"text","rx":19,"text":"POTION 0","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":19,"text":"\". ","style":{"fg":6,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":19,"text":"Someone has started to use something to fight!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":19,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":19,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":20,"text":"value someone","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":20,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"For you, treasure is worth 100% of its minimum value.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"Your value is 215 points.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":21,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":21,"source":"fes","stamina":20,"max_stamina":69,"strength":66,"max_strength":71,"dexterity":64,"max_dexterity":70,"magic":0,"max_magic":69,"score":702,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":3}
+{"ev":"inventory","rx":21,"room_state":"listed","room":["vial0","vial1"],"carried":[]}
+{"ev":"text","rx":22,"text":"flee nw","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":23,"text":"(Persona saved on -47 = ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":23,"text":"655","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"text","rx":23,"text":").","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":23,"source":"code","stamina":null,"max_stamina":null,"score":655}
+{"ev":"line_end","rx":23,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":23,"text":"You have fled by going northwest.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":23,"kind":"fight_end","chat_continues":false}
+{"ev":"text","rx":23,"text":"Small tunnel","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":23,"text":".","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"room_name","rx":23,"text":"Small tunnel."}
+{"ev":"line_end","rx":23,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":23,"text":"You are in a small, claustrophobic, earthen tunnel, curving from the north to the southeast. ","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":23,"kind":"normal","chat_continues":false}
+{"ev":"exits","rx":23,"exits":["out","southeast","north"]}
+{"ev":"prompt","rx":23,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":24,"source":"fes","stamina":20,"max_stamina":69,"strength":66,"max_strength":71,"dexterity":64,"max_dexterity":70,"magic":0,"max_magic":69,"score":655,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":85,"weather":"R","stamina_colour":3}
+{"ev":"inventory","rx":25,"room_state":"listed","room":[],"carried":[]}

@@ -1,0 +1,257 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:invisible-player-joins.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"You attack the zombie5, using the croquet mallet as a weapon.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":0,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":3,"text":"You miss the zombie5.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"The zombie5 hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":"106","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":3,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":3,"family":8,"params":[3]}
+{"ev":"stats","rx":3,"source":"code","stamina":106,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":3,"text":"A well-worn silver sixpence dated 1814 has been tossed here. ","style":{"fg":14,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":3,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":3,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":4,"source":"fes","stamina":106,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":14,"weather":"F","stamina_colour":2}
+{"ev":"text","rx":5,"text":"You miss the zombie5.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":5,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":5,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":5,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":6,"source":"fes","stamina":106,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":2}
+{"ev":"text","rx":8,"text":"value zombie5","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":8,"kind":"normal","chat_continues":false}
+{"ev":"inventory","rx":9,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"prompt","rx":9,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":9,"text":"The value of the zombie5 is 38 points.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":9,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":9,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":10,"source":"fes","stamina":106,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":2}
+{"ev":"inventory","rx":11,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":12,"text":"You miss the zombie5.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":12,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":12,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":12,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":12,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":13,"text":"Someone is about to attack you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":13,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":13,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":14,"source":"fes","stamina":106,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":2}
+{"ev":"text","rx":15,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":"103","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":15,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":15,"family":8,"params":[3]}
+{"ev":"stats","rx":15,"source":"code","stamina":103,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"You hit someone (15-19).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":15,"family":8,"params":[1]}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"You hit the zombie5 (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":15,"family":8,"params":[1]}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"The zombie5 looks superficially damaged.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":15,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":15,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":15,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":16,"source":"fes","stamina":103,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":2}
+{"ev":"inventory","rx":17,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":18,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"86","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":18,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":18,"family":8,"params":[3]}
+{"ev":"stats","rx":18,"source":"code","stamina":86,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":18,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":18,"text":"You miss someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":18,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":18,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":19,"source":"fes","stamina":86,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"inventory","rx":20,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":21,"text":"Someone misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"You hit someone (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":21,"family":8,"params":[1]}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"You hit the zombie5 (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":21,"family":8,"params":[1]}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"The zombie5 looks superficially damaged.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":21,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":21,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":21,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":22,"text":"You hit the zombie5 (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":22,"family":8,"params":[1]}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":22,"text":"The zombie5 looks to have minor damage.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":22,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":22,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":22,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":23,"source":"fes","stamina":86,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"text","rx":24,"text":"Someone misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":24,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":24,"text":"You hit someone (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":24,"family":8,"params":[1]}
+{"ev":"line_end","rx":24,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":24,"runs":[{"text":"(","style":{"fg":4,"bg":0,"attrs":[]}},{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}},{"text":")","style":{"fg":4,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":25,"text":"You have suddenly and magically regained your visibleness!","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":25,"family":11,"params":[1]}
+{"ev":"spell_phrase","rx":25,"id":"11 01","phrase":"You have suddenly and magically regained your visibleness!"}
+{"ev":"line_end","rx":25,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":25,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":26,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"69","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":26,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":26,"family":8,"params":[3]}
+{"ev":"stats","rx":26,"source":"code","stamina":69,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":26,"text":"You miss someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":26,"text":"You hit the zombie5 (15-19).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":26,"family":8,"params":[1]}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":26,"text":"The zombie5 looks seriously damaged.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":26,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":26,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":26,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":27,"source":"fes","stamina":69,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"text","rx":28,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":28,"text":"66","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":28,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":28,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":28,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":28,"family":8,"params":[3]}
+{"ev":"stats","rx":28,"source":"code","stamina":66,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":28,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":28,"text":"You hit someone (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":28,"family":8,"params":[1]}
+{"ev":"line_end","rx":28,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":28,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":29,"source":"fes","stamina":66,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"inventory","rx":30,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"stats","rx":31,"source":"fes","stamina":66,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"text","rx":32,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":32,"text":"51","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":32,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":32,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":32,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":32,"family":8,"params":[3]}
+{"ev":"stats","rx":32,"source":"code","stamina":51,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":32,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":32,"text":"You miss someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":32,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":32,"text":"You hit the zombie5 (1-4).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":32,"family":8,"params":[1]}
+{"ev":"line_end","rx":32,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":32,"text":"The zombie5 looks critically damaged.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":32,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":32,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":32,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":32,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":33,"source":"fes","stamina":51,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"inventory","rx":34,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":35,"text":"You miss the zombie5.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":35,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":35,"text":"The zombie5 misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":35,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":35,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":36,"source":"fes","stamina":51,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103581,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"text","rx":37,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":37,"text":"44","style":{"fg":11,"bg":0,"attrs":[]}}
+{"ev":"text","rx":37,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":37,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":37,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":37,"family":8,"params":[3]}
+{"ev":"stats","rx":37,"source":"code","stamina":44,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":37,"text":"You miss someone.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":37,"text":"You hit the zombie5 (20-29).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":37,"family":8,"params":[1]}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":37,"text":"You have killed the zombie5.","style":{"fg":0,"bg":1,"attrs":[]}}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":37,"text":"(Persona saved on +38 = ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":37,"text":"103,619","style":{"fg":2,"bg":0,"attrs":[]}}
+{"ev":"text","rx":37,"text":").","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"stats","rx":37,"source":"code","stamina":null,"max_stamina":null,"score":103619}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":37,"text":"The zombie5 has expired.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":37,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":37,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":38,"source":"fes","stamina":45,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"inventory","rx":39,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":40,"text":"qq","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":40,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":41,"text":"You can't quit in the middle of a fight! Flee first!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":41,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":41,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":42,"source":"fes","stamina":45,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"inventory","rx":43,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"stats","rx":44,"source":"fes","stamina":45,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":104,"max_dexterity":100,"magic":89,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":11}
+{"ev":"text","rx":45,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":45,"text":"30","style":{"fg":3,"bg":0,"attrs":[]}}
+{"ev":"text","rx":45,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":45,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":45,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":45,"family":8,"params":[3]}
+{"ev":"stats","rx":45,"source":"code","stamina":30,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":45,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":45,"text":"You hit someone (15-19).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":45,"family":8,"params":[1]}
+{"ev":"line_end","rx":45,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":45,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":46,"text":"value someone","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":46,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":47,"text":"For you, treasure is worth 100% of its minimum value.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":47,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":47,"text":"Your value is 20,798 points.","style":{"fg":7,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":47,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":47,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":47,"source":"fes","stamina":30,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":101,"max_dexterity":100,"magic":89,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":3}
+{"ev":"inventory","rx":48,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"stats","rx":49,"source":"fes","stamina":30,"max_stamina":120,"strength":102,"max_strength":100,"dexterity":101,"max_dexterity":100,"magic":89,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":3}
+{"ev":"text","rx":50,"text":"Someone hits you (","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":50,"text":"18","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"text","rx":50,"text":"/","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"text","rx":50,"text":"120","style":{"fg":10,"bg":0,"attrs":[]}}
+{"ev":"text","rx":50,"text":").","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":50,"family":8,"params":[3]}
+{"ev":"stats","rx":50,"source":"code","stamina":18,"max_stamina":120,"score":null}
+{"ev":"line_end","rx":50,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":50,"text":"You hit someone (5-9).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":50,"family":8,"params":[1]}
+{"ev":"line_end","rx":50,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":50,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":51,"text":"refresh","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":51,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":51,"text":"Your spell worked!","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":51,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":51,"text":"You emit a ","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"text","rx":51,"text":"bright magenta","style":{"fg":13,"bg":0,"attrs":[]}}
+{"ev":"text","rx":51,"text":" flash of light.","style":{"fg":null,"bg":null,"attrs":[]}}
+{"ev":"line_end","rx":51,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":51,"text":"You have suddenly and magically become fitter!","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":51,"family":11,"params":[2]}
+{"ev":"spell_phrase","rx":51,"id":"11 02","phrase":"You have suddenly and magically become fitter!"}
+{"ev":"line_end","rx":51,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":51,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"stats","rx":52,"source":"fes","stamina":23,"max_stamina":120,"strength":99,"max_strength":100,"dexterity":99,"max_dexterity":100,"magic":81,"max_magic":120,"score":103619,"blind":false,"deaf":false,"crippled":false,"dumb":false,"reset_minutes":13,"weather":"F","stamina_colour":3}
+{"ev":"inventory","rx":53,"room_state":"listed","room":["sixpence"],"carried":["croquet mallet"]}
+{"ev":"text","rx":54,"text":"Someone misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":54,"kind":"normal","chat_continues":false}
+{"ev":"text","rx":54,"text":"You hit someone (10-14).","style":{"fg":9,"bg":0,"attrs":[]}}
+{"ev":"sound_code","rx":54,"family":8,"params":[1]}
+{"ev":"line_end","rx":54,"kind":"normal","chat_continues":false}
+{"ev":"prompt","rx":54,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}

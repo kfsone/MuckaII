@@ -1,0 +1,5 @@
+* text=auto eol=lf
+# Captured MUD2 wire traffic: the server's own bytes, verbatim. Never normalised.
+*.c1 binary
+*.wav binary
+*.svg text eol=lf

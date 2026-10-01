@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Full-disc bloom: opaque from centre to edge so the icon reads as the same
+         solid circle (r=256) as the stat/ailment discs. Bright core -> dark-amber rim
+         keeps the fiery-glow character while contrasting the #101618 status bar.
+         (Was: outer stop faded to opacity 0, which made glow present ~15% opaque area
+         vs ~78% for every other icon.) -->
+    <radialGradient id="gE-bloom" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fffdf0" stop-opacity="1"/>
+      <stop offset="22%" stop-color="#ffe27a" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#f8b21e" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#6b3d05" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#gE-bloom)"/>
+  <g stroke="#fff2b0" stroke-width="20" stroke-linecap="round" opacity="0.85">
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(0 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(45 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(90 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(135 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(180 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(225 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(270 256 256)"/>
+    <line x1="256" y1="150" x2="256" y2="96" transform="rotate(315 256 256)"/>
+  </g>
+  <circle cx="256" cy="256" r="62" fill="#fffef5"/>
+</svg>

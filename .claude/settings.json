@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(//g/Source/mucka/**)",
+      "Edit(//g/Source/mucka/**)",
+      "Write(//g/Source/mucka/**)",
+      "Grep(//g/Source/mucka/**)",
+      "Glob(//g/Source/mucka/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Read|Grep|Glob|Edit|Write|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/reference-firewall.mjs\""
+          }
+        ]
+      }
+    ]
+  }
+}
