@@ -47,6 +47,9 @@ enforced_by: none: judgement
 
 | File | Owns |
 |------|------|
+| `fair-play.md` | What features may and may not do. Outranks every other spec |
+| `flow.md` | The states: profile, pre-game, game, tombstone. Also settings behaviour |
+| `session.md` | Sleep state, command understanding, probe injection |
 | `protocol.md`, `c1-codes.toml` | Byte stream: C1 sequences, ANSI subset, encoding, line and prompt model |
 | `events.md` | The neutral event schema that golden streams are written in |
 | `connection.md` | Telnet options, login sequence, client-mode entry, probes, keepalive |

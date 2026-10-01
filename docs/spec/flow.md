@@ -1,0 +1,133 @@
+# Flow: profile, pre-game, game, tombstone
+
+FACT The client is always in exactly one of these states:
+
+| State | Entered when | Left when | Shows |
+|-------|--------------|-----------|-------|
+| Profile | the app starts; the user disconnects | a profile is connected (to Pre-game) | the profile list, global settings, the score graph |
+| Pre-game | the connection is made; the game ends without a death; the Tombstone is dismissed | game mode is entered (to Game); disconnect (to Profile) | the game layout with its widgets disabled, plus the persona dialog when managed selection is on |
+| Game | game mode is entered after the persona arrives in the tea room | the server returns to the Option menu (to Pre-game, or to Tombstone after a death) | the full game layout (`ui.md` section 0) |
+| Tombstone | the game ended by death | the user dismisses it (to Pre-game) | how the persona died, and the last lines of the scroll |
+
+source: director
+
+## Profile
+
+RULE The profile list is a manageable list ordered most recently used first. A profile combines a
+server, an account and an optional persona, along with that profile's settings.
+source: director
+enforced_by: none: judgement
+
+RULE By default a profile shows the server, port, MUD account and password, plus a checkbox for
+managed persona selection. A way into that profile's advanced settings is also shown, so they can
+be changed without logging in.
+source: director
+enforced_by: none: judgement
+
+RULE The Profile state also gives access to the global settings and to the score graph.
+source: director
+enforced_by: none: judgement
+
+## Pre-game
+
+RULE Pre-game shows the game layout with its widgets disabled, so the player sees the game's banner,
+splash and so on behind any dialog. With managed persona selection on, the input box is not shown.
+source: director
+enforced_by: none: judgement
+
+RULE With managed persona selection on and no persona specified, a dialog in front of the login
+process lists the available personas, most recently used first. If you play as slot 2 and then
+`qq`, slot 2 is at the top the next time the list appears. The dialog also offers:
+- adding a persona, when a slot is empty;
+- "drop to menu". The MUD shell that persona selection drives is only a prompt system, so this
+  falls through to the mode without persona selection.
+
+source: director
+enforced_by: none: judgement
+
+RULE When a persona is specified, the client logs it in and enters game mode when it arrives in
+the tea room.
+source: director
+enforced_by: none: judgement
+
+RULE Launch requires the ability to *create* a persona in an open slot. Persona deletion is a
+far-future item, because it is fiddly.
+source: director
+enforced_by: none: judgement
+
+FACT The persona dialog is a real input surface. While it is open it owns focus, which is an
+Invariant #0 exception.
+source: director
+
+## Game
+
+RULE The two god-priority features are the text input box and the text scroll in the middle.
+Everything else gives way to them.
+source: director
+enforced_by: none: judgement
+
+RULE What game mode displays by default depends on the window or device width. On the phone, or
+when the user sets a low maximum column count (44, say), the side panels are off by default. Small
+expand and collapse controls (`>>`, `<<`) at the bottom of the status bar show and hide them, as
+well as their menu options. The width thresholds belong to `ui.md` section 3.6.
+source: director
+enforced_by: none: judgement
+
+RULE Game mode ends when the client detects a return to the Option menu.
+source: director
+enforced_by: none: judgement
+
+open: How the server signals the return to the Option menu (OPEN A5). It is launch-critical.
+
+## Tombstone
+
+RULE When the game ends by death, the player gets a chance to see what happened: the last several
+lines of the scroll, styled according to what happened. A death is either permanent (the persona
+is not updated) or temporary (for example, carrying a brand into the swamp).
+source: director
+enforced_by: none: judgement
+
+RULE A permadeath adds an R.I.P. visual:
+- the persona's name, which links to the score graph;
+- a sub-heading with its last rank from the online list;
+- a rule, then the last N lines of the scroll.
+
+Clicking it opens a full-window version of the scroll, so the player can go back and see in more
+detail how they goofed.
+source: director
+enforced_by: none: judgement
+
+FACT These are known temporary deaths:
+- taking a wrong turn in the sea and capsizing;
+- leaving Dragon Island or the Isle of Woe in the wrong direction and drowning;
+- capsizing when the weather changes at sea;
+- jumping off the cliff without an open parachute;
+- walking into the swamp carrying a flame.
+
+source: director
+
+open: The text that marks each temporary death, and the permadeath code (C08 C13 in
+`connection.md`), still have to be confirmed against the wire corpus.
+
+## Settings
+
+RULE The settings UI is reorganised and compact. The sound catalogue and volume management are
+redesigned, not copied from Mucka.
+source: director
+enforced_by: none: judgement
+
+RULE The settings buttons:
+- **Apply** updates the current settings.
+- **Save** applies them and saves them.
+- **Save** has a drop-down that saves the settings as the default.
+
+source: director
+enforced_by: none: judgement
+
+RULE A saved setting shows when it is set to its default value. A far-future item: tell the player
+when a setting's default has changed, and ask whether to keep their value or switch.
+source: director
+enforced_by: none: judgement
+
+open: Game-entry commands, meaning commands sent on entering the game, are a to-do item
+(see `connection.md` 5.3, the setup batch).

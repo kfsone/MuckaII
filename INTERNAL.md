@@ -3,27 +3,74 @@
 FACT A MUD2-only client. In essence it is a limited terminal emulator for the scroll, plus a command
 box that nothing ever gets in the way of.
 
-FACT Audience: the director and five or so people he knows. Launch means a GitHub release for them.
+FACT Audience: the director and five or so people they know. Launch means a GitHub release for them.
 
 FACT Developers: LLM agents only. The director (Oliver "kfsone" Smith) sets direction and does the
 acceptance testing.
 
 ## Stack
 
-DECISION The core is Rust: a pure library crate `mud2` with no UI dependency. It holds telnet, the C1
-and ANSI decoding, the line buffer and wrap, login, the 7-bit send path, and the wire log
-(SQLite). Rejected: C++/Qt (mobile licensing, toolchain weight, and memory-safety review with no
-human reviewer) and Go (thin GUI options for mobile).
+DECISION The language is C++20, built with CMake. The director reads and spot-checks the code,
+and that makes the director a second reviewer. Rejected:
+- Rust. With no human reading the code, its compiler would be the only reviewer. With the director
+  reading it, C++ is the better choice.
+- Go. It has no Slint binding and its mobile GUIs are thin.
+- Python. The GIL hurts the latency budget, and packaging for Android is hard.
 
-DECISION The shell candidate is Tauri v2 with a TypeScript frontend. It is a hypothesis until the
-input spike passes. The fallbacks are egui for desktop and a native Kotlin `EditText` shell over the
-core for Android. Rejected: Slint and Fyne/Gio (thin in training data, the same failure mode as
-MAUI) and Flutter (a second language, no gain).
+DECISION C++ memory safety is enforced by build gates, not by policy:
+- ASan and UBSan test runs in CI.
+- libFuzzer on the mud decoder, seeded from `docs/evidence/captures/`.
+- A fixed clang-tidy check set that bans raw owning `new`/`delete` and C-style casts.
+- `-Werror`.
+
+Each gate is named in `CLAUDE.md` once it exists.
+
+DECISION The GUI is Slint on every target, through its C++ API. Slint drives the Android soft
+keyboard through a real Android input view. Fades and float positions are its built-in property
+animations. The input spike has to confirm this choice. Rejected:
+- Tauri and any JavaScript frontend. Streaming text is a known weakness of web views, and every
+  line would cross a JS-to-native IPC hop.
+- Flutter, which would add Dart.
+- egui as the GUI everywhere. Its Android soft keyboard is unresolved upstream. It stays as the
+  desktop fallback.
+
+DECISION The architecture is layered, as one library per layer, all in one process with no IPC:
+
+| Layer | Owns |
+|-------|------|
+| transport | TCP and telnet negotiation |
+| mud | bytes in, `docs/spec/events.md` events out |
+| session | login, probes, stats, dreamword, the single ordered outbound queue |
+| client | aliases, F-key macros, history, mapping keys to commands |
+
+Frontends (the GUI, a TUI, a bot) subscribe to the event stream in-process. The first frontend is a
+TUI built on FTXUI, because it proves the layering without any GUI risk.
+
+DECISION Sound uses miniaudio:
+- One output stream is opened at startup and stays open.
+- Every sound is decoded to PCM when it loads.
+- Playing a sound adds a voice to the mixer, so overlapping sounds work.
+- Every play request carries a start time on the audio clock.
+
+Rejected: padding sounds with leading silence to hide player start-up latency. That is Mucka's
+workaround, and it puts the sound late.
+
+DECISION The latency budget runs from bytes arriving to the frame showing that text, and from FES
+arriving to the status bar repainted. The target is 30-50 ms for both, measured by a test rather
+than asserted.
 
 ## Platforms
 
-DECISION Targets for launch: Windows 11, Android, Linux, macOS. macOS builds are ad-hoc signed and
-not notarised. Android builds use one release keystore, held in CI secrets.
+DECISION Platform priority:
+- Windows 11 is primary. It is where the director plays.
+- Android is second, with one user. It uses one release keystore, held in CI secrets.
+- Linux and macOS are a distant third. Their release builds are not launch items.
+
+The audience will never be significant, so the code is written for the director and one Android
+user.
+
+DECISION The core libraries still get a Linux CI job, because UBSan and libFuzzer need clang on
+Linux. That job is gate infrastructure, not a product target.
 
 DECISION iOS is deferred. The stack must not rule it out, but there is no iOS work and no iOS CI
 until the director asks.
@@ -32,6 +79,10 @@ until the director asks.
 
 DECISION The launch scope is:
 
+- the profile page, pre-game, game and post-game flow (`docs/spec/flow.md`)
+- managed persona selection, and creating a persona in an open slot
+- detecting the end of the game (the return to the Option menu)
+- sleep tracking, so the status bar does not go stale (`docs/spec/session.md`)
 - terminal and scrollback
 - command box and history
 - profiles and auto-login
@@ -43,9 +94,18 @@ DECISION The launch scope is:
 - sounds
 - first-run import of Mucka's `mucka.ini`
 
-Everything else is triaged after launch and re-justified before it is built: combat rail, side
-panels, compass, score graph, guided login, raw console, watchwords, anti-idle keepalive, and
-keep-screen-on.
+Everything else is triaged after launch and re-justified against `docs/spec/fair-play.md` before it
+is built: combat panel, side panel, floating widgets, compass, raw console, watchwords, anti-idle
+keepalive, keep-screen-on, persona deletion, and wire-log retention policy.
+
+DECISION These are launch scope:
+- the tombstone screen;
+- command understanding and probe injection (`docs/spec/session.md`).
+
+These are later:
+- the score graph (until it exists, the tombstone's name link is inert);
+- `$LASTSAW` and `$FETCH`;
+- output reformatters.
 
 ## Data
 

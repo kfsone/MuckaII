@@ -23,6 +23,37 @@ source = "clio:src/sound.c"
 scope = "launch"
 
 [[rule]]
+id = "engine-always-open"
+tag = "RULE"
+text = "One audio output stream is opened at startup and stays open for the life of the process. Every sound file is decoded to PCM when it loads. Playing a sound adds a voice to an in-process mixer and never opens, leases, or waits on a device or player. Any number of voices may overlap: you and an enemy taking damage in the same turn are both heard."
+source = "director"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "engine-scheduled-start"
+tag = "RULE"
+text = "Every play request carries a start time on the audio clock, in frames. A sound triggered by the server passes 'now'. Scheduled sounds (the combat metronome) pass a predicted time. A sound begins sounding at its start frame with no leading silence."
+source = "director"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
+id = "no-silence-padding"
+tag = "DECISION"
+text = "Rejected: padding a sound file with leading silence so that player start-up latency does not swallow its start. It shifts every sound late by the padding, and it is the workaround Mucka shipped. Latency is removed by the always-open engine (engine-always-open) instead."
+source = "director"
+scope = "launch"
+
+[[rule]]
+id = "metronome-book-ends"
+tag = "RULE"
+text = "The combat metronome book-ends each tick T, where T is a frame on the audio clock. The pre-tick click must FINISH at T, so pre.start = T - pre.duration_frames. The post-tick click STARTS at T, so post.start = T. Worked example at 48000 Hz: with T = 480000 and a 30 ms pre click (1440 frames), pre.start = 478560 and post.start = 480000. A unit test asserts these frame positions. The visual tick sweep is driven from the same clock, shifted by the output latency the device reports, so the sweep, the clicks and the server's combat messages share one timebase."
+source = "director"
+scope = "later"
+enforced_by = "none: judgement"
+
+[[rule]]
 id = "which-codes-sound"
 tag = "FACT"
 text = "Only these families ever produce a sound: 06, 07, 08 (01 and 03 only), 11 (except 11 06, 11 09, 11 14), 13, 14 03 02, 18 00..18 06. Codes 17 (music) and 20 (background noise) are documented by Bartle but neither Clio nor the reference plays anything for them, and no files exist."

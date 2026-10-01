@@ -30,6 +30,20 @@ RULE Assume intent before assuming error. Never assume the prompt is `*`. The pr
 code sequence.
 enforced_by: none: judgement
 
+RULE Do not design for a future in which MUD2 changes. It will not change. No plugin hooks, no
+configurable protocol tables, no abstraction over protocol variation that cannot happen.
+enforced_by: none: judgement
+
+FACT There is no test server. Every interaction with MUD2 happens in a live game with real players.
+The captures and the wire corpus are the only safe place to experiment.
+
+## Fair play
+
+RULE `docs/spec/fair-play.md` outranks every feature. Every feature spec names the charter line that
+permits it. A feature that cannot name one goes to the director before it is designed. The
+features are secretaries in the wings, not super powers.
+enforced_by: none: judgement
+
 ## Evidence, strongest first
 
 1. Bartle's documentation: `G:\Source\mud-fe\mud2_FE4.txt` (newer; it governs where the two differ)
@@ -77,12 +91,17 @@ enforced_by: none: judgement
 
 EVIDENCE The director types at 120-130 wpm.
 
-RULE Typed text and Enter form one ordered stream, all the way to the socket. When the sent lines
-are concatenated, they equal the typed stream.
+RULE Typed text and Enter form one ordered stream, all the way to the socket. Typed lines reach the
+socket unmodified and in order. A probe block the client injects goes only at a command boundary,
+never inside a command, and is marked in the wire log. Remove the marked blocks, concatenate the
+rest, and the result equals the typed stream. See `docs/spec/session.md`.
 
-- Read the line synchronously, on the thread that received Enter, in event order. Nothing may sit
-  between the widget and the read: no binding, no dispatcher hop.
-- Never rebuild text from key events.
+- The frontend owns the line buffer and applies input events in the order they arrive. Enter acts
+  at exactly the place it falls in that order. Never let a widget apply a batch of keystrokes
+  before Enter is examined. Nothing may sit between the widget and the read: no binding, no
+  dispatcher hop.
+- Where the platform delivers text as IME commits (Android), take the committed text. Never
+  rebuild it from key events.
 - Send every outbound line, whether typed or from a macro, through one ordered channel to one
   socket writer.
 - Do nothing on the UI thread that could stall typing, even for 50 ms.

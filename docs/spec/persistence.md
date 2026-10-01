@@ -212,6 +212,42 @@ source: reference
 open: what a client does with a database written by a NEWER MuckaII (unknown later steps recorded).
 Read-only, refuse, or carry on.
 
+## Retention and deduplication
+
+FACT The wire log builds up a lot of redundant bloat as the player walks around. Seeing the same
+long room descriptions over and over is one example.
+source: director
+
+DECISION Wire payloads are stored content-addressed from the first release. One table maps a hash
+to the bytes, and each wire row references a payload by its hash, so repeated text is stored once.
+This has to be in the first schema, because a later migration may not rewrite a stranger's
+database destructively. Retention policies and compaction come later and work on top of this
+table. Rejected: storing each payload inline per row (Mucka's layout).
+source: director
+
+open: The retention policy. What ages out, after how long, and whether old payloads are
+compressed.
+
+## Settings storage
+
+DECISION A settings store holds only the keys the user has changed. A missing key means "use the
+default". This is what lets the UI show that a setting is at its default, and it is what will let
+a later release say "this setting's default changed: keep or switch?" (`flow.md`, Settings).
+source: director
+
+DECISION Per-profile settings layer on top of the global settings, one key at a time. A key a
+profile does not set falls through to the global value, and from there to the default. The
+profile page can edit them without logging in. Rejected: a per-profile section that replaces the
+global settings wholesale (Mucka's semantics, see `mucka-ini.md` "How the sections combine").
+source: director
+
+RULE The importer keeps each Mucka profile's *effective* values. Mucka replaces wholesale while
+MuckaII layers, so for a profile that has a `[settings:Name]` section, the importer writes a
+profile-level value for every key whose Mucka value differs from what MuckaII's layering would
+otherwise produce.
+source: director
+enforced_by: none: judgement
+
 ## Session transcript (`rec`)
 
 `scope: later`
@@ -313,7 +349,7 @@ EVIDENCE On the director's machine, with Mucka 0.22.1 installed: the HKLM key ab
 `DisplayName` `Mucka version 0.22.1`, `InstallLocation` `C:\Program Files\Mucka\` and
 `Inno Setup: App Path` `C:\Program Files\Mucka`. There is no `mucka.ini` in that directory. The file
 in use is `%USERPROFILE%\mucka.ini`.
-source: director (his machine, observed read-only)
+source: director (the director's machine, observed read-only)
 
 open: when both Windows candidates exist, should the importer take the first silently, or show both
 and let the user choose?

@@ -15,6 +15,48 @@ RULE Glyphs are given as code points. The repo is ASCII; the program draws the c
 source: director
 enforced_by: none: judgement
 
+## 0. Game screen layout
+
+FACT The in-game screen has five primary components:
+
+| Component | Scope | Contents |
+|-----------|-------|----------|
+| Stats bar | launch | Runs along the top. Holds the status fields (section 3) and the settings menu, shown as a hamburger button. |
+| Side panel | later | Optional, on the left, with sub-widgets: players online (text list), items carried (text list), items here (text list with a button per item), and navigation (compass rose plus the last 3 locations). |
+| Terminal scroll | launch | The main component. Takes all the space the others leave. |
+| Combat panel | later | Optional. See the combat panel table below. |
+| Input box | launch | The command input, along the bottom. |
+
+source: director
+
+FACT The navigation widget is meant to sit just left of the command input, so the input reads a
+little like a shell prompt (`~w$` in a PS1).
+source: director
+
+FACT The combat panel is one vertical stack, top to bottom:
+
+| Part | Share of height | Contents |
+|------|-----------------|----------|
+| Outcomes | about 0.1 | A list of combat outcomes |
+| Badges | about 0.9 | One creature badge per opponent |
+| Tick | fixed | The combat ticker |
+| Player | rest | The player's own creature badge |
+
+source: director
+
+RULE The players-online widget and the navigation widget each have a detach button. Detaching one
+shows a floating copy that can be dragged around inside the main window. Both the docked copy and
+the floating copy can be visible at the same time. This is a deliberate departure from Mucka, which
+collapses the docked copy. For example, a player planning to run can keep the compass in the side
+panel and drag a second copy next to the combat panel.
+source: director
+enforced_by: none: judgement
+
+RULE Floating panels live inside the main window and are never separate OS windows, so they behave
+the same on Android.
+source: director
+enforced_by: none: judgement
+
 ## 1. Terminal look (scope: launch)
 
 ### 1.1 Font and cell grid
@@ -436,9 +478,14 @@ list. This section says launch.
 | Sounds: master, groups, rows, volumes, fallbacks, bell | Sounds | see `sounds.toml` | all on | see `sounds.toml` | reference |
 | Keep screen on | Connect page, per profile | on/off | platform (6) | `keepscreenon` | reference |
 
-FACT Settings dialog tabs: Settings, Display, Hotkeys, Sounds, Friends. Apply previews changes
-live (e.g. chat colours restyle the pane); Save writes `mucka.ini`; Cancel reverts.
+FACT Mucka's settings dialog has the tabs Settings, Display, Hotkeys, Sounds and Friends. Apply
+previews changes live (e.g. chat colours restyle the pane); Save writes `mucka.ini`; Cancel
+reverts.
 source: reference
+
+DECISION MuckaII's settings are reorganised (`flow.md`, Settings) and have no Friends tab
+(`fair-play.md`, Other players). Rejected: Mucka's tab layout.
+source: director
 
 FACT The menu (U+2630) holds: Settings, About, Log Recording, Score, Orientation (Portrait /
 Landscape / System), Side Panel, Onlines, Compass, Combat, Stats, Damage floats. Only Settings,
@@ -457,7 +504,17 @@ source: director
 | Combat edge | A 1 px border on the terminal: amber during a fight, red at danger | reference |
 | Combat status icon | Crossed-blades icon in the status bar while a fight is open | reference |
 | Side panel | Left panel with Online (who list, recent departures), Inventory, Items here, Map/compass; sections can float | reference |
+
+DECISION Players-list entries are never clickable as a probe of whether a name is still in the
+game's vocabulary. Mucka's click on an offline entry reveals invisible players
+(`fair-play.md`, Other players). Rejected: Mucka's offline-entry probe.
+source: director
 | Radar compass | A dial of the room's exits (from FEX); clicking an exit moves you | reference |
+
+DECISION Compass exits stay clickable. A click sends the direction like a hotkey, and the
+destination tooltip is allowed. A room name is never clickable (`fair-play.md`, Movement and
+places).
+source: director
 | Score graph | `$SCORE` / tapping the score opens a graph of score over the session, with a skull U+2620 at a persona wipe | reference |
 | Score tap target | Tapping the score (with a magnifier U+1F50D) opens the graph | reference |
 | Friends tab | A settings tab for a friends list | reference |

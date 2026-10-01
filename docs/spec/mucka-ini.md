@@ -50,7 +50,7 @@ source: reference
 
 EVIDENCE On the director's machine, with Mucka 0.22.1 installed, the file is `%USERPROFILE%\mucka.ini`.
 There is no `mucka.ini` beside the installed executable in `C:\Program Files\Mucka\`.
-source: director (his machine, observed read-only)
+source: director (the director's machine, observed read-only)
 
 ## Encoding and lines
 
@@ -65,7 +65,7 @@ source: director (his machine, observed read-only)
 source: reference
 
 EVIDENCE The director's file is plain ASCII with CRLF line endings and no byte-order mark.
-source: director (his machine, observed read-only)
+source: director (the director's machine, observed read-only)
 
 FACT Profile names, F-key macros and `[watch]` text are typed by the user, so the file may hold
 non-ASCII UTF-8. The importer reads UTF-8. Anything that later goes to the server still passes the
@@ -410,7 +410,7 @@ source: reference
 EVIDENCE The director's file has `[profile:<alt>] columns=100` and `[settings:<alt>] columns=100`
 (profile name withheld),
 and `[profile:MUD2 UK] columns=90` with `[settings] columns=90`. They agree in every case.
-source: director (his machine, observed read-only)
+source: director (the director's machine, observed read-only)
 
 open: should MuckaII keep a separate column count per profile and a global one, or one value per
 profile? The ini always carries two copies.
@@ -436,7 +436,7 @@ source: reference
 
 EVIDENCE The director's file holds `sendbutton`, `onlinefloating` and `logwiresession` in
 `[settings]`, and `fewrefresh=15` in two `[profile:...]` sections.
-source: director (his machine, observed read-only)
+source: director (the director's machine, observed read-only)
 
 ## Samples
 
