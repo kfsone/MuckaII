@@ -3,13 +3,9 @@
     "deny": [
       "Read(//g/Source/mucka/**)",
       "Edit(//g/Source/mucka/**)",
-      "Write(//g/Source/mucka/**)",
-      "Grep(//g/Source/mucka/**)",
-      "Glob(//g/Source/mucka/**)",
       "Read(//c/Program Files/Mucka/**)",
       "Read(/scripts/firewall/**)",
-      "Edit(/.claude/**)",
-      "Write(/.claude/**)"
+      "Edit(/.claude/**)"
     ]
   },
   "hooks": {
