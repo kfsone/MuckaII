@@ -53,11 +53,10 @@ source: director
 enforced_by: none: judgement
 
 FACT Probes are not free. MUD2 allows each user one command action per server tick: the `n` out of
-`n,sw,e`. A probe block placed between two moves (`n,ESC-[FES,FEW,FEI,FEX ESC-],s`) delays the
-second move by a fraction of a second, which is well within human cognition.
+`n,sw,e`. A probe block placed between two moves (`n,ESC-[FES,FEW,FEI,FEX ESC-]s`) delays the
+second move by a fraction of a second, which is well within human cognition. The client does not
+model the tick length.
 source: director
-
-open: The server tick length (the director estimates 10, 50 or 100 ms).
 
 RULE The client layer parses the player's input well enough to find the command boundaries and
 recognise significant commands (sleep in its variants: `sleep`, `zz`, `zzz`, `zz in bed`, ...).
@@ -83,8 +82,30 @@ until they wake, FES, FEI, FEX and FEW get nothing back, and only non-client com
 wake the player.
 source: director
 
-open: Whether a comma is needed between the closing `ESC-]` of a probe block and the command that
-follows it.
+EVIDENCE The director tested this on mud2.com on 2026-10-01. With a comma before the block,
+`make bed,$-[few$-]zz in bed` worked properly. Without the comma, `make bed$-[few$-]zz in bed` was
+parsed as `make bedzz in bed`, which MUD2's parser rejected, and the FEW output was wedged onto the
+end of the echo line. The session (`$-` is the director's notation, and `\e` is ESC):
+
+```
+sent> make bed\e-[few\e-]zz in bed
+*wake,make bed[persona] the champion
+*zz in bed
+I don't know the word "bedzz".
+```
+
+The persona's name is replaced with `[persona]`. Everything else is verbatim.
+source: director
+
+FACT The server lifts an escaped block out of the command text, and the text on either side of the
+block joins up. A block needs no separator of its own after `ESC-]`, but the command boundary in
+front of it must still be there.
+source: director (the test above)
+
+RULE An injected probe block goes either at the very start of the line or directly after an
+existing comma, and never directly after command text. Nothing is added after its closing `ESC-]`.
+source: director
+enforced_by: none: judgement
 
 RULE Injection and Invariant #1:
 - The player's commands reach the socket unmodified and in their typed order.

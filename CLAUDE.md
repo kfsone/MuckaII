@@ -19,9 +19,16 @@ Every governing statement carries a tag:
 
 ## The far end
 
-FACT MUD2 dates from the 1980s and is frozen. It sends 7-bit ASCII text. Bytes 0x9B-0xFF form its
-own client-facing code sequences, and every one ends `FF FF`. For ANSI it sends colour (SGR) and
-clear-screen only, with no cursor positioning. It accepts 7-bit ASCII input only.
+FACT MUD2 dates from the 1980s and is frozen. Its wire format is not ASCII. It is MUD2's own
+encoding: printable 7-bit text, with bytes 0x9B-0xFF used as markup. Those bytes form nested code
+sequences, each ending `FF FF`, that bracket and label the text, much as tags do in a markup
+language. On top of this it sends a small ANSI subset: colour (SGR) and clear-screen, with no
+cursor positioning. Input to the server is printable 7-bit characters, plus the client-mode escape
+sequences the client itself adds.
+
+RULE Never treat the wire as text. A byte at 0x80 or above is markup to decode, not a character to
+transcode, strip, or replace.
+enforced_by: none: judgement
 
 FACT A missing feature in MUD2 is part of its shape, not a gap to work around. Its design is
 deliberate far more often than it is naive.
@@ -113,8 +120,9 @@ enforced_by: none: judgement
 RULE The protocol layer takes and returns bytes. Lossy text decoding is never used there.
 enforced_by: none: judgement
 
-RULE Outbound text is 7-bit ASCII, enforced at the single send boundary. Typographic punctuation is
-transliterated and anything else is dropped.
+RULE What the player types is reduced to printable 7-bit characters at the single send boundary.
+Typographic punctuation is transliterated and anything else is dropped. Protocol escape sequences
+the client adds (`ESC-[ ... ESC-]`) are added after this step, so they are never filtered.
 enforced_by: none: judgement
 
 ## Comments and docs
@@ -132,7 +140,9 @@ enforced_by: none: judgement
 RULE MUD2 documentation is stored as data tables in `docs/spec/`, not as prose.
 enforced_by: none: judgement
 
-RULE Everything in the repo is ASCII.
+RULE The repo's own text files (source, docs, config, scripts) contain only 7-bit characters, and
+a glyph the UI needs is written as its code point. This rule is about our files, not about the
+wire. The captures (`*.c1`) hold the server's bytes verbatim and are exempt, as are binary assets.
 enforced_by: none: judgement
 
 ## Tests

@@ -40,7 +40,8 @@ RULE Where the reference disagrees with Bartle or with a capture, record both. T
 capture side as EVIDENCE and add an `open:` line. Never silently pick one.
 enforced_by: none: judgement
 
-RULE ASCII only.
+RULE Spec files contain only 7-bit characters. This is a rule about the files. The wire format is
+MUD2's own markup encoding and is described in `protocol.md`.
 enforced_by: none: judgement
 
 ## Files

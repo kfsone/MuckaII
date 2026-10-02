@@ -477,13 +477,15 @@ FACT Inbound text is bytes 0x20-0x7E. The decoder never decodes inbound bytes lo
 source: director
 scope: launch
 
-RULE Outbound text is 7-bit ASCII, enforced at the single send boundary. Typographic punctuation is
-transliterated to ASCII; anything else is dropped. Each line ends CR LF.
+RULE What the player types is reduced to printable 7-bit characters at the single send boundary.
+Typographic punctuation is transliterated, and anything else is dropped. The client's own escape
+sequences (`ESC-[ ... ESC-]`) are added after that step and are never filtered. Each line ends
+CR LF.
 enforced_by: none: judgement
 source: director
 scope: launch
 
-DECISION Outbound is masked to 7-bit ASCII. Rejected: the reference's behaviour of encoding outbound
+DECISION Player-typed text is masked to 7 bits. Rejected: the reference's behaviour of encoding outbound
 text as Latin-1 and sending bytes 0x80-0xFF unmasked, which MUD2 does not accept and which would need
 IAC doubling for 0xFF.
 source: director
