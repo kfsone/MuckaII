@@ -1,8 +1,9 @@
 # input
 
-FACT This file says how the command box behaves: Enter, the ordered input queue, history, F-key
-macros, aliases and `^1`-`^3` slots, every `$` client command, watchwords, scrollback, chat mode
-and mobile differences. Key chords themselves are listed in `keys.toml`.
+FACT This file says how the command box behaves: Enter, the two input orderings, history, F-key
+macros, aliases and `^1`-`^3` slots, every `$` client command, scrollback, the raw console and
+mobile differences. Key chords themselves are listed in `keys.toml`. Watchwords, chat mode and the
+`scope: later` `$` commands are specified in `later/`.
 source: director
 
 ## Invariant #1 and its acceptance condition
@@ -24,6 +25,11 @@ and may send nothing or something else; aliases and `$VER` expand; `$$` collapse
 boundary transliterates; scrollback swallows typed keys. Candidates: (a) at the handoff from the
 box to the queue, before any of that; (b) at the socket, counting only plain untrimmed ASCII lines
 with no sigil. Should trimming go?
+default: measure at both points root `CLAUDE.md` Invariant #1 names. (1) Frontend to client: the
+text handed over at each Enter equals the line buffer at that Enter, untrimmed and unexpanded, and
+the texts concatenated equal the typed keystroke stream. (2) Client to socket: with the marked probe
+blocks removed, the socket bytes equal the client's documented output. Trimming stays, as part of
+that documented processing.
 source: reference
 
 ## Enter
@@ -61,19 +67,35 @@ EVIDENCE clio has an option (`-e`) that makes a blank input line repeat the last
 reference has no such option; a blank line sends a bare CR LF.
 source: clio:man/clio.6
 
-## Ordering: one queue
+## Ordering: two orderings
 
-RULE Every player-initiated action goes through one first-in, first-out queue, in the order the
-player caused it, to one socket writer. The queue holds: typed lines, F-key and on-screen F-key
-presses, Ctrl hotkeys (dreamword, flee, wield, `^n` slots), compass clicks, and requests to change
-the box (history recall, Ctrl+R prefill, name insert, Escape clear, focus).
+FACT Input has two orderings, not one queue (`architecture.md`, Input: two orderings): box edits are
+ordered by the UI loop over the line buffer, and sends are ordered by the UI -> core FIFO.
+source: director
+
+| Ordering | Holds | Ordered by | Crosses a thread |
+|----------|-------|------------|------------------|
+| Box edits | typed keystrokes, history recall, Ctrl+R prefill, name insert, Escape clear, focus | the UI loop, applying input events to the frontend-owned line buffer in arrival order | never |
+| Sends | the line at Enter or Send, F-key and on-screen F-key presses, Ctrl hotkeys (dreamword, flee, wield, `^n` slots), compass clicks | `core::submit_line`, which pushes onto the one UI -> core FIFO in UI arrival order | once, UI to core |
+
+source: director
+
+RULE A box edit is applied on the UI thread to the frontend-owned line buffer and never waits on
+the core.
+enforced_by: none: judgement
+source: director
+
+RULE Every send goes through `core::submit_line`. On the core, the client layer drains the FIFO in
+order, expands each line, applies the 7-bit filter, and hands it to the session layer. The session
+layer owns the single ordered outbound queue and alone inserts probe blocks (`session.md`). One
+socket writer writes that queue in order.
+enforced_by: none: judgement
+source: director
+
+RULE Both orderings are filled in UI arrival order, so a hotkey pressed after Enter takes its turn
+behind that line, and a box change (recall, prefill) cannot land between a keystroke and its Enter.
 enforced_by: none: judgement
 source: director, reference
-
-RULE A hotkey pressed after Enter takes its turn behind that line. A box change (recall, prefill)
-cannot land between a keystroke and its Enter.
-enforced_by: none: judgement
-source: reference
 
 RULE Work that an item creates while it is being handled (a client command that sends a line)
 runs after that item and before anything queued later.
@@ -84,8 +106,8 @@ RULE One item that fails does not drop the items queued behind it.
 enforced_by: none: judgement
 source: reference
 
-RULE The keepalive (an empty line sent after the idle interval, see `connection.md`) also waits
-behind any queued line.
+RULE The keepalive (an empty line sent after the idle interval, `scope: later`, see
+`later/anti-idle.md`) also waits behind any queued line.
 enforced_by: none: judgement
 source: reference
 
@@ -119,10 +141,15 @@ source: clio:src/history.c
 
 open: history size, consecutive-duplicate suppression, and wrap versus clamp at the ends. The
 reference and clio disagree on all three.
+default: the Reference column: 200 entries, oldest dropped; a line is stored every time, duplicates
+included; Up clamps at the oldest entry and Down stops past the newest, with no wrap. This is taste,
+so the reference decides.
 source: reference, clio:src/history.c
 
 open: Down with no recall in progress destroys the typed draft. An accidental Down at typing speed
 loses the line. Keep, or make Down a no-op (or stash the draft) when not recalling?
+default: Down with no recall in progress is a no-op, and the draft stays. Typed text is never
+discarded by one key (Invariant #1). Down during a recall behaves as in the table.
 source: reference
 
 ## Escape
@@ -141,8 +168,8 @@ source: reference
 
 ## Box prefills
 
-RULE These are the only ways the client puts text into the box. Each goes through the queue (see
-Ordering).
+RULE These are the only ways the client puts text into the box. Each is a box edit, applied by the
+UI loop in arrival order (see Ordering).
 enforced_by: none: judgement
 source: reference
 
@@ -155,6 +182,8 @@ source: reference
 
 open: `ui.md` 2.5 says tapping a tell sender's name inserts `Name ` only when the box is empty; the
 row above prepends it to typed text whenever the caret is at the start. One rule or two?
+default: one rule, the row above, for every clicked player name, tell senders included. An empty box
+has its caret at the start, so `ui.md` 2.5's case is included.
 
 ## F-key macros
 
@@ -191,11 +220,11 @@ source: reference
 | Command separator | None in the client. A macro is always sent as one line. A comma (`a,b`) is sent verbatim; MUD2 itself treats it as a separator. |
 | Embedded Enter | None. Trailing CR and LF characters are stripped before sending. There is no syntax for a line break inside a macro. |
 | Empty or whitespace-only slot | Nothing is sent. |
-| Macro text starting with `$` | Not a client command and not an alias: the rest of the text is a watchword slot name, spoken as for `$<slot>` (see Watchwords). |
+| Macro text starting with `$` | Not a client command and not an alias: the rest of the text is a watchword slot name, spoken as for `$<slot>` (`scope: later`, `later/watchwords.md`). With no watchword slots loaded, nothing is sent and `[watchword] nothing queued for $<slot>` is printed. |
 | `$name` anywhere else | Replaced by the session alias `name` (see Expansion). |
 | `$VER` | Replaced by the version string. |
 | `^1`, `^2`, `^3` | Replaced by the body of that control-macro slot. |
-| `$<watchword slot>` | Replaced by the slot's queued answer (scope later). |
+| `$<watchword slot>` | Replaced by the slot's queued answer (`scope: later`, `later/watchwords.md`). |
 | `$$`, `^^` | A literal `$` or `^`. |
 | Anything else | Sent verbatim. |
 source: reference
@@ -297,6 +326,7 @@ source: reference
 source: reference
 
 open: `$VER` expands to `Mucka v<version>` in the reference. What does MuckaII send?
+default: `MuckaII v<version>`, the reference's form with this client's name.
 source: reference
 
 ### Positional arguments (defined, rarely reached)
@@ -313,6 +343,8 @@ open: In the reference, a typed line `$g sword` is looked up as the alias name `
 and falls to the watchword speak (`[watchword] nothing queued for $g sword`); nothing is sent. The
 positional and appending forms above are reachable in practice only inside another body that
 refers to an alias defined later. Is the intended behaviour above what MuckaII should do?
+default: yes. A typed line `$name rest` runs alias `name`, its first word, with `rest` as the
+arguments, as the FACT above defines.
 source: reference
 
 ## `$` commands
@@ -332,24 +364,24 @@ source: reference
 | Command | Name match | Syntax | Effect and output | Scope |
 |---|---|---|---|---|
 | `$help` | exact lowercase | `$help` | Print the help block below | launch |
-| `$?` | exact | `$?` | `[watchword] $a  $b ...` (slot names, two spaces apart) or `[watchword] no slots loaded` | later |
-| `$<` | exact | `$<` | Scan the last 80 committed terminal lines (blank lines skipped, joined by spaces) for watchword triggers; per match `[watchword] queued "<answer>" -> $<slot>`; none: `[watchword] no matches in recent history` | later |
-| `$con` | exact lowercase | `$con` | Open the raw protocol console (desktop). Elsewhere: `[command] $con is Windows only.` (error) | later |
+| `$?` | exact | `$?` | Reserved: `later/watchwords.md` | later |
+| `$<` | exact | `$<` | Reserved: `later/watchwords.md` | later |
+| `$con` | exact lowercase | `$con` | Open the raw protocol console: an in-window panel on every platform that shows the wire in both directions and sends raw material into the send stream (see below) | launch |
 | `$fkeys` | `fkeys` exact; `fkeys <layer>` any case | `$fkeys [shift\|ctrl]` | Logged. `[fkeys] F1-F12:` (or `Shift+F1-Shift+F12:`, `Ctrl+F1-Ctrl+F12:`), then `  <label><n> = <macro>` for each non-empty slot, where label is `F`, `Shift+F` or `Ctrl+F` and n is 1-12, or `  (none set)`. Unknown layer: `[fkeys] unknown layer '<x>' (use: shift \| ctrl)` (error) | launch |
 | `$f<n>` | `f` or `F` then an integer | `$f1` .. `$f36` (absolute slot) | Insert the note `// <macro>` above the live prompt (prompt redrawn below it), in bright green (palette 10); logged. Errors: `[fkey] <n> out of range (1-36)`, `[fkey] <n> is empty` | launch |
-| `$SID` | any case | `$SID` | `[sid] s=<host>/m=<client run id>/p=<persona>[@<reset number>]/i=<login id>`; each unknown part reads `unknown` | later |
-| `$CHATTEST` | any case | `$CHATTEST [slow\|stop]` | Play a scripted chat into the terminal as the current persona; sends nothing, stays out of the transcript, and never sets the Ctrl+R teller. `slow`: one script line at a time, each after 0.5 s plus an exponential delay of mean 1 s, capped at 9 s; notes `// $CHATTEST slow: ...` on start, finish and stop. `stop`: end a slow run, or `// $CHATTEST: nothing is running`. Needs a persona: `[chattest] needs a persona in the game - the script speaks as you` (error). Bad argument: `[chattest] unknown argument '<x>'; usage: $CHATTEST [slow\|stop]` (error). A slow run stops on game-mode exit and disconnect. | later |
-| `$MARK` | any case | `$MARK [@id\|"note"]`, `$MARK start [@id\|"note"]`, `$MARK end [@id\|"note"]` | Logged landmark. Bare: `//MARK: <id>`. `start`: `//BEG: <id>`, opens a span; spans nest to depth 8. `end`: `//END: <id>`, closes the innermost (with an id it must match the innermost). Ids: `mm-<login id>:<id>` when supplied, `mm-<login id>-<8 hex>` when generated. `@id` is a letter or digit then letters, digits, `.`, `_`, `-`. A note is quoted, 1-64 characters, no inner quote, nothing after it. On login end every open span is closed as `//END: <id> (<reason>)`, default reason `session ended`. Errors start `ERROR: ` and are not logged: needs a login (`$MARK needs an open persona session - you are not in game mode.`), `Too many open marks (maximum 8).`, `No open marks to close.`, `<id> is not the current mark (<current>)` (plus a hint to use `$MARK end` when the current one was generated), unterminated, trailing text, empty or over-long note, `Expected @id or a "quoted note", got: <x>` | later |
-| `$SCORE` | any case | `$SCORE [days] [name]`, either order | Open the score graph panel for `name` (default: current character) over `days` (default 3, clamped 1-90). Error: `[score] <reason>; usage: $SCORE [days] [name]` (error) | later |
+| `$SID` | any case | `$SID` | Reserved: `later/diagnostic-commands.md` | later |
+| `$CHATTEST` | any case | `$CHATTEST [slow\|stop]` | Reserved: `later/diagnostic-commands.md` | later |
+| `$MARK` | any case | `$MARK ...` | Reserved: `later/diagnostic-commands.md` | later |
+| `$SCORE` | any case | `$SCORE [days] [name]` | Reserved: `later/score-graph.md` | later |
 | `$VER` | exact uppercase | `$VER` | Send the version string as a line: `Mucka v<version>` | launch |
 | `$map` | - | - | Reserved name with no command; falls to watchword speak | - |
 | `$<alias>` | any case | `$<alias>` | Send the alias body, expanded | launch |
-| `$<anything else>` | - | `$<slot>` | Watchword speak: send `"<answer>` (a leading quote, MUD2's say) and clear the slot; nothing queued: `[watchword] nothing queued for $<slot>` | later |
+| `$<anything else>` | - | `$<slot>` | Watchword speak (`later/watchwords.md`). With no watchword slots loaded, nothing is sent and `[watchword] nothing queued for $<slot>` is printed | launch (the no-slot outcome); later (speak) |
 source: reference
 
-open: Scope of `$SID`, `$MARK` and `$CHATTEST`. They serve the wire log (launch) but are
-diagnostics; marked later here.
-source: reference
+open: What does a `scope: later` command in the table do when it is typed before it is built?
+default: as `$map` does: the name stays reserved (see Definition rules) and the line falls to
+watchword speak, so nothing is sent and `[watchword] nothing queued for $<name>` is printed.
 
 ### `$help` output
 
@@ -379,51 +411,20 @@ source: reference
   $$ / ^^               doubled sigil sends a literal $ or ^ (no interpolation)
 ```
 
-FACT On Android, the `$con` line reads `(Windows only)` and the slot line reads
-`^1/^2/^3=command  bind a slot; type ^1 to run it`.
-source: reference
+FACT In the reference on Android, the `$con` line reads `(Windows only)` and the slot line reads
+`^1/^2/^3=command  bind a slot; type ^1 to run it`. In MuckaII the `$con` line is the same on every
+platform, because the raw console exists everywhere (see "Raw console").
+source: reference, director
 
 ## Watchwords (scope: later)
 
-FACT Watchwords answer puzzles: the player configures a trigger text; `$<` scans recent output
-for it and queues an answer under a slot name; the answer is later spoken with `$<slot>` or
-substituted into outgoing text. Nothing scans automatically.
-source: reference
+FACT Watchwords are specified outside the launch spec:
 
-RULE The rules live in `mucka.ini` and are hand-written; the client never writes them. They are
-imported verbatim (`INTERNAL.md`, Data).
-enforced_by: none: judgement
-source: reference, director
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Watchwords (`$?`, `$<`, `$<slot>` speak and substitution) | `scope: later` | `later/watchwords.md` |
 
-RULE The `[watch]` sections of `mucka.ini` are read as follows.
-enforced_by: none: judgement
-source: reference
-
-| Section | Line format | Meaning |
-|---|---|---|
-| `[watch]` | `slot = prefix...suffix` | A slot whose capture is the text between `prefix` and `suffix`. With no `...`, the whole value is the prefix and the capture runs to the end. |
-| `[watch <slot>]` | `key = answer` | Exact match: if the capture equals `key`, queue `answer`. |
-| `[watch <slot>]` | `key... = answer` | Prefix match: if the capture starts with `key`, queue `answer`. |
-| `[watch <slot>]` | `"key" = answer` | Surrounding quotes on a key are removed. |
-| (none) | - | A slot with no `[watch <slot>]` section is in echo mode: the capture itself is queued. |
-source: reference
-
-RULE Watchword parsing and matching follow these limits.
-enforced_by: none: judgement
-source: reference
-
-| Limit or detail | Value |
-|---|---|
-| Separator | ` = ` (space, equals, space); lines without it are ignored |
-| Comments | lines starting `;` or `#` |
-| Section and slot names | case-insensitive |
-| Max slots | 20 |
-| Max answers per slot | 32 |
-| Max capture | 80 characters (longer captures are cut, not rejected) |
-| Max answer | 48 characters |
-| Whitespace | every run of whitespace in triggers, keys and scanned text is collapsed to one space before matching; the capture is trimmed |
-| Queue | one answer per slot; speaking or substituting it clears it |
-source: reference
+source: director
 
 ## Scrollback
 
@@ -444,9 +445,13 @@ source: reference
 
 open: Whether F-keys, Ctrl+R, Ctrl+W and Ctrl+` act in scrollback. The reference's scrollback key
 filter does not list them and appears to swallow them.
+default: each returns to live, then acts, as `keys.toml` already says for Ctrl+R and Ctrl+W. No key
+is swallowed in scrollback.
 source: reference
 
 open: Scrollback swallows typed keys, which conflicts with Invariant #1. See `keys.toml`.
+default: the first printable key returns to live and lands in the line buffer, and so does every
+key after it. No key is ever discarded.
 source: reference
 
 EVIDENCE clio scrolls back with PageUp and PageDown, returns to live with Ctrl-A, and keeps a
@@ -455,27 +460,13 @@ source: clio:man/clio.6 SCROLL BACK
 
 ## Chat mode
 
-RULE A latching Chat toggle filters the terminal to chat lines only (lines the server marks as a
-speaker message: shout, say, tell, emote; see `protocol.md`). It is a view filter only: typing,
-Enter, hotkeys and everything sent are unchanged, and nothing is prefixed to outgoing lines.
-enforced_by: none: judgement
-source: reference
+FACT Chat mode is specified outside the launch spec:
 
-RULE Chat mode behaves as follows.
-enforced_by: none: judgement
-source: reference
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Chat mode (chat-only view filter) | `scope: later` | `later/chat-mode.md` |
 
-| Aspect | Behaviour |
-|---|---|
-| Turning on | The terminal repaints from a chat-only history, up to 3000 lines deep, so older chat survives. |
-| Turning off | The terminal repaints the full history as it would stand had the filter never been on. |
-| Cues while on | Box placeholder `chat...` (otherwise `enter command...`); the box frame turns yellow; the toggle is lit and flashes amber when non-chat output arrives. |
-| Ends | When game mode ends and on disconnect. |
-| Focus | Toggling returns focus to the box. |
-source: reference
-
-open: Scope of chat mode (not on the INTERNAL.md launch list). Marked later here.
-source: reference
+source: director
 
 ## Mobile specifics
 
@@ -488,10 +479,29 @@ source: reference
 | Ctrl+1..3 | Not available on a soft keyboard. Type `^1`, `^2` or `^3` and Enter to run a slot. |
 | Hardware keyboard | Only F1-F12 (with Shift and Ctrl layers), Ctrl+D, Up, Down and Escape are bound. Ctrl+Shift+D speaks the plain dreamword. |
 | F-keys | The on-screen F-key bar (plain layer) is the main way to send macros. |
-| `$con` | Prints `[command] $con is Windows only.` |
-| Watchwords | Effectively unavailable in the reference: its ini was app-private, so nobody could hand-edit `[watch]`. |
+| `$con` | The reference prints `[command] $con is Windows only.` MuckaII opens the raw console, as on desktop (DECISION below) |
+| Watchwords | `scope: later`: `later/watchwords.md` |
 | Scrollback | Finger drag; no PageUp. |
 source: reference
+
+DECISION MuckaII's raw console exists on every platform, Android included. Rejected: Mucka's
+Windows-only `$con`.
+source: director
+
+## Raw console (scope: launch)
+
+FACT The raw console is how the director sees and uses the low-level wire. It is an early
+feature, because experiments such as the probe-block comma test (`session.md`) are run from it.
+source: director
+
+RULE The raw console shows the wire in both directions, with bytes outside printable 7-bit shown
+as escapes (`\e`, `\xNN`). It has its own input line, and text sent from it goes into the send
+stream verbatim after the escapes are decoded. It bypasses the command box's 7-bit filter, the
+alias and macro expansion, and probe injection. Every send from it is marked in the wire log as a
+raw-console send. Its input line is a real text field, so it is an Invariant #0 exception while
+it has focus.
+source: director
+enforced_by: none: judgement
 
 ## Typing-path failure cases
 

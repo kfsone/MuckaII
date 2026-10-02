@@ -2,21 +2,43 @@
 """Validate golden event streams against the schema block in docs/spec/events.md.
 
 Usage: check-goldens.py [--events PATH] [GOLDEN.jsonl ...]
+       check-goldens.py [--events PATH] --self-test
 
 With no golden paths, checks docs/evidence/golden/*.jsonl. Also checks that the prose event
 tables in events.md name the same events and keys as the schema block. Exits 1 on any violation,
 printing file:line for each.
+
+Each golden is cross-checked against its capture: the stream record's `source` names
+`capture:<file>.c1` in docs/evidence/captures, that file must exist, and every `rx` must be below
+the capture's count of rx records (rx ordinals are zero-based). A golden in docs/evidence/golden
+must also be named after its capture (`<file>.jsonl`).
+
+--self-test proves the checker can fail. Every fixture in scripts/fixtures/golden-must-fail/ must
+fail, and every one of its violations must contain the substring EXPECT.txt gives for it. Further
+must-fail cases that cannot live in the tree as text (non-ASCII byte, CR, no final LF, blank line)
+are generated in a temp directory. The fixture directory and EXPECT.txt must list the same files.
+The real goldens must pass.
 """
 
 import glob
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
+
+sys.dont_write_bytecode = True  # __pycache__ is not gitignored and would fail check-text-files
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import c1  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 DEFAULT_EVENTS = os.path.join(ROOT, "docs", "spec", "events.md")
-DEFAULT_GOLDENS = os.path.join(ROOT, "docs", "evidence", "golden", "*.jsonl")
+GOLDEN_DIR = os.path.join(ROOT, "docs", "evidence", "golden")
+DEFAULT_GOLDENS = os.path.join(GOLDEN_DIR, "*.jsonl")
+CAPTURE_DIR = os.path.join(ROOT, "docs", "evidence", "captures")
+MUST_FAIL_DIR = os.path.join(ROOT, "scripts", "fixtures", "golden-must-fail")
+_rx_counts = {}
 NAME = re.compile(r"^[a-z][a-z_]*$")
 
 errors = []
@@ -199,7 +221,8 @@ class Obj(list):
 
 # -- goldens -----------------------------------------------------------------------------------
 
-def check_golden(path, schema):
+def check_golden(path, schema, name_check=None):
+    """name_check: require the file to be named after its capture (default: when in GOLDEN_DIR)."""
     raw = open(path, "rb").read()
     name = rel(path)
     if any(b > 0x7F for b in raw):
@@ -216,6 +239,7 @@ def check_golden(path, schema):
         err("%s:1" % name, "empty file")
         return
     last_rx = None
+    capture = None
     for n, line in enumerate(lines, 1):
         where = "%s:%d" % (name, n)
         if line == "":
@@ -268,19 +292,130 @@ def check_golden(path, schema):
         check_object(schema, keylist, body, where, ev)
         if ev == "stream" and dict(body).get("schema") != schema["schema"]:
             err(where, "stream schema %s, events.md is %s" % (dict(body).get("schema"), schema["schema"]))
+        if ev == "stream" and n == 1:
+            capture = capture_count(dict(body).get("source"), path, where, name_check)
+        if n > 1 and capture is not None and rx >= capture[1]:
+            err(where, "rx %d beyond the %d rx record(s) of %s" % (rx, capture[1], capture[0]))
+
+
+def capture_count(source, path, where, name_check=None):
+    """(name, rx record count) of the capture a stream record names, or None after reporting why."""
+    m = re.match(r"^capture:([A-Za-z0-9._-]+\.c1)$", source if isinstance(source, str) else "")
+    if not m:
+        err(where, "stream source %s is not capture:<file>.c1" % json.dumps(source))
+        return None
+    name = m.group(1)
+    if name_check is None:
+        name_check = os.path.normcase(os.path.dirname(os.path.abspath(path))) == os.path.normcase(GOLDEN_DIR)
+    if name_check:
+        want = os.path.splitext(os.path.basename(path))[0] + ".c1"
+        if name != want:
+            err(where, "golden %s names capture %s; expected %s" % (os.path.basename(path), name, want))
+    cpath = os.path.join(CAPTURE_DIR, name)
+    if not os.path.isfile(cpath):
+        err(where, "capture %s not found in %s" % (name, rel(CAPTURE_DIR)))
+        return None
+    if name not in _rx_counts:
+        try:
+            _rx_counts[name] = c1.rx_count(cpath)
+        except c1.C1Error as e:
+            err(where, "capture %s does not parse: %s" % (name, e))
+            return None
+    return name, _rx_counts[name]
+
+
+# -- self-test ---------------------------------------------------------------------------------
+
+def generated_cases(tmp):
+    """Byte-level must-fail cases, built from a real golden so they cannot live in the tree as text."""
+    base = open(os.path.join(GOLDEN_DIR, "wyvern-poison-death.jsonl"), "rb").read()
+    lines = base.split(b"\n")[:6]
+    body = b"\n".join(lines) + b"\n"
+    cases = {
+        "gen-non-ascii.jsonl": (body.replace(b"wyvern is", b"wyv\xe9rn is", 1), "non-ASCII byte"),
+        "gen-cr.jsonl": (body.replace(b"\n", b"\r\n", 2), "CR in file"),
+        "gen-no-final-lf.jsonl": (body[:-1], "last line has no LF"),
+        "gen-blank-line.jsonl": (body.replace(b"\n", b"\n\n", 1), "blank line"),
+        # Valid content under another capture's name; checked as if it sat in GOLDEN_DIR.
+        "dark-two-rats.jsonl": (body, "names capture wyvern-poison-death.c1; expected dark-two-rats.c1"),
+    }
+    out = []
+    for name, (data, want) in sorted(cases.items()):
+        p = os.path.join(tmp, name)
+        with open(p, "wb") as f:
+            f.write(data)
+        out.append((p, want, not name.startswith("gen-")))
+    return out
+
+
+def self_test(events):
+    failures = []
+    schema, text = load_schema(events)
+    if schema is None:
+        return ["schema block unreadable: %s" % errors], 0, 0
+    del errors[:]
+    real = sorted(glob.glob(DEFAULT_GOLDENS))
+    if not real:
+        failures.append("no real goldens found")
+    check_prose(rel(events), schema, text)
+    for p in real:
+        check_golden(p, schema)
+    for e in errors:
+        failures.append("real golden should pass: %s" % e)
+    expect_path = os.path.join(MUST_FAIL_DIR, "EXPECT.txt")
+    expect = {}
+    for line in open(expect_path, "rb").read().decode("ascii").splitlines():
+        if line.strip() and not line.startswith("#"):
+            name, _, want = line.partition(" ")
+            expect[name] = want.strip()
+    on_disk = set(os.path.basename(p) for p in glob.glob(os.path.join(MUST_FAIL_DIR, "*.jsonl")))
+    for name in sorted(on_disk - set(expect)):
+        failures.append("%s: fixture has no EXPECT.txt line" % name)
+    for name in sorted(set(expect) - on_disk):
+        failures.append("EXPECT.txt names %s, which does not exist" % name)
+    cases = [(os.path.join(MUST_FAIL_DIR, n), expect[n], False) for n in sorted(on_disk & set(expect))]
+    tmp = tempfile.mkdtemp(prefix="golden-must-fail-")
+    try:
+        cases += generated_cases(tmp)
+        for p, want, name_check in cases:
+            del errors[:]
+            check_golden(p, schema, name_check)
+            name = os.path.basename(p)
+            if not errors:
+                failures.append("%s: must fail, but passed" % name)
+            elif not all(want in e for e in errors):
+                failures.append("%s: must fail only with %r, got %s" % (name, want, errors))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    del errors[:]
+    return failures, len(real), len(cases)
 
 
 def main(argv):
     events = DEFAULT_EVENTS
     paths = []
+    selftest = False
     i = 0
     while i < len(argv):
         if argv[i] == "--events":
             events = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--self-test":
+            selftest = True
+            i += 1
+            continue
         paths.append(argv[i])
         i += 1
+    if selftest:
+        failures, nreal, ncases = self_test(events)
+        for f in failures:
+            print(f)
+        if failures:
+            print("FAIL: self-test, %d problem(s)" % len(failures))
+            return 1
+        print("OK: self-test, %d real golden(s) pass, %d must-fail case(s) fail as expected" % (nreal, ncases))
+        return 0
     if not paths:
         paths = sorted(glob.glob(DEFAULT_GOLDENS))
     if not paths:

@@ -6,6 +6,14 @@ output into it, and the MuckaII decoder under test. Every behaviour in `protocol
 in a capture is visible as one of these events.
 source: director
 
+RULE A golden stream is the reference's output. It ranks below Bartle and below the captures. A
+difference between the MuckaII decoder's stream and a golden is a lead to investigate, not a target
+to match: where this file or `protocol.md` follows Bartle or a capture against the reference, the
+decoder follows the spec and the golden differs there. Every known difference of that kind is named
+here and in `docs/evidence/golden/README.md`.
+enforced_by: none: judgement
+source: director
+
 RULE The JSON block in "Machine-readable schema" at the end of this file is the single source of
 truth for event names, key order and value types. The prose tables say the same thing for people.
 `scripts/check-goldens.py` validates every golden against the block and checks that the prose tables
@@ -188,7 +196,7 @@ source: reference
 |------|-----------------------|--------------|
 | `stats` | `source` string, then the stat keys below | `fes`: the FES line is read. `code`: a displayed line carrying 89 brackets ends |
 | `room_name` | `text` string | A displayed line ends whose `02 01` header arrived before any printable text on it |
-| `room_long` | `text` string | A displayed line ends while a `02 02` frame is still open |
+| `room_long` | `text` string | A displayed line ends that held text inside a `02 02` frame, including the last row, whose frame the server closes before its line end |
 | `exits` | `exits` array of string | A `12 08 02` bracket closes; the words of every line in it, split on whitespace |
 | `inventory` | `room_state` string, `room` array of string, `carried` array of string | A `12 08 03` bracket closes |
 | `who` | `players` array of player | A `12 08 05` bracket closes |
@@ -227,9 +235,16 @@ FACT `room_name` and `room_long` carry the whole displayed line's text, includin
 bracket (the full stop after a room name).
 source: reference
 
-open: The server closes `02 02` before the final line end of a long description, so `room_long`
-never reports the last row; `dark-two-rats.c1` shows it for both rooms. Kept as the reference does it
-so the golden diff holds; a decoder that wants the whole description must read it from the bracket.
+EVIDENCE The server closes `02 02` before the final line end of a long description; `dark-two-rats.c1`
+shows it for both rooms.
+source: capture:dark-two-rats.c1
+
+DECISION MuckaII reports the last row of a long description as `room_long`, like every other row.
+The reference does not, because it reports only lines that end while the frame is still open; that
+is a defect, not a behaviour to keep. The goldens are the reference's output, so they lack a
+`room_long` record for each last row and differ there (`docs/evidence/golden/README.md`, Known
+differences). Rejected: keeping the reference's behaviour so the golden diff holds.
+source: director; capture:dark-two-rats.c1
 
 FACT `room_name` is the room-entry signal. `protocol.md` "Room" defines entering or looking at a room
 as a `02 01` header arriving before any printable text on the line, which is exactly when `room_name`
@@ -336,6 +351,8 @@ source: bartle:FE4 Codes and their meanings
 open: The reference reports `06 04` and `06 06` only when they are sent with exactly two numbers.
 `06 02` (a player pressed the reset button), `06 03` (a wizard started a reset) and `06 05` (a reset
 was postponed) could also move the countdown; nothing reports them. No capture holds any `06` code.
+default: report only `06 04` and `06 06`, as the reference does, so the schema's `reset_signal` ids
+stay as they are.
 
 FACT `spell_phrase` `id` is the matched `c1-codes.toml` id: `11 00` a disabling spell takes hold,
 `11 01` it wears off, `11 02` an enhancing spell takes hold, `11 03` it wears off. `phrase` is the
@@ -353,6 +370,8 @@ source: reference
 
 open: `11 20` and `11 21` (the stronger disabling spells) carry no `spell_phrase`, as in the
 reference. No capture holds either.
+default: no `spell_phrase` for them, as the reference does, so the schema's `spell_phrase` ids stay
+as they are.
 
 ### Ordering
 
@@ -372,7 +391,7 @@ source: reference
 
 ### Wire tier
 
-FACT These events report the context stack directly. A Rust decoder emits them for coverage tests (each
+FACT These events report the context stack directly. The decoder emits them for coverage tests (each
 `code` id counted against `observed` in `c1-codes.toml`). They are written to a separate file, or
 filtered out before a golden diff, because the reference exposes no equivalent. A golden holds none.
 source: director

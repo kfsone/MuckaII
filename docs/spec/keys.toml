@@ -18,7 +18,9 @@
 #              placeholder. Only F-key and ^n macro bodies pass through alias and watchword
 #              expansion (input.md, Expansion); flee, dreamword and wield texts do not.
 #   scope    - launch | later (INTERNAL.md).
+#   note     - extra detail that is not a rule, or absent.
 #   open     - an unresolved question for the director.
+#   default  - what to build until the director rules on the open question. Every open has one.
 #
 # RULE A chord is bound to at most one action per platform and context. A second binding of
 # the same chord is a startup error, not a silent override.
@@ -31,8 +33,10 @@
 # enforced_by: none: judgement
 # source: reference
 #
-# RULE Every hotkey action takes its place in the single ordered queue behind any line already
-# typed (input.md, Ordering). A hotkey never overtakes an earlier Enter.
+# RULE A hotkey that sends goes through core::submit_line onto the one UI -> core FIFO, behind any
+# line already entered. A hotkey that edits the box (Ctrl+R, Escape, Up, Down) is a box edit,
+# applied by the UI loop in arrival order (input.md, Ordering; architecture.md, Input: two
+# orderings). A hotkey never overtakes an earlier Enter.
 # enforced_by: none: judgement
 # source: director, reference
 #
@@ -53,6 +57,7 @@ sends = '<line with leading and trailing whitespace removed, after client-comman
 scope = "launch"
 source = "reference"
 open = "Trimming the line conflicts with Invariant #1's literal acceptance condition (concatenated sent lines equal the typed stream). See input.md."
+default = "Measure at the two points of root CLAUDE.md Invariant #1; trimming stays as documented client processing (input.md, Invariant #1)."
 
 [[key]]
 chord = "Up"
@@ -63,6 +68,7 @@ sends = ""
 scope = "launch"
 source = "reference"
 open = "Reference clamps at the oldest entry; clio wraps around. See input.md, History."
+default = "Clamp at the oldest entry, as the reference does (input.md, History)."
 
 [[key]]
 chord = "Down"
@@ -73,6 +79,7 @@ sends = ""
 scope = "launch"
 source = "reference"
 open = "Down destroying a fresh draft loses the line on an accidental key press. Keep, or no-op when not recalling?"
+default = "No-op when no recall is in progress; the draft stays (input.md, History)."
 
 [[key]]
 chord = "Tab"
@@ -83,6 +90,7 @@ sends = ""
 scope = "launch"
 source = "director (Invariant #0), reference"
 open = "What Tab does inside the box (nothing, or insert a tab) is unspecified."
+default = "Nothing: Tab is consumed, inserts no character and leaves focus in the box."
 
 [[key]]
 chord = "Escape"
@@ -120,6 +128,7 @@ sends = ""
 scope = "launch"
 source = "reference"
 open = "clio uses Ctrl-C to clear the input line, and 2x within 500 ms or 3x within 2 s on an empty line to exit. Keep platform copy?"
+default = "Platform copy, as the reference does. This is taste, and clearing or exiting on Ctrl+C would discard typed text."
 
 # ---------------------------------------------------------------------------
 # Scrollback keys
@@ -188,6 +197,7 @@ sends = ""
 scope = "launch"
 source = "reference"
 open = "Swallowing typed keys in scrollback loses keystrokes, which conflicts with Invariant #1. Should typing instead return to live and land in the box?"
+default = "The first printable key returns to live and lands in the line buffer; no key is ever discarded (input.md, Scrollback)."
 
 # ---------------------------------------------------------------------------
 # F-key macros: 36 slots, three layers of 12.
@@ -203,6 +213,7 @@ sends = '<macro text of slot n, trailing CR/LF stripped, expanded>'
 scope = "launch"
 source = "reference, clio:man/clio.6 FUNCTION KEYS"
 open = "In scrollback on desktop the reference swallowed F-keys (input.md, Scrollback). Should F-keys work in scrollback?"
+default = "Yes: return to live, then send the macro (input.md, Scrollback)."
 
 [[key]]
 chord = "Shift+F1..Shift+F12"
@@ -240,6 +251,7 @@ sends = '<macro text of slot 24+n, expanded>'
 scope = "launch"
 source = "reference"
 open = "Desktop and Android disagree on Ctrl+Shift+F<n>. Pick one."
+default = "Unbound on both, as on desktop, the primary platform."
 
 # ---------------------------------------------------------------------------
 # Game hotkeys
@@ -254,6 +266,7 @@ sends = '"<dreamword>"'
 scope = "launch"
 source = "reference"
 open = "clio sends 'say \"<dreamword>\"' and only in game mode (clio:src/telnet.l CTRL-D); the reference sends '\"<dreamword>\"' (MUD2 quote shorthand for say) with no game-mode check."
+default = "Send the reference form '\"<dreamword>\"', and only in game mode, as Clio guards it; outside game mode it is a no-op."
 
 [[key]]
 chord = "Ctrl+Shift+D"
@@ -264,6 +277,7 @@ sends = '"<dreamword>",<follow>'
 scope = "launch"
 source = "reference"
 open = "Reference defect: the follow-up came from a stale copy of the box, so it usually sent 'sleep' or the last recalled/prefilled text. The action above uses the box's current text. Confirm."
+default = "The box's current text: the line buffer at the moment the key is applied (root CLAUDE.md, Invariant #1)."
 
 [[key]]
 chord = "Ctrl+Shift+D"
@@ -274,6 +288,7 @@ sends = '"<dreamword>"'
 scope = "launch"
 source = "reference"
 open = "Android lacks the chained form. Intended?"
+default = "Keep the reference: on Android Ctrl+Shift+D is the same as Ctrl+D."
 
 [[key]]
 chord = "Ctrl+F"
@@ -282,8 +297,8 @@ platform = "desktop"
 action = "Flee. Returns to live first if in scrollback. Always sends, even out of combat."
 sends = 'flee'
 scope = "launch"
-source = "reference"
-open = "Scope: flee is not on the INTERNAL.md launch list but is a permadeath safety key. clio binds Ctrl-F to caret-right (clio:src/telnet.l)."
+source = "reference; director (scope)"
+note = "clio binds Ctrl-F to caret-right (clio:src/telnet.l)."
 
 [[key]]
 chord = "Ctrl+Shift+F"
@@ -292,8 +307,9 @@ platform = "desktop"
 action = "Flee in the direction typed in the command box: the box text, trimmed. Empty box sends a bare 'flee'. The box is left untouched. Returns to live first if in scrollback."
 sends = 'flee <box text>'
 scope = "launch"
-source = "reference"
-open = "Same stale-copy defect as Ctrl+Shift+D: the reference usually sent a bare 'flee'. The action above uses the box's current text. Scope as Ctrl+F."
+source = "reference; director (scope)"
+open = "Same stale-copy defect as Ctrl+Shift+D: the reference usually sent a bare 'flee'. The action above uses the box's current text."
+default = "The box's current text: the line buffer at the moment the key is applied (root CLAUDE.md, Invariant #1)."
 
 [[key]]
 chord = "Ctrl+W"
@@ -304,6 +320,7 @@ sends = 'wield <noun>'
 scope = "later"
 source = "reference"
 open = "input.md (Scrollback) says the reference swallows Ctrl+W in scrollback; this entry says it returns to live first. Which?"
+default = "Return to live first, as this entry says (input.md, Scrollback)."
 
 [[key]]
 chord = "Ctrl+R"
@@ -312,8 +329,10 @@ platform = "desktop"
 action = "Reply to the last tell: replace the command box with the sender's name, a space and a double quote, caret at end. Sends nothing. With no tell received this connection, prints the system line '[reply] Nobody has sent you a tell yet.'. The sender is the last named teller ('Someone' and 'Someone powerful' never count); it resets on disconnect. Returns to live first if in scrollback."
 sends = ""
 scope = "launch"
-source = "reference"
-open = "Scope: not on the INTERNAL.md launch list. The prefill (rather than sending MUD2's 're') shows who the reply goes to before it is sent. Also: input.md (Scrollback) says the reference swallows Ctrl+R in scrollback; this entry says it returns to live first. Which?"
+source = "reference; director (scope)"
+note = "The prefill (rather than sending MUD2's 're') shows who the reply goes to before it is sent."
+open = "input.md (Scrollback) says the reference swallows Ctrl+R in scrollback; this entry says it returns to live first. Which?"
+default = "Return to live first, as this entry says (input.md, Scrollback)."
 
 [[key]]
 chord = "Ctrl+1"
@@ -363,6 +382,7 @@ source = "reference"
 text = "macOS: whether every Ctrl chord above stays Ctrl or becomes Cmd is undecided."
 source = "director"
 open = "Ctrl or Cmd on macOS?"
+default = "Ctrl, as on Windows and Linux. macOS is a distant third (INTERNAL.md, Platforms)."
 
 [[note]]
 text = "Mouse and touch, not keys: wheel and drag scrollback, right-click copy, clicking a name - see input.md, Scrollback and Prefills."

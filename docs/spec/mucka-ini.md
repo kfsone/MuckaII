@@ -14,6 +14,7 @@ source: director
 
 open: proposed: a key for a `later` feature is imported and kept, and nothing acts on it until that
 feature is built. Rejected alternative: dropping it at import.
+default: the proposal: import and keep.
 
 RULE Every key and section not listed here is unknown and is ignored. An unknown key, a malformed
 value or an unknown section never fails a read; a malformed value takes the default. Mucka's own
@@ -180,8 +181,10 @@ source: reference
 
 open: proposed: the importer does not invent the two built-in profiles from an ini that defines
 none. The built-ins are MuckaII's own first-run default, a separate matter.
+default: the proposal: the importer adds no profiles from an ini that defines none.
 
 open: whether MuckaII's first-run built-in profiles are the same two (`MUD2 UK`, `MUD2.COM`).
+default: yes, the same two, as `connection.md` 1 lists them.
 
 ### `[profile:Name]`
 
@@ -198,11 +201,11 @@ source: reference
 | `telnetlogin` | bool | `yes` | answer the host's telnet `login:` prompt automatically | launch |
 | `loginname` | string | `mud` | the name sent to `login:`. Empty means `mud` | launch |
 | `columns` | int | `0` | terminal width advertised to the server. `0` means fit the window. Clamped to 0-160 when used. See the precedence note below | launch |
-| `antiidle` | int | `0` | seconds of no input before a blank keep-alive line is sent. `0` means off. Clamped to 0-3600 | launch |
-| `keepscreenon` | bool | `no` on desktop, `yes` on Android | keep the display awake while connected | launch |
+| `antiidle` | int | `0` | seconds of no input before a blank keep-alive line is sent. `0` means off. Clamped to 0-3600 | later |
+| `keepscreenon` | bool | `no` on desktop, `yes` on Android | keep the display awake while connected | later |
 | `defaulthotkeys` | bool | `yes` | at session start, fill empty F-key slots F1-F5 with the built-in macros below. The built-ins are never written to the ini | launch |
-| `guidedlogin` | bool | `no` | drive the MUD shell's option menu and persona choice automatically after login | later |
-| `guidedloginpersona` | string | empty | persona to pick under guided login. Empty means ask | later |
+| `guidedlogin` | bool | `no` | drive the MUD shell's option menu and persona choice automatically after login (MuckaII: managed persona selection) | launch |
+| `guidedloginpersona` | string | empty | persona to pick under guided login. Empty means ask | launch |
 
 source: reference
 
@@ -220,8 +223,6 @@ FACT Passwords are never in `mucka.ini`. Mucka kept each password in the OS secu
 key derived from the profile name. MuckaII cannot read another app's secure-store entries, so
 passwords are not importable.
 source: reference
-
-open: `keepscreenon` and `antiidle` are not named in the launch scope list. Confirm they are launch.
 
 ### `[settings]` and `[settings:Name]`: settings-scope keys
 
@@ -259,6 +260,7 @@ source: reference
 open: `sounds.toml` `[ini_keys]` also lists `soundgroup.bell`, groups `tell` and `alert`, and
 non-numeric codes such as `tell-wiz` and `alert-flee-failed`, which the table above does not allow.
 Which key set did the reference read and write?
+default: the importer accepts the union of both key sets, so nothing either list names is lost.
 
 FACT A volume plays at the sound's own override, else its group's, else the master `volume`.
 source: reference
@@ -283,15 +285,15 @@ source: reference
 | `onlineforgetwindow` | int | `5` | minutes a player stays in "Recent" after leaving Online. `0` means forget at once. Editor range 0-10 | later |
 | `floatonline` | bool | `no` | the Online list starts floating rather than pinned | later |
 | `floatcompass` | bool | `no` | the compass starts floating rather than pinned | later |
-| `chattheme` | word | `lamplight` | the chat colour theme: `lamplight`, `dusk`, `rose`, `tidewater`, `bland`, in any case. Unknown means `lamplight` | later |
-| `emotecolor` | hex colour | theme | colour of the speaker of every chat line, and of act/emote text | later |
-| `saycolor` | hex colour | theme | colour of said words | later |
-| `shoutcolor` | hex colour | theme | colour of shouted words | later |
-| `tellcolor` | hex colour | theme | colour of told words, both directions | later |
-| `emoteown`, `emoteother` | face | `none`, `none` | face of the speaker part, on the player's own / another's message | later |
-| `sayown`, `sayother` | face | `italic`, `none` | face of said words | later |
-| `shoutown`, `shoutother` | face | `italic`, `none` | face of shouted words | later |
-| `tellown`, `tellother` | face | `italic`, `none` | face of told words | later |
+| `chattheme` | word | `lamplight` | the chat colour theme: `lamplight`, `dusk`, `rose`, `tidewater`, `bland`, in any case. Unknown means `lamplight` | launch |
+| `emotecolor` | hex colour | theme | colour of the speaker of every chat line, and of act/emote text | launch |
+| `saycolor` | hex colour | theme | colour of said words | launch |
+| `shoutcolor` | hex colour | theme | colour of shouted words | launch |
+| `tellcolor` | hex colour | theme | colour of told words, both directions | launch |
+| `emoteown`, `emoteother` | face | `none`, `none` | face of the speaker part, on the player's own / another's message | launch |
+| `sayown`, `sayother` | face | `italic`, `none` | face of said words | launch |
+| `shoutown`, `shoutother` | face | `italic`, `none` | face of shouted words | launch |
+| `tellown`, `tellother` | face | `italic`, `none` | face of told words | launch |
 | `showcombatrail` | bool | `no` | Combat Rail shown. Written the moment it is toggled | later |
 | `showcombatstats` | bool | `yes` | Combat Rail draws its stat rows | later |
 | `scorepanelwidth` | real | `760` | score-graph panel width. Floor 660 | later |
@@ -313,9 +315,6 @@ source: reference
 | `bland` | `cab872` | `faeca8` | `ffc474` | `d8e09c` |
 
 source: reference
-
-open: chat colours and faces are marked `later` because they are not in the launch scope list.
-Should they be launch?
 
 ### `[fkeys]` and `[fkeys:Name]`
 
@@ -400,6 +399,12 @@ FACT The existence of `[settings:P]` or `[fkeys:P]` was itself the user's choice
 only"). The importer keeps that choice per profile, per part.
 source: reference
 
+FACT MuckaII layers per key instead of replacing. For F-keys the importer carries the replace
+semantics over as 36 explicit per-slot values in P's profile layer, with `cleared` for each slot
+`[fkeys:P]` lacks. Settings-scope keys are written where Mucka's value differs from what layering
+would give (`persistence.md`, "Settings storage").
+source: director
+
 | Value | Precedence, strongest first |
 |-------|-----------------------------|
 | font size | `fontsize` (from the settings section used) if above 0; else `[settings] defaultfontsize` if above 0; else 15 px |
@@ -414,6 +419,8 @@ source: director (the director's machine, observed read-only)
 
 open: should MuckaII keep a separate column count per profile and a global one, or one value per
 profile? The ini always carries two copies.
+default: one layered key, like every other setting (`persistence.md`, Settings storage). The importer
+takes the value by the precedence table above.
 
 ## Obsolete keys
 
@@ -421,6 +428,7 @@ FACT Mucka read nothing from these keys. They carry no setting to import.
 source: reference
 
 open: proposed: the importer drops them without telling the user.
+default: the proposal: drop them silently.
 
 | Key | Where found | Status |
 |-----|-------------|--------|

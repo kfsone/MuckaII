@@ -1,4 +1,12 @@
-/target/
-node_modules/
+/build/
+/out/
 /tools/
 *.log
+__pycache__/
+# Android signing material lives in CI secrets, never in the repo.
+*.jks
+*.keystore
+keystore.properties
+# A user's real settings file is personal data.
+mucka.ini
+!docs/evidence/ini-samples/*.ini

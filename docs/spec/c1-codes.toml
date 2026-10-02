@@ -17,7 +17,6 @@
 #                 push_empty  opens a frame that the server closes at once (nothing bracketed)
 #                 catch       saves the whole stack and starts a new one; no frame, no colour change
 #                 throw       reinstates the stack saved by the matching catch; no frame
-#                 reset       discards the stack and starts again from the initial colour
 #   meaning     Paraphrase of what the bracketed text is.
 #   role        The event-level role in events.md, or "" when the code only styles text.
 #   fg, bg      The /A colour the frame applies, as a colour index 0-15 (protocol.md "Colour
@@ -43,10 +42,14 @@
 
 codes = [
   # -- 00 initialise ---------------------------------------------------------------------------
-  # open: Bartle says every code but catch/throw is bracketed, so 00 would have its own closing
-  # 255. Clio and the reference both treat it as a stack reset instead (Clio: a pop below the base
-  # is ignored; reference: the base frame itself can be popped). Not in any capture.
-  { id = "00", lead = 0x9B, name = "initialise", family = "initialise", params = [], stack = "reset", meaning = "Sent when a program is forked or ends; the colour stack starts again from white on black.", role = "reset_stack", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
+  # DECISION 00 is an ordinary bracketed push with its own closing 255, like every code except
+  # catch and throw. It does not reset the stack. Bartle states that only catch and throw lack a
+  # matching 255, and no capture holds a 00, so nothing deprecates that. Rejected: Clio's and the
+  # reference's stack reset (Clio: a pop below the base is ignored; reference: the base frame
+  # itself can be popped). Also in protocol.md "Context stack".
+  # source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more
+  # independent captures); bartle:FE4 section 4
+  { id = "00", lead = 0x9B, name = "initialise", family = "initialise", params = [], stack = "push", meaning = "Sent when a program is forked or ends; pushes white on black, closed by its own 255.", role = "", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
 
   # -- 01 prompt -------------------------------------------------------------------------------
   { id = "01", lead = 0x9C, name = "prompt_container", family = "prompt", params = [], stack = "push", meaning = "Outer brackets around the whole prompt; the parentheses that mark invisibility sit inside it.", role = "prompt_container", fg = 4, bg = 0, observed = 190, observed_as = [], fecodes = "same", scope = "launch", source = "capture:dark-two-rats.c1", note = "Visible prompt on the wire: 01 * inside 01 02; invisible: ( and ) around the 01 02 frame, both inside 01." },
@@ -149,10 +152,13 @@ codes = [
   { id = "07 01 01", lead = 0xA2, name = "bite_rat", family = "hit", params = [], stack = "push", meaning = "Bitten by a rat.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "07 02", lead = 0xA2, name = "sting", family = "hit", params = [], stack = "push", meaning = "Stung by something of the stinger class.", role = "", fg = 1, bg = 0, observed = 2, observed_as = ["07 02 00"], fecodes = "same", scope = "launch", source = "capture:wyvern-poison-death.c1", note = "On the wire the bracket's closing 255 comes after the sting sentence; the stamina reading follows on the next line." },
   { id = "07 02 01", lead = 0xA2, name = "sting_bee", family = "hit", params = [], stack = "push", meaning = "Stung by a bee.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
-  # open: FE4 gives 07 02 02 twice, once for the jellyfish and once for the electric eel. Clio has a
-  # rule for 07 02 03, which suggests the eel's code; nothing on the wire settles it.
-  { id = "07 02 02", lead = 0xA2, name = "sting_jellyfish", family = "hit", params = [], stack = "push", meaning = "Stung by the jellyfish (FE4 also lists the electric eel under this code).", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
-  { id = "07 02 03", lead = 0xA2, name = "sting_eel", family = "hit", params = [], stack = "push", meaning = "Probably stung by the electric eel.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "absent", scope = "launch", source = "clio:src/telnet.l", note = "Not in either Bartle list." },
+  # DECISION The electric eel's sting is 07 02 02, as FE4 writes it: FE4 gives 07 02 02 twice, once
+  # for the jellyfish and once for the electric eel. 07 02 03 is Clio's reading, not Bartle's, and
+  # deprecating Bartle needs two or more independent captures; there are none. Rejected: 07 02 03
+  # as the eel. Also in sounds.toml clio.070202.wav and clio.070203.wav.
+  # source: director (evidence ranking: Bartle first); bartle:FE4 code 07 02 02
+  { id = "07 02 02", lead = 0xA2, name = "sting_jellyfish_or_eel", family = "hit", params = [], stack = "push", meaning = "Stung by the jellyfish or by the electric eel (FE4 lists both under this code).", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
+  { id = "07 02 03", lead = 0xA2, name = "sting_07_02_03", family = "hit", params = [], stack = "push", meaning = "A sting code that no Bartle list defines; Clio reads it as the electric eel, which FE4 gives as 07 02 02.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "absent", scope = "launch", source = "clio:src/telnet.l", note = "Not in either Bartle list. Kept so that the decoder names it if the server ever sends it." },
   { id = "07 03", lead = 0xA2, name = "kick", family = "hit", params = [], stack = "push", meaning = "A kick.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "07 04", lead = 0xA2, name = "throw_hit", family = "hit", params = [], stack = "push", meaning = "Hit by a thrown object.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "07 05", lead = 0xA2, name = "captured", family = "hit", params = [], stack = "push", meaning = "Caught by something of the capturer class.", role = "", fg = 1, bg = 0, observed = 0, observed_as = [], fecodes = "absent", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
@@ -180,7 +186,9 @@ codes = [
   { id = "09 02", lead = 0xA4, name = "say", family = "speech", params = [], stack = "push", meaning = "The words of something said aloud.", role = "chat", fg = 11, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "09 03", lead = 0xA4, name = "tell", family = "speech", params = [], stack = "push", meaning = "The words of a private tell.", role = "chat", fg = 11, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   # open: for 09 04 to 09 10 Clio pushes light yellow (11) like 09 01-03; the reference pushes yellow (3)
-  # so the act text reads as part of the speaker. Bartle gives no colour.
+  # so the act text reads as part of the speaker. Bartle gives no colour and no capture holds a 09, so
+  # the evidence ranking leaves it open (Clio and the reference split).
+  # default: yellow (3), the reference's colour, as the entries below give it. Colour is taste.
   { id = "09 04", lead = 0xA4, name = "act", family = "speech", params = [], stack = "push", meaning = "An action message.", role = "chat", fg = 3, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "reference", note = "" },
   { id = "09 05", lead = 0xA4, name = "emote_audiovisual", family = "speech", params = [], stack = "push", meaning = "An emotion that is both seen and heard.", role = "chat", fg = 3, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "reference", note = "" },
   { id = "09 05 01", lead = 0xA4, name = "emote_audio", family = "speech", params = [], stack = "push", meaning = "An emotion that is only heard.", role = "chat", fg = 3, bg = 0, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "reference", note = "" },
@@ -322,7 +330,9 @@ codes = [
   { id = "15 01 00", lead = 0xAA, name = "onomatopoeia", family = "dream", params = [], stack = "push", meaning = "A sound word.", role = "", fg = 0, bg = 6, observed = 0, observed_as = [], fecodes = "absent", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
 
   # -- 16 houses -------------------------------------------------------------------------------
-  # open: bartle:FECodes uses 16 for music; FE4 (which governs) moves music to 17 and gives 16 to houses.
+  # DECISION 16 is houses and 17 is music, as FE4 gives them. bartle:FECodes uses 16 for music; FE4
+  # is the newer document and governs where the two differ. Rejected: FECodes' 16 for music.
+  # source: director (evidence ranking: FE4 governs over FECodes); bartle:FE4 Codes and their meanings
   { id = "16 00 00", lead = 0xAB, name = "house_event", family = "house", params = [], stack = "push", meaning = "Something happened in a house.", role = "", fg = 15, bg = 4, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "16 00 01", lead = 0xAB, name = "house_information", family = "house", params = [], stack = "push", meaning = "Facts about a house.", role = "", fg = 15, bg = 4, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "16 00 02", lead = 0xAB, name = "house_dissolved", family = "house", params = [], stack = "push", meaning = "A house has been broken up.", role = "", fg = 15, bg = 4, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
@@ -370,10 +380,15 @@ codes = [
   { id = "20 14", lead = 0xAF, name = "ambient_wind", family = "ambient", params = [], stack = "push", meaning = "Background noise of wind.", role = "", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "absent", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
 
   # -- 89 player stats -------------------------------------------------------------------------
-  # open: bartle:FECodes gives stamina as bare 89 and has no maximum-stamina code; FE4 (which governs)
-  # gives 89 00 00 and 89 00 01. The wire matches FE4.
-  # open: Clio matches 89 headers without their terminating 255, which leaves its stack one frame off;
-  # the captures balance only when the header ends in 255 like every other code.
+  # DECISION Stamina is 89 00 00 and maximum stamina 89 00 01, as FE4 gives them and the captures
+  # show. Rejected: bartle:FECodes' bare 89 for stamina, with no maximum-stamina code.
+  # source: director (evidence ranking: FE4 governs over FECodes); bartle:FE4 Codes and their
+  # meanings; capture:wyvern-poison-death.c1
+  # DECISION An 89 header ends in 255 like every other code. The captures balance only with it.
+  # Rejected: Clio's match of 89 headers without their terminating 255, which leaves its stack one
+  # frame off.
+  # source: director (evidence ranking: captures outrank Clio); capture:wyvern-poison-death.c1;
+  # capture:blind-vs-water-snake.c1
   { id = "89 00 00", lead = 0xF4, name = "stat_stamina", family = "stat", params = [], stack = "push", meaning = "Brackets the number that is the player's current stamina.", role = "stat_stamina", fg = 7, bg = 0, observed = 79, observed_as = [], fecodes = "differs", scope = "launch", source = "capture:wyvern-poison-death.c1", note = "Holds a 99 colour frame and then the digits." },
   { id = "89 00 01", lead = 0xF4, name = "stat_max_stamina", family = "stat", params = [], stack = "push", meaning = "Brackets the number that is the player's maximum stamina.", role = "stat_max_stamina", fg = 7, bg = 0, observed = 79, observed_as = [], fecodes = "absent", scope = "launch", source = "capture:wyvern-poison-death.c1", note = "" },
   { id = "89 01", lead = 0xF4, name = "stat_score", family = "stat", params = [], stack = "push", meaning = "Brackets the number that is the player's score.", role = "stat_score", fg = 7, bg = 0, observed = 5, observed_as = [], fecodes = "same", scope = "launch", source = "capture:dark-two-rats.c1", note = "The digits carry thousands commas." },
@@ -383,13 +398,19 @@ codes = [
   { id = "90 01", lead = 0xF5, name = "colour_throw", family = "colour_stack", params = [], stack = "throw", meaning = "Restore the stack saved by the last catch, undoing any depth of pushes at once.", role = "", fg = -1, bg = -1, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "No matching 255. bartle:FECodes handleCode treats every 90 except 90 and 90 00 as a throw." },
 
   # -- 94-98 snoops ----------------------------------------------------------------------------
-  # open: FE4 gives the FE number as two numbers (oo*100+nn); bartle:FECodes gives one (nn). FE4 governs.
+  # DECISION The front-end number is two numbers, oo*100+nn, as FE4 gives it. Rejected:
+  # bartle:FECodes' single number nn.
+  # source: director (evidence ranking: FE4 governs over FECodes); bartle:FE4 Codes and their meanings
   { id = "94", lead = 0xF9, name = "snoop_started", family = "snoop", params = ["oo", "nn", "mm"], stack = "push", meaning = "Snoops by internal front end oo*100+nn, snoop number mm, have begun; brackets the snooped player's name.", role = "", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
   { id = "96", lead = 0xFB, name = "snoop_ended", family = "snoop", params = ["oo", "nn", "mm"], stack = "push_empty", meaning = "Snoops by internal front end oo*100+nn, snoop number mm, have stopped.", role = "", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "The closing 255 follows at once." },
   { id = "97", lead = 0xFC, name = "snooped_material", family = "snoop", params = ["oo", "nn"], stack = "push", meaning = "Text snooped from the player on internal front end oo*100+nn (not the snoop number).", role = "", fg = 7, bg = 0, observed = 0, observed_as = [], fecodes = "differs", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "" },
-  # open: Bartle defines 98 only as the snooped-line prefix. The reference also treats it as a "show the
-  # line so far" signal (flushes the pending text as a partial line) and says it precedes the prompt;
-  # Clio instead re-arms its prompt gate on 98. Neither behaviour appears in the captures.
+  # DECISION 98 nn is only the prefix of a line snooped through snoop nn, as Bartle defines it. It
+  # does not flush pending text as a partial line and does not re-arm the prompt gate. No capture
+  # holds a 98, so nothing deprecates Bartle's definition. Rejected: the reference's flush ("show the
+  # line so far", said to precede the prompt) and Clio's prompt-gate re-arm. Also in protocol.md
+  # "Prompt".
+  # source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more
+  # independent captures); bartle:FE4 code 98
   { id = "98", lead = 0xFD, name = "snoop_line_prefix", family = "snoop", params = ["nn"], stack = "push", meaning = "Prefix marking a line as snooped through snoop nn (0-9).", role = "snoop_prefix", fg = 0, bg = 4, observed = 0, observed_as = [], fecodes = "same", scope = "launch", source = "bartle:FE4 Codes and their meanings", note = "bg is 4 (blue) when nn is odd and 5 (magenta) when nn is even." },
 
   # -- 95 account data -------------------------------------------------------------------------

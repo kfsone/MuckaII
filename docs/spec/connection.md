@@ -5,6 +5,11 @@ entry, terminal width, probes, keepalive and session-drop handling. Byte values 
 `1B`. `CRLF` is `0D 0A`. Wording such as "the reference" means observable behaviour of Mucka.
 source: director
 
+FACT `$-` is the director's notation, and Bartle's, for the two bytes `ESC -` (`1B 2D`). A command
+interrupt is written with no spaces: `$-[FES$-]` is exactly the bytes `1B 2D 5B 46 45 53 1B 2D 5D`.
+There is no space before `$-]` and none after `$-[`.
+source: director; bartle:FE4 2)
+
 FACT None of the `.c1` captures has a `tx` record, an IAC byte, or a login prompt. The only capture
 that touches this file is `phone-login-at-20-columns.c1`, and it starts at the first game-mode FES
 reply. Every telnet and login row below therefore rests on Bartle, Clio or the reference, never on a
@@ -13,7 +18,7 @@ source: capture:phone-login-at-20-columns.c1
 
 ## 1. Transport
 
-RULE MuckaII will connect over plain TCP. There is no TLS, because the far end has none.
+RULE MuckaII connects over plain TCP. There is no TLS, because the far end has none.
 enforced_by: none: judgement
 source: director
 
@@ -31,6 +36,7 @@ source: director
 open: Outbound terminator. `persistence.md` reports a reference wire-log record `wave\r\r\n` (CR CR
 LF) sent and echoed, against `0D 0A` above and the `\r\n` echo in the captures. Which does the server
 receive?
+default: `0D 0A`, as the table above, Clio and the captures' echo give it.
 
 FACT Clio refuses to start without a host (argument or `CLIOHOST`) and takes its port from the
 second argument or `CLIOPORT`, else 23.
@@ -70,19 +76,18 @@ the drop must land within a tight window of that announcement's instant. A seen 
 the timing test.
 source: reference
 
-| Reason | Headline shown (overlay) | Server tail lines shown |
-|--------|--------------------------|-------------------------|
-| Reset | Reset In Progress | no |
-| Quit | Cheerio! | no |
-| Permadeath | Rest In Peace <persona> | yes |
-| Died | <persona> Died (or You Died) | yes |
-| Unknown | Oops! | yes |
+FACT These parts of drop handling are specified outside the launch spec:
+source: director
 
-FACT The headline overlay belongs to guided login and is `scope: later`. On a Reset drop, guided
-login logs the player straight back into the same persona.
-source: reference
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Drop headline overlay, automatic relogin after a Reset drop | `scope: later` | `later/drop-overlay.md` |
 
-RULE MuckaII will classify drops at launch, because the dreamword depends on the result: a Reset
+open: Are the drop headline overlay and the automatic relogin after a Reset drop launch, now that
+managed persona selection (3.4) is? The Tombstone (`flow.md`) is the launch screen for a death.
+default: both `scope: later`.
+
+RULE MuckaII classifies drops at launch, because the dreamword depends on the result: a Reset
 clears it (section 5.4). The overlay is `scope: later`.
 enforced_by: none: judgement
 source: reference
@@ -118,16 +123,20 @@ EVIDENCE Clio's DO handler has no case for option 3. DO SGA falls to `default: t
 replies `FF FC 03`.
 source: clio:src/telnet.l {IAC}{DO}.
 open: DO SGA. Clio refuses with WONT, the reference agrees with WILL. Which one does MuckaII send?
+default: `FF FC 03` (WONT), as Clio does. Clio outranks the reference on mechanics.
 
 EVIDENCE Clio refuses NEW-ENVIRON (it lists 39 with the other refused options).
 source: clio:src/telnet.l {IAC}{DO}.
 open: NEW-ENVIRON. The reference's login name defaults to `mud`, so in practice it always sends
 WILL and then advertises USER. If the server accepts USER from NEW-ENVIRON, the shell `login:`
 prompt may never be shown. No capture shows which happens on either server.
+default: `FF FC 27` (WONT), as Clio does. The shell `login:` prompt is then answered by auto-login
+step 1 (3.1).
 
 EVIDENCE Clio guards DO SGA with a one-shot flag. The reference answers every WILL SGA.
 source: clio:src/telnet.l {IAC}{WILL}.
 open: WILL SGA. Is it answered once (Clio) or every time (reference)?
+default: once per connection, as Clio does.
 
 FACT A literal `FF FF` in the stream is owned by `protocol.md`: in client mode it is part of the C1
 terminator. The reference's telnet layer consumes IAC IAC and returns to normal text.
@@ -159,7 +168,12 @@ source: clio:src/telnet.l {IAC}{DO}.; clio:src/tnaws.c; reference
 EVIDENCE Clio always advertises 80 x 21 and never resends.
 source: clio:src/telnet.l {IAC}{DO}.
 open: NAWS. Should it carry the real column count and resend on resize (reference), or stay a
-fixed 80 x 21 (Clio)? What NAWS changes on the server is unconfirmed (section 4.1).
+fixed 80 x 21 (Clio)? Bartle is silent on NAWS, and no capture holds an IAC byte, so nothing on the
+wire separates the effect of NAWS from that of `/T`. What NAWS changes on the server is unconfirmed
+(section 4.1).
+default: the reference's form: the effective column count x 21, resent when it changes. Clio's fixed
+80 x 21 goes with its ESC-T entry, which 3.2 rejects on capture evidence; advertising one width in
+NAWS and another in `/T` would contradict itself.
 
 FACT The reference sends NAWS from the start of the connection with the same column count it later
 sends in `/T`.
@@ -197,6 +211,9 @@ source: clio:src/telnet.l
 open: Prompt matching. A substring match on `password` also hits server text such as "Old
 Password:" or a MOTD line containing the word. A prompt split across two TCP reads is missed by the
 reference. Follow Clio (anchored literals, one-shot, ordered) or the reference?
+default: Clio's matching: anchored literals over the byte stream, each prompt one-shot, the password
+sent only after the account ID. Clio outranks the reference, and it never sends a password at an
+"Old Password:" line.
 
 FACT The reference handles a "(y/n)" question before the banner, e.g. "Skip the rest? (y/n)" on
 mud2.com, or a usurp-session question. Auto-login does not answer it; guided login
@@ -234,9 +251,14 @@ source: capture:phone-login-at-20-columns.c1
 
 EVIDENCE Clio sends ESC ^F ESC-T (text mode, 78 wide), not ESC-N.
 source: clio:src/telnet.l ^"Option: "
-open: Client-mode entry. Clio's sequence is ESC ^F ESC-T and is bare. The reference's is ESC ^F ESC-N
-/T{cols}, inside a command interrupt. The capture shows the reference's form honoured at 20 columns.
-Confirm that ESC-N plus `/T` is the sequence to keep.
+
+DECISION Client-mode entry is the reference's form: `$-[` ESC ^F `$-N/T{cols}$-]`, no CRLF (bytes
+in the table above). Bartle lists ESC ^F and ESC-N ("user defines wrap") and is silent on `/T`, so
+this deprecates no Bartle statement. The capture decides between the two clients: the server wraps
+at 20 columns there, which ESC-T (fixed at 78 wide) cannot produce. Rejected: Clio's bare ESC ^F
+ESC-T.
+source: director (evidence ranking: Bartle first, then captures, then Clio, then the reference);
+capture:phone-login-at-20-columns.c1
 
 FACT The reference resends NAWS (2.3) and then sends client-mode entry, once per login, at the
 first Option prompt seen while not in game mode. Clio re-arms at every Option prompt while it is
@@ -255,7 +277,7 @@ source: clio:src/telnet.l ^"Option: "; clio:src/main.c; reference
 | Transition | Clio | Reference |
 |------------|------|-----------|
 | Enter game | C01 C01/C02/C03 (prompt core) or C02 C01 (room short) | same codes |
-| On entry | C02 C01 sends `ESC-[FES ESC-]` plus the optional `game-init-cmds` ini line | first probe beat, setup batch (5.3) |
+| On entry | C02 C01 sends `$-[FES$-]` plus the optional `game-init-cmds` ini line | first probe beat, setup batch (5.3) |
 | Leave game | `Option: ` / `Option (H for help): ` prompt | the text `Option (H for help)` seen in game text, with the match starting at column 0 |
 source: clio:src/telnet.l {C01}{C01}{C255} {C02}{C01}{C255} ^"Option: "; reference
 
@@ -265,7 +287,9 @@ source: reference
 
 ### 3.4 Persona selection (guided login)
 
-FACT This is `scope: later`. The facts are recorded for when it is built.
+DECISION Managed persona selection and creating a persona in an open slot are `scope: launch`
+(`flow.md`, Pre-game). The landmarks below are what the client drives the shell by. Persona
+deletion is `scope: later`.
 source: director
 
 | Shell state | Landmark (whitespace-collapsed, case-insensitive) | Guided login sends |
@@ -306,8 +330,8 @@ source: clio:src/telnet.l ^"Old Password:"
 
 | Trigger | Sent | Source |
 |---------|------|--------|
-| Effective column count changes (window resize, rotation, font size change, max-columns change) | NAWS SB with the new width x 21, if NAWS was agreed. Then, in game mode only, `1B 2D 5B 2F 54` digits `1B 2D 5D` (ESC-[ /T{cols} ESC-]). | reference |
-| Max-columns setting changed to a non-zero value | ESC-[ /T{value} ESC-], at once, whether or not in game mode | reference |
+| Effective column count changes (window resize, rotation, font size change, max-columns change) | NAWS SB with the new width x 21, if NAWS was agreed. Then, in game mode only, `1B 2D 5B 2F 54` digits `1B 2D 5D` (`$-[/T{cols}$-]`). | reference |
+| Max-columns setting changed to a non-zero value | `$-[/T{value}$-]`, at once, whether or not in game mode | reference |
 | Width unchanged | nothing | reference |
 
 FACT The reference treats the `/T` width, not the NAWS width, as the one the server wraps game text
@@ -316,6 +340,7 @@ source: reference
 open: Resize outside game mode. After client-mode entry but at the Option menu, a resize sends NAWS
 only. Changing max-columns, though, sends `/T` even at the shell. Should a shell-time resize also
 send `/T`?
+default: no. A shell-time resize sends NAWS only, as the reference does.
 
 ## 5. Probes, keepalive and timers
 
@@ -342,6 +367,9 @@ source: bartle:FE4 2)
 open: Comma batching inside one interrupt (`FES,FEW,FEI`). The reference relies on it and states
 that FEW/FEI are unreliable without FES alongside. Nothing in Bartle or the captures confirms
 either claim.
+default: send the reference's comma-joined block, FES first (`$-[FES,FEW$-]`). Bartle does not forbid
+it, nothing else speaks, and `session.md` writes probe blocks in this form. The raw console can test
+it.
 
 ### 5.2 Cadence
 
@@ -349,19 +377,21 @@ either claim.
 |-------|------|---------|-------|--------|
 | Routine FES (Clio) | every 10 s in game mode; also once on each of many C1 codes (hits, weather, magic, dreamword use) | 10 s, fixed | - | clio:src/telnet.l main loop, {C07}{C255} etc. |
 | Routine beat (reference) | in game mode only. First beat at game entry is the full `FES,FEW,FEI`, then every N s. | N = 10 s. Setting: 0 = off; the dialog steps 5 to 30 in 5s; clamped 0..30. ini key `statupdate`. | launch (FES); later (FEW, FEI: side panels) | reference |
-| FEW in the beat | every beat while the Online panel is shown | - | later | reference |
-| FEI in the beat | only when inventory/room items are marked stale and either panel is shown | - | later | reference |
 | Reactive (stale-stats) | a C1 hint marks stats stale. A probe fires 200 ms later unless a text update or an FES arrives first. It is skipped if the routine beat is about to fire. | 200 ms delay | launch | reference |
 | Spacing | at least 500 ms between any two probes, routine or reactive | 500 ms | launch | reference |
 | Wake recovery | if an FES-carrying probe has gone unanswered for more than 5 s and any server bytes arrive, the beat fires at once (asleep, then woken). At most one per 2 s. | 5 s / 2 s | launch | reference |
-| Hold | probes can be suspended. A held beat is delayed one full interval, never dropped. | - | later (raw console) | reference |
-| Inventory (combat) | 100 ms after the last inventory-change line, moved past the next combat tick if within 200 ms of it. It may ride in front of the next typed command in the same write. | 100 ms | later | reference |
-| Room-entry FEX | 1750 ms after a room description if no FEX list came | 1750 ms | later | reference |
-| Reset-time sampling | FES-only probes, self-paced at about 501 ms or more, in a one-time burst to pin the reset instant | - | later | reference |
-| Value probe | `value <name>` in front of a routine beat, to check a player who left the Online list | - | later | reference |
+| Hold | probes can be suspended, for example while the director runs raw-console experiments. A held beat is delayed one full interval, never dropped. | - | launch | reference; director (the raw console is launch on every platform, `INTERNAL.md`) |
+| FEW and FEI in the beat, inventory (combat), room-entry FEX, reset-time sampling | - | - | later: `later/probe-cadence.md` | reference |
 
-open: Probe cost. The reference says each probe costs the player a game turn. Bartle says only that
-probes do not wake a sleeper. Confirm the cost before MuckaII sends more than routine FES.
+DECISION There is no departed-player probe. Rejected: the reference's `value <name>` sent in front
+of a routine beat to test a player who left the Online list, which reveals invisible players
+(`fair-play.md`, Other players).
+source: director
+
+DECISION A probe block costs the player a command slot: MUD2 allows each user one command action
+per server tick (`session.md`, Command understanding). Bartle says only that probes do not wake a
+sleeper, which does not contradict this, and the reference agrees.
+source: director (evidence ranking: Bartle silent, no split); session.md; reference
 
 ### 5.3 Setup batch on game entry
 
@@ -381,9 +411,12 @@ FACT The reference expects a high-ranking persona's `auto fex` to be refused: "A
 should be well past the stage of needing to use AUTO FEEXITS commands...".
 source: reference
 
-open: Setup batch scope. It changes persona settings on the server without asking, and it mainly
-serves the combat rail and compass (`scope: later`). `score`, for the persona name, may be wanted at
-launch. Decide what MuckaII sends at launch.
+DECISION MuckaII sends the setup batch automatically at each game-mode entry, as the reference does:
+`identify`, `fightbrief`, `auto fex`, `score`, then `$-[FEX$-]`. The batch is part of the persona's
+arrival in the tea room, so `fair-play.md`'s rule that nothing gameplay-affecting happens
+automatically *after* arrival is not broken by it. Arrival is complete once the batch has been
+sent. `scope: launch`. Rejected: sending only `score`, or asking the player first.
+source: director
 
 ### 5.4 Dreamword sends
 
@@ -400,16 +433,13 @@ source: reference
 
 ### 5.5 Anti-idle keepalive
 
-| Item | Value | Source |
-|------|-------|--------|
-| Setting | per profile, seconds of player inactivity; ini key `antiidle` | reference |
-| Default | 0 = off | reference |
-| Range | 0..3600 | reference |
-| Checked | once a second | reference |
-| Condition | in game mode, connected, and no player-sent line for at least N s. Probes and telnet replies do not count as player sends. | reference |
-| Sent | an empty line: `0D 0A` | reference |
-| Related | a "keep screen on" profile switch, default on for mobile, off for desktop | reference |
-open: Anti-idle scope. It is a profile setting imported from `mucka.ini`. Is it launch?
+DECISION Anti-idle keepalive and keep-screen-on are `scope: later`.
+source: director
+
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Anti-idle keepalive | `scope: later` | `later/anti-idle.md` |
+| Keep screen on | `scope: later` | `later/keep-screen-on.md` |
 
 ## 6. Command-line arguments
 
@@ -425,7 +455,7 @@ source: reference
 | `-port` | 1..65535 | override the port. Out of range or not a number: ignored without warning. | launch | reference |
 | `-user` | name | override the telnet login name | launch | reference |
 | `-account` | id | override the account ID | launch | reference |
-| `-password` | text | override the password. It is visible in process listings and shell history. | launch | reference |
+| `-password` | text | override the password | launch | reference |
 | `-record` | (none) | arm the session transcript when the game is entered | later | reference |
 | `-logs` | path | Windows only: append trace output to the file | later | reference |
 
@@ -433,6 +463,14 @@ FACT Any of `-profile -host -port -user -account -password` selects direct-conne
 connects once at launch without the user pressing Connect, does not save the profile, settings or
 password, and closes when the server drops the connection.
 source: reference
+
+FACT A value given with `-password` or `-account` is visible to other users of the machine in
+process listings, and in the shell's history.
+source: reference
+
+open: `-password` and `-account` on the command line: keep, drop, or replace with a safer route?
+default: keep both flags, and say in the help text that their values are visible in process
+listings and shell history.
 
 | Clio flag | Effect | Source |
 |-----------|--------|--------|

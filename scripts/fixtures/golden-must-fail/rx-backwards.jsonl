@@ -1,0 +1,6 @@
+{"ev":"stream","rx":-1,"schema":2,"source":"capture:wyvern-poison-death.c1","start_in_game":true}
+{"ev":"text","rx":0,"text":"The wyvern is staring at you ferociously.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"fight_start","chat_continues":false}
+{"ev":"prompt","rx":0,"runs":[{"text":"*","style":{"fg":12,"bg":0,"attrs":[]}}]}
+{"ev":"text","rx":1,"text":"The wyvern misses you.","style":{"fg":1,"bg":0,"attrs":[]}}
+{"ev":"line_end","rx":0,"kind":"normal","chat_continues":false}

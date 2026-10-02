@@ -79,10 +79,10 @@ enforced_by: none: judgement
 ## Other players
 
 RULE CANNOT do things that give players an extreme PvP advantage. Going invisible removes a player
-from the who and FEW lists and from other telltales such as `value`. Mucka 1 lets you click an
+from the who and FEW lists and from other telltales such as `value`. Mucka lets you click an
 offline entry in the players list and tests whether MUD2 still recognises the player's name. An
 offline player's name is no longer in the live game's vocabulary, and an invisible player causes
-the parse to abort with no error, which can be probed. Mucka 2 does not allow this.
+the parse to abort with no error, which can be probed. MuckaII does not allow this.
 source: director
 enforced_by: none: judgement
 
@@ -119,6 +119,15 @@ started it (`$FETCH`). Injection sites are in `session.md`.
 source: director
 enforced_by: none: judgement
 
+DECISION The setup batch the client sends on game entry (`identify`, `fightbrief`, `auto fex`,
+`score`, FEX) is part of arriving in the tea room, so the rule above does not forbid it. Arrival
+is complete once the batch has been sent (`connection.md` 5.3).
+source: director
+
+DECISION There is no departed-player probe (`value <name>` or any other test of whether a name is
+still in the game's vocabulary). Rejected: Mucka's probe (see Other players).
+source: director
+
 RULE Clicking a compass exit sends that direction, exactly as typing it would, and counts as a
 hotkey. The compass may also show a tooltip naming the destination room. Nothing, including that
 tooltip, ever lets the player click a room *name* to move.
@@ -127,3 +136,5 @@ enforced_by: none: judgement
 
 open: Watchwords answer configured triggers in incoming text, which makes them conditional. They
 need a charter review before they are built.
+default: watchwords are not built (`later/watchwords.md`). The `[watch]` text is still imported
+verbatim (`persistence.md`, Import).

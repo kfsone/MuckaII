@@ -22,40 +22,12 @@ FACT The in-game screen has five primary components:
 | Component | Scope | Contents |
 |-----------|-------|----------|
 | Stats bar | launch | Runs along the top. Holds the status fields (section 3) and the settings menu, shown as a hamburger button. |
-| Side panel | later | Optional, on the left, with sub-widgets: players online (text list), items carried (text list), items here (text list with a button per item), and navigation (compass rose plus the last 3 locations). |
+| Side panel | later | Optional, on the left: `later/side-panel.md` |
 | Terminal scroll | launch | The main component. Takes all the space the others leave. |
-| Combat panel | later | Optional. See the combat panel table below. |
+| Combat panel | later | Optional: `later/combat-panel.md` |
 | Input box | launch | The command input, along the bottom. |
 
 source: director
-
-FACT The navigation widget is meant to sit just left of the command input, so the input reads a
-little like a shell prompt (`~w$` in a PS1).
-source: director
-
-FACT The combat panel is one vertical stack, top to bottom:
-
-| Part | Share of height | Contents |
-|------|-----------------|----------|
-| Outcomes | about 0.1 | A list of combat outcomes |
-| Badges | about 0.9 | One creature badge per opponent |
-| Tick | fixed | The combat ticker |
-| Player | rest | The player's own creature badge |
-
-source: director
-
-RULE The players-online widget and the navigation widget each have a detach button. Detaching one
-shows a floating copy that can be dragged around inside the main window. Both the docked copy and
-the floating copy can be visible at the same time. This is a deliberate departure from Mucka, which
-collapses the docked copy. For example, a player planning to run can keep the compass in the side
-panel and drag a second copy next to the combat panel.
-source: director
-enforced_by: none: judgement
-
-RULE Floating panels live inside the main window and are never separate OS windows, so they behave
-the same on Android.
-source: director
-enforced_by: none: judgement
 
 ## 1. Terminal look (scope: launch)
 
@@ -81,6 +53,7 @@ FACT The reference uses the Campbell palette (the Windows Terminal default dark 
 draws with curses colours and has no hex values to copy.
 source: reference
 open: Director to confirm Campbell for MuckaII.
+default: Campbell, as the table below gives it.
 
 | Slot | Name | Hex |
 |------|------|-----|
@@ -133,14 +106,15 @@ does not find useful, though a client should handle `$-C` and `$-K`.
 source: bartle:FE4 section 2
 open: The reference never draws reverse video. Should MuckaII swap fg/bg for `$-R` / SGR 7? Bartle
 permits ignoring it; nobody has a capture of the server sending it.
+default: parse and track reverse, and do not draw it, as the reference does and Bartle permits.
 
 FACT MUD2 sends only SGR colour and clear-screen, no cursor positioning.
 source: director
 
 ## 2. Chat colouring (scope: launch)
 
-open: `mucka-ini.md` marks the chat theme, colour and face keys `later`, since chat colouring is not
-on the `INTERNAL.md` launch list; this section says launch. Which?
+DECISION Chat colouring, its themes, colours and faces, and their settings are `scope: launch`.
+source: director
 
 ### 2.1 What counts as a chat part
 
@@ -231,6 +205,8 @@ enforced_by: none: judgement
 
 open: `input.md` (Box prefills) prepends a clicked player name to typed text whenever the caret is
 at the start; this rule inserts only into an empty box. One rule or two?
+default: one rule, `input.md`'s: prepend `Name ` when the caret is at the start and nothing is
+selected. An empty box meets that condition, so this rule's case is included.
 
 ## 3. Status bar (scope: launch)
 
@@ -265,14 +241,20 @@ enforced_by: none: judgement
 | Buffs/debuffs, glow | icons | Code 11 brackets around your own phrase (see 3.4) | On the code's line | reference |
 | Weather | glyph [+ word] | FES field 15 (one letter) | Every FES reply that carries it; otherwise the last value stays | capture:dark-two-rats.c1 |
 | Reset countdown | `28m` / `27:41` / `45s` | FES field 14 (minutes to reset), projected; code 06 04 | Redrawn at 1 Hz | bartle:FE4 FES, code 06 04 |
-| Recording | `rec` chip | Local transcript state | On toggle | reference |
+| Recording (`scope: later`) | `rec` chip: `later/session-transcript.md` | Local transcript state | On toggle | reference |
 
 EVIDENCE FES on the wire carries a 15th field that Bartle does not document: a weather letter.
 With the code bytes removed, replies read e.g. `... N N N N 45 R` (dark-two-rats.c1),
 `... N N N N 4 T` (blind-vs-water-snake.c1), `... N N N N 14 F` (invisible-player-joins.c1).
 source: capture:dark-two-rats.c1, capture:blind-vs-water-snake.c1, capture:invisible-player-joins.c1
-open: Bartle's FES list stops at "minutes to next reset". Treat field 15 as optional; the letter
-meanings come from Clio's FES notes (`protocol.md`, FES line) and the reference (table 3.3).
+
+DECISION FES field 15 is the weather letter, and it is optional: a reply without it is valid and
+leaves the last weather shown. Bartle's FES list stops at field 14 and says nothing against a 15th;
+three independent captures show it. The letter meanings are Clio's FES notes (`protocol.md`, FES
+line), which outrank the reference; the reference's table in 3.3 agrees with them.
+source: director (evidence ranking: Bartle silent, then captures, then Clio);
+capture:dark-two-rats.c1, capture:blind-vs-water-snake.c1, capture:invisible-player-joins.c1;
+clio:FES.md
 
 ### 3.3 Field formatting
 
@@ -336,6 +318,8 @@ Reset countdown:
 
 open: Whether the server floors or rounds FES field 14 is unknown; the reference assumes both in
 different places. Needs a timed capture.
+default: assume it floors: field 14 = N means the reset is at least N and less than N+1 minutes
+away. This matches the game's own "approximately N minutes" reading in the table above.
 
 ### 3.4 Effect icons
 
@@ -365,20 +349,17 @@ source: reference
 open: The wide cluster also has a combat icon (combat.svg, crossed blades) lit while a fight is
 believed open. It depends on combat tracking, which belongs to the later combat rail. Launch or
 later? Listed as later in section 8 pending this.
+default: `scope: later` (`later/combat-panel.md`). At launch the wide cluster has no combat slot.
 
 ### 3.5 Recording chip
 
-| State | Wide | Compact | source |
-|-------|------|---------|--------|
-| Idle | hollow chip, #2D333B border, `rec` in #666666 | `(R)` in #666666 | reference |
-| Recording | #C02020 border, U+25CF in #E74856, `rec` in white | `(R)` in #E74856 | reference |
-| Tap | start or stop the plain-text transcript of the screen | same | reference |
+FACT The recording chip is specified outside the launch spec:
 
-FACT The same toggle is in the menu as "Log Recording". A `-record` command-line flag arms it on
-first entering the game. The transcript is separate from the wire log, which is always on.
-source: reference
-open: `INTERNAL.md` lists the wire log at launch, not a transcript. Is the transcript (and so this
-chip) launch or later?
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Recording chip and the session transcript it toggles | `scope: later` | `later/session-transcript.md` |
+
+source: director
 
 ### 3.6 Effective columns and narrow widths
 
@@ -418,6 +399,8 @@ the dream word having been said.
 source: bartle:FE4 code 15
 open: The reference treats 15 00 01 as "cleared". Bartle's wording fits (someone said it). Confirm
 with a capture. The pre-game text pattern has no capture behind it either.
+default: build the table above as written: 15 00 01 clears the dreamword, and the pre-game text
+pattern sets it.
 
 ### 4.2 Pill
 
@@ -445,20 +428,13 @@ enforced_by: none: judgement
 | Character identified | `<character>@<profile> mucka <version>` | reference |
 
 open: product string in the title for MuckaII (`mucka`, `muckaii`, `MuckaII`)?
+default: `muckaii`, in the reference's lower-case form: `<character>@<profile> muckaii <version>`.
 
-## 6. Keep screen on (scope: launch)
+## 6. Keep screen on (scope: later)
 
-| Rule | source |
-|------|--------|
-| Per-profile setting "Keep screen on", on the connect page; `[profile:<name>] keepscreenon=yes|no` | reference |
-| Default on for Android (and iOS), off on desktop | reference |
-| Applied while the game view is showing; released when it is left. A settings dialog over the game view does not release it | reference |
-
-FACT The need it serves: an idle screen-lock mid-session gets the player killed.
-source: reference
-
-open: `mucka-ini.md` asks whether `keepscreenon` is launch; it is not on the `INTERNAL.md` launch
-list. This section says launch.
+DECISION Keep screen on is `scope: later`, with anti-idle keepalive (`connection.md` 5.5). Its spec
+is `later/keep-screen-on.md`.
+source: director
 
 ## 7. Settings for launch UI features
 
@@ -470,13 +446,13 @@ list. This section says launch.
 | Stat update interval (FES heartbeat) | Settings | off, or 5-30 s in steps of 5 | 10 s | `statupdate` | reference |
 | Mute beep this session | Settings | on/off | off | not stored | reference |
 | Mute beep permanently | Settings | on/off | off | `mutebeep` | reference |
-| Save settings to this profile only | Settings | on/off | off | `[settings:<profile>]` section exists | reference |
+| Save settings to this profile only | Settings | on/off | off | `[settings:<profile>]` section exists. In Mucka that section replaced `[settings]` wholesale; MuckaII writes the edited keys to the profile layer and lets the rest fall through (`persistence.md`, Settings storage) | reference, director |
 | Default font size (all profiles) | Display | 9-24 | 15 | `defaultfontsize` | reference |
 | Default max columns (all profiles) | Display | 0 (auto) - 160 | 0 | `defaultcolumns`: stored only, nothing reads it (`mucka-ini.md`, scope later) | reference |
 | Dreamword size offset | Display | -2 to +4 | 0 | `dreamwordsizeoffset` | reference |
 | Chat theme, colours, faces | Display | see 2.4 | Lamplight, faces 2.3 | see 2.4 | reference |
 | Sounds: master, groups, rows, volumes, fallbacks, bell | Sounds | see `sounds.toml` | all on | see `sounds.toml` | reference |
-| Keep screen on | Connect page, per profile | on/off | platform (6) | `keepscreenon` | reference |
+| Keep screen on (`scope: later`: `later/keep-screen-on.md`) | Connect page, per profile | on/off | per platform | `keepscreenon` | reference |
 
 FACT Mucka's settings dialog has the tabs Settings, Display, Hotkeys, Sounds and Friends. Apply
 previews changes live (e.g. chat colours restyle the pane); Save writes `mucka.ini`; Cancel
@@ -494,30 +470,22 @@ source: reference
 
 ## 8. Later (scope: later)
 
-FACT Recorded so they are not lost. No design here; each is re-justified before it is built.
+FACT Recorded so they are not lost. Each is re-justified against `fair-play.md` before it is built.
 source: director
 
-| Feature | What the user sees | source |
-|---------|--------------------|--------|
-| Combat rail | A right-edge panel during fights: foes, their state, your stats per tick, weapon, flee button, damage floats | reference |
-| Combat metronome | Two clicks (high and low percussion) bracketing each combat tick, switched from the rail | reference |
-| Combat edge | A 1 px border on the terminal: amber during a fight, red at danger | reference |
-| Combat status icon | Crossed-blades icon in the status bar while a fight is open | reference |
-| Side panel | Left panel with Online (who list, recent departures), Inventory, Items here, Map/compass; sections can float | reference |
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Combat rail, combat metronome, combat edge, combat status icon | `scope: later` | `later/combat-panel.md` |
+| Side panel, floating widgets | `scope: later` | `later/side-panel.md` |
+| Radar compass | `scope: later` | `later/compass.md` |
+| Score graph, score tap target | `scope: later` | `later/score-graph.md` |
+| Recording chip, session transcript | `scope: later` | `later/session-transcript.md` |
+| Drop headline overlay | `scope: later` | `later/drop-overlay.md` |
+| Keep screen on | `scope: later` | `later/keep-screen-on.md` |
+| Watchwords | `scope: later` | `later/watchwords.md` |
+| Chat mode | `scope: later` | `later/chat-mode.md` |
 
-DECISION Players-list entries are never clickable as a probe of whether a name is still in the
-game's vocabulary. Mucka's click on an offline entry reveals invisible players
-(`fair-play.md`, Other players). Rejected: Mucka's offline-entry probe.
+DECISION Managed persona selection (Mucka's guided login) and the raw console are `scope: launch`
+and are not in this table (`flow.md`, Pre-game; `input.md`, Raw console). Mucka's Friends tab is
+not in it either: it is rejected (`fair-play.md`, Other players).
 source: director
-| Radar compass | A dial of the room's exits (from FEX); clicking an exit moves you | reference |
-
-DECISION Compass exits stay clickable. A click sends the direction like a hotkey, and the
-destination tooltip is allowed. A room name is never clickable (`fair-play.md`, Movement and
-places).
-source: director
-| Score graph | `$SCORE` / tapping the score opens a graph of score over the session, with a skull U+2620 at a persona wipe | reference |
-| Score tap target | Tapping the score (with a magnifier U+1F50D) opens the graph | reference |
-| Friends tab | A settings tab for a friends list | reference |
-| Guided login | Persona picker overlay that drives the login for you | reference |
-| Raw console | A view of the raw byte stream | reference |
-| Watchwords | User text triggers from `[watch]` in `mucka.ini` | reference |

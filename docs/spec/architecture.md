@@ -1,0 +1,199 @@
+# Architecture: layers, threads, channels
+
+FACT This file pins how the code will be cut into libraries and threads, and the path every byte
+takes between the keyboard, the socket and the screen. Nothing here is built yet. Build details are
+in `docs/build.md`.
+source: director
+
+## Layers
+
+DECISION One static library per layer, all in one process, no IPC. A library depends only on the
+rows above it in this table. No upward and no sideways dependency.
+source: director
+
+| Library | Owns | Depends on |
+|---------|------|------------|
+| `transport` | TCP connect/read/write, telnet negotiation (`connection.md`), the single socket writer | OS sockets |
+| `mud` | bytes in, `events.md` events out; the event types | nothing |
+| `persistence` | wire log records and the background writer; the settings file format | sqlite3 |
+| `session` | login, probes, stats, sleep, dreamword, flow state, the ONE ordered outbound queue, probe-block insertion | `transport`, `mud`, `persistence` |
+| `client` | aliases, F-key macros, history type, key->command mapping, command-boundary parsing, the 7-bit filter | `session` |
+| `audio` | output device, mixer over preloaded PCM, the code/text -> sound mapping (`sounds.toml`) | `mud`, miniaudio |
+| `core` | the core thread: reactor loop, the UI -> core FIFO and `submit_line`, wiring of the layers above | all of the above |
+| frontends `gui`, `tui`, `bot` | presentation and input; the line buffer | `core`, `client` |
+
+FACT Library `X` is CMake target `muckaii_X` (`docs/build.md` "Targets").
+source: director
+
+RULE A library's types and an object's owning thread are separate questions. A type may live in
+`client` while its instance is owned by a frontend (the line buffer, the history recall list).
+enforced_by: none: judgement
+source: director
+
+## Threads
+
+| Thread | Runs | Owns | Never |
+|--------|------|------|-------|
+| UI | Slint event loop (`gui`), FTXUI loop (`tui`), bot loop (`bot`) | line buffer, history recall list, widgets | blocks, touches the socket, waits on core |
+| core | one reactor | socket, `transport`, `mud`, `session`, `client` instances, settings store | renders, touches disk |
+| audio | miniaudio device callback | mixer voices | locks, allocates, decodes |
+| writer | one background SQLite writer | the database connection, settings file writes | touches the socket |
+
+RULE Only the core thread touches the socket. `transport`, `mud`, `session` and `client` contain no
+locks: each instance is touched by exactly one thread. Synchronisation lives only in the channels
+below: the UI -> core FIFO in `core`, the SPSC ring in `audio`, the writer queue in `persistence`.
+enforced_by: none: judgement
+source: director
+
+DECISION The reactor is a plain `poll()` (`WSAPoll()` on Windows) over two sockets: the server socket
+and a loopback UDP wake socket. Any thread wakes core by sending one byte to the wake socket. The
+poll timeout is `session`'s next deadline on its injectable clock. Rejected: asio and libuv, a
+dependency for one socket; a condition variable, which cannot wait on a socket.
+source: director
+
+RULE Each reactor turn, in this order: read the socket and decode; drain the wake socket and the
+UI -> core FIFO into `session`'s queue; fire due `session` timers; write the queue. A timer send
+(keepalive, wake probe) therefore never overtakes a line already in the FIFO (`input.md`).
+enforced_by: none: judgement
+source: director
+
+RULE Core assigns each wire record its run sequence and timestamp at handover, on the core thread.
+That is `persistence.md`'s single serialisation point. The writer thread only stores.
+enforced_by: none: judgement
+source: director
+
+## Cross-thread channels
+
+| From -> to | Carries | Mechanism | Wake |
+|------------|---------|-----------|------|
+| UI -> core | `submit{text, origin}`, settings edits, connect/disconnect | mutex-guarded vector, swapped out whole by core | one byte to the wake socket |
+| core -> UI | one event batch per socket read | `slint::invoke_from_event_loop` moving the batch (`gui`); in-place call (`tui`, `bot`) | Slint's own |
+| core -> audio | `play{sound, start_frame}` | lock-free SPSC ring, fixed capacity | none: the callback drains it each period |
+| core -> writer | wire records, settings snapshots | mutex + condition variable queue | condition variable |
+
+RULE The UI side of each channel holds its lock only for a push. The audio callback takes no lock.
+enforced_by: none: judgement
+source: director
+
+## Decoder API (`mud`)
+
+DECISION `mud::decoder` is synchronous: `feed(std::span<const std::byte>)` and `end_of_read()`.
+Each call appends `mud::event` values (a `std::variant`, one alternative per `events.md` event)
+to a caller-owned `std::vector<mud::event>&` batch, on the caller's thread. Rejected: a virtual
+sink interface, and a `std::function` called per event; one batch per read is what delivery needs.
+source: director
+
+RULE `mud` has no clock, no I/O, no timers and no threads. Timers live in `session`, driven by an
+injectable clock.
+enforced_by: none: judgement
+source: director
+
+DECISION In-process events carry `seq`, a per-connection counter. They carry no `rx`. The golden
+serialiser (a test-support target of `mud`) counts reads and writes `rx` as `events.md` defines it.
+source: director
+
+## Delivery
+
+RULE Frontends subscribe to `session`, never to `mud`. `session` re-emits every `mud` event and adds
+its own:
+
+| Session event | Carries |
+|---------------|---------|
+| connection state | connecting, connected, closed, with reason |
+| flow state | profile, pregame, game, tombstone (`flow.md`) |
+| sleep state | awake, asleep, drugged (`session.md`) |
+| stats | the current merged reading |
+| dreamword | current word or none |
+| outbound sent | the bytes written, `origin`, and the offsets of any probe block in them |
+
+enforced_by: none: judgement
+source: director
+
+RULE Events are delivered as one batch per socket read, on the core thread. The `gui` subscriber
+marshals each batch to the UI thread in one hop. `tui` and `bot` consume in place. `audio`'s mapping
+subscribes on the core thread and feeds the audio ring directly, never via the UI thread.
+enforced_by: none: judgement
+source: director
+
+DECISION Latency budget: 30-50 ms from bytes read to the frame presented that shows them, and from
+FES read to the status bar repainted. Start time is the steady clock read by core at the socket
+read; end time is the same clock read in Slint's after-rendering notifier. Measured by the spike's
+latency test against a loopback fake server, not asserted.
+source: director
+open: Slint's after-rendering notifier fires after the frame is rendered, before it is presented.
+default: measure to the notifier and add one refresh interval; spike step 3 checks this against a camera or present timestamp on one target.
+
+## Input: two orderings
+
+RULE Box edits (typing, history recall, Ctrl+R prefill, Escape) are frontend-local. The UI loop
+applies input events to the frontend-owned line buffer in arrival order (Invariant #1). No box edit
+crosses a thread.
+enforced_by: none: judgement
+source: director
+
+DECISION Two orderings, not one queue. Box edits are serialised by the UI loop over the line buffer;
+sends are serialised by the UI -> core FIFO. Both are filled in UI arrival order, so a hotkey after
+Enter still lands behind that line. `input.md` "Ordering: two orderings" follows this. Rejected:
+one queue holding both box edits and sends, which would make a box edit cross a thread and wait on
+core.
+source: director
+
+RULE Enter snapshots the line buffer's content at that moment, clears it, appends to the recall
+list, and calls `core::submit_line(text, origin)`. Never re-read a widget. `submit_line` only
+pushes `submit{text, origin}` onto the UI -> core FIFO and never blocks. Hotkeys, F-keys and macros
+call the same entry point, so all sends from one frontend share one FIFO in UI arrival order.
+enforced_by: none: judgement
+source: director
+
+DECISION The history recall list is owned by the frontend and appended at Enter on the UI thread.
+Rejected: history owned by core, where Up straight after Enter could miss the line just entered
+(`input.md` typing-path failure 4).
+source: director
+
+RULE On core, `client` drains the FIFO in order, expands each line (aliases, macros, `$`
+commands), applies the 7-bit filter as its last step, and hands
+`outbound{bytes, origin, boundaries, sleep_at}` to `session`'s queue. `boundaries` are byte
+offsets of command boundaries in the post-filter bytes (transliteration changes lengths);
+`sleep_at` marks the boundary before a sleep command. `session` never re-parses a line.
+enforced_by: none: judgement
+source: director
+
+RULE `session` alone inserts marked probe blocks, only at offsets `client` reported
+(`session.md`). `transport`'s single writer writes the queue in order and never reorders.
+enforced_by: none: judgement
+source: director
+
+| `origin` | Produced by | 7-bit filter | Probe insertion | Wire log |
+|----------|-------------|--------------|-----------------|----------|
+| `typed` | Enter, Send button | yes | at reported boundaries | verbatim |
+| `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at reported boundaries | verbatim |
+| `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at reported boundaries | verbatim |
+| `raw` | raw console | no; no expansion | none | marked raw-console send |
+| `login` | `session` login drive | n/a | none | verbatim |
+| `password` | `session` login drive | n/a | none | masked, same length, annotated (`persistence.md`) |
+| `keepalive` | `session` idle timer | n/a | none | verbatim |
+| `probe` | `session` | n/a | is the block | marked with position |
+
+RULE Raw console sends bypass `client` expansion and the 7-bit filter but still go through
+`session`'s queue, so they keep their place in the one ordered stream.
+enforced_by: none: judgement
+source: director
+
+## Bot
+
+DECISION `bot` is a frontend for tests and for the director's AI experiments against a private MUD2
+instance. It sends through `core::submit_line` like any frontend.
+source: director
+
+RULE Release builds never point a bot at the public game.
+enforced_by: none: judgement
+source: director
+
+## Audio
+
+DECISION `audio` opens one miniaudio device at startup and mixes its own voices: preloaded PCM,
+each voice with a start frame on the device's frame clock, voices overlapping. The playback rules
+are `sounds.toml` `engine-always-open`, `engine-scheduled-start`, `no-silence-padding` and
+`metronome-book-ends`. Rejected: miniaudio's `ma_engine` and its resource manager, whose node
+graph and loader the project does not need.
+source: director

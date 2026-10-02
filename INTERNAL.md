@@ -10,8 +10,9 @@ acceptance testing.
 
 ## Stack
 
-DECISION The language is C++20, built with CMake. The director reads and spot-checks the code,
-and that makes the director a second reviewer. Rejected:
+DECISION The language is C++, built with CMake. The standard is C++20 at minimum, or the highest
+standard that the Windows, Linux and Android toolchains all support. `docs/build.md` pins it. The
+director reads and spot-checks the code, and that makes the director a second reviewer. Rejected:
 - Rust. With no human reading the code, its compiler would be the only reviewer. With the director
   reading it, C++ is the better choice.
 - Go. It has no Slint binding and its mobile GUIs are thin.
@@ -27,7 +28,9 @@ Each gate is named in `CLAUDE.md` once it exists.
 
 DECISION The GUI is Slint on every target, through its C++ API. Slint drives the Android soft
 keyboard through a real Android input view. Fades and float positions are its built-in property
-animations. The input spike has to confirm this choice. Rejected:
+animations. The input spike has to confirm this choice. Slint's runtime is written in Rust, so
+building Slint from source needs a Rust toolchain on the build machine. MuckaII itself contains no
+Rust (`docs/build.md`). Rejected:
 - Tauri and any JavaScript frontend. Streaming text is a known weakness of web views, and every
   line would cross a JS-to-native IPC hop.
 - Flutter, which would add Dart.
@@ -40,11 +43,19 @@ DECISION The architecture is layered, as one library per layer, all in one proce
 |-------|------|
 | transport | TCP and telnet negotiation |
 | mud | bytes in, `docs/spec/events.md` events out |
-| session | login, probes, stats, dreamword, the single ordered outbound queue |
-| client | aliases, F-key macros, history, mapping keys to commands |
+| session | login, probes and probe-block insertion, stats, sleep, dreamword, flow state, the single ordered outbound queue |
+| client | aliases, F-key macros, history, parsing command boundaries, mapping keys to commands |
 
-Frontends (the GUI, a TUI, a bot) subscribe to the event stream in-process. The first frontend is a
-TUI built on FTXUI, because it proves the layering without any GUI risk.
+Frontends (the GUI, a TUI, a bot) subscribe to the session layer's event stream in-process. The
+first frontend is a TUI built on FTXUI, because it proves the layering without any GUI risk.
+`docs/spec/architecture.md` pins the threads and interfaces.
+
+DECISION The bot frontend exists for tests and for the director's future AI experiments against a
+private MUD2 instance. It is not a player feature.
+source: director
+
+open: Is the bot built into release artifacts?
+default: No. It is built only in test and developer presets.
 
 DECISION Sound uses miniaudio:
 - One output stream is opened at startup and stays open.
@@ -83,6 +94,7 @@ DECISION The launch scope is:
 - managed persona selection, and creating a persona in an open slot
 - detecting the end of the game (the return to the Option menu)
 - sleep tracking, so the status bar does not go stale (`docs/spec/session.md`)
+- the raw console (`$con`) on every platform, an early feature (`docs/spec/input.md`)
 - terminal and scrollback
 - command box and history
 - profiles and auto-login
@@ -95,7 +107,7 @@ DECISION The launch scope is:
 - first-run import of Mucka's `mucka.ini`
 
 Everything else is triaged after launch and re-justified against `docs/spec/fair-play.md` before it
-is built: combat panel, side panel, floating widgets, compass, raw console, watchwords, anti-idle
+is built: combat panel, side panel, floating widgets, compass, watchwords, anti-idle
 keepalive, keep-screen-on, persona deletion, and wire-log retention policy.
 
 DECISION These are launch scope:
@@ -116,10 +128,11 @@ Android where Mucka's ini is app-private, a file picker is offered. Passwords ar
 the user enters each one once, the first time that profile is used. Mucka's `mucka.db` is not
 imported.
 
-DECISION The wire log keeps every byte verbatim except the outbound password line. That line is
-replaced with placeholder bytes of the same length and carries an annotation. Rejected: keeping
-the password verbatim (Mucka's behaviour).
+DECISION The wire log keeps every byte verbatim except the outbound password and account ID. Each
+is replaced with placeholder bytes of the same length and carries an annotation
+(`docs/spec/persistence.md`). Rejected: keeping them verbatim (Mucka's behaviour).
 
-DECISION Open protocol and telnet questions (`docs/spec/OPEN.md` groups B and C) are settled by
-the evidence ranking in `CLAUDE.md`: Bartle, then captures, then Clio. The reference is used only
-where none of those speaks. Each settlement is recorded as a DECISION in the spec it changes.
+DECISION Open protocol and telnet questions are settled by the evidence ranking in `CLAUDE.md`:
+Bartle first, two or more independent proofs to deprecate a Bartle statement, then captures, Clio,
+and the reference. Each settlement is recorded as a DECISION in the spec it changes. Where the
+ranking does not decide, the item stays open with a default.

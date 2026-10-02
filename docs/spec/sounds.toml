@@ -9,6 +9,8 @@
 #   the wire and the sequence ends FF FF). source: bartle:FE4 section 3
 # - "params" = the integers after the family number, as sent.
 # - Every table carries tag, source and scope. open = an unresolved question for the director.
+#   default = what to build until the director rules on that open; every open has one.
+#   decision = a ruling on that row, with what it rejects and its source.
 # - category = the group heading the user sees in the Sounds settings tab.
 
 # ---------------------------------------------------------------------------
@@ -33,7 +35,7 @@ enforced_by = "none: judgement"
 [[rule]]
 id = "engine-scheduled-start"
 tag = "RULE"
-text = "Every play request carries a start time on the audio clock, in frames. A sound triggered by the server passes 'now'. Scheduled sounds (the combat metronome) pass a predicted time. A sound begins sounding at its start frame with no leading silence."
+text = "Every play request carries a start time on the audio clock, in frames. A server-triggered sound is requested when its line completes (rule timing-line-complete) and passes 'now' as read at that moment. Scheduled sounds (the combat metronome) pass a predicted time. A sound begins sounding at its start frame with no leading silence."
 source = "director"
 scope = "launch"
 enforced_by = "none: judgement"
@@ -48,7 +50,7 @@ scope = "launch"
 [[rule]]
 id = "metronome-book-ends"
 tag = "RULE"
-text = "The combat metronome book-ends each tick T, where T is a frame on the audio clock. The pre-tick click must FINISH at T, so pre.start = T - pre.duration_frames. The post-tick click STARTS at T, so post.start = T. Worked example at 48000 Hz: with T = 480000 and a 30 ms pre click (1440 frames), pre.start = 478560 and post.start = 480000. A unit test asserts these frame positions. The visual tick sweep is driven from the same clock, shifted by the output latency the device reports, so the sweep, the clicks and the server's combat messages share one timebase."
+text = "The combat metronome book-ends each tick T, where T is a frame on the audio clock. The pre-tick click must FINISH at T, so pre.start = T - pre.duration_frames. The post-tick click STARTS at T, so post.start = T. Worked example at 48000 Hz: with T = 480000 and a 30 ms pre click (1440 frames), pre.start = 478560 and post.start = 480000. A unit test asserts these frame positions. The visual tick sweep is driven from the same clock and is DELAYED by the output latency the device reports (sweep time = audio-clock time + output latency), so what is seen lines up with what is heard, and the sweep, the clicks and the server's combat messages share one timebase."
 source = "director"
 scope = "later"
 enforced_by = "none: judgement"
@@ -63,7 +65,7 @@ scope = "launch"
 [[rule]]
 id = "timing-line-complete"
 tag = "RULE"
-text = "A code-triggered sound is queued when its code is decoded and played when the line it introduces completes (newline, or a partial/prompt flush)."
+text = "A server-triggered sound is queued when its code is decoded and played at the next line completion, with start time 'now' read at that moment (rule engine-scheduled-start). A line completion is a flush point as events.md 'Code events (deferred)' defines it: a line end the text path sees, a partial, or end-of-read before game mode."
 source = "reference"
 scope = "launch"
 enforced_by = "none: judgement"
@@ -163,6 +165,7 @@ note = ""
 source = "bartle:FE4 code 13"
 scope = "launch"
 open = "Clio and the reference require exactly two params and play the same file at the same volume for near and far (the third integer is ignored). Should far be quieter? Director to decide; default is to keep identical."
+default = "Near and far play the same file at the same volume, as Clio and the reference do."
 
 [[rule]]
 id = "theme-at-startup"
@@ -171,17 +174,26 @@ text = "mucka_theme.wav plays once when the app window first opens, before any p
 source = "reference"
 scope = "launch"
 open = "Should the startup theme respect the master switch / a settings row in MuckaII? Should it play at all?"
+default = "As the reference: it plays once at startup at volume 75, not gated by the master switch, with no settings row."
 
 [[rule]]
 id = "mp3-in-wav"
-tag = "FACT"
-text = "clio.1324.wav is MP3 data in a WAV wrapper (format tag 0x55, mono, 11025 Hz). Every other file is PCM. The player must decode MP3-in-WAV or the file must be re-encoded to PCM before shipping."
+tag = "EVIDENCE"
+text = "clio.1324.wav is MP3 data in a WAV wrapper (format tag 0x55, mono, 11025 Hz). Every other file is PCM."
 source = "reference"
 scope = "launch"
 
 [[rule]]
+id = "mp3-in-wav-playable"
+tag = "RULE"
+text = "clio.1324.wav plays: either the loader decodes MP3-in-WAV, or the file is re-encoded to PCM before shipping (rule mp3-in-wav)."
+source = "reference"
+scope = "launch"
+enforced_by = "none: judgement"
+
+[[rule]]
 id = "placeholder-clicks"
-tag = "FACT"
+tag = "EVIDENCE"
 text = "clio.070000.wav, clio.0703.wav, clio.0704.wav and clio.0705.wav are byte-identical, about 10 ms long (8-bit 22050 Hz): effectively a click. All 19 clio.11*.wav files are byte-identical (one 'spell' sound). clio.070100 = clio.070101; clio.070200 = clio.070201 = clio.070202."
 source = "reference"
 scope = "launch"
@@ -222,6 +234,7 @@ keys = [
 source = "reference"
 scope = "launch"
 open = "mucka-ini.md says <group> is a numeric code prefix or 'bell' (soundgroupvol.bell only; bell on/off is mutebeep) and <code> is numeric. This table also lists soundgroup.bell, groups 'tell' and 'alert', and codes 'tell-wiz' and 'alert-flee-failed'. Which key set did the reference read and write?"
+default = "The importer accepts the union of both key sets (mucka-ini.md)."
 
 # ---------------------------------------------------------------------------
 # Sounds. One row per file in assets/sounds/.
@@ -290,6 +303,7 @@ source = "clio:src/telnet.l"
 scope = "launch"
 evidence = "bartle:FE4 lists bites by BITER-class objects as 07 01, one param (which would map to clio.0701.wav, which does not exist)"
 open = "Which form does the server send for a generic bite, 07 01 or 07 01 00? No capture yet. With 07 01 the reference plays the Combat hits fallback (default silent)."
+default = "Both 07 01 and 07 01 00 play clio.070100.wav."
 
 [[sound]]
 file = "clio.070101.wav"
@@ -316,6 +330,7 @@ source = "clio:src/telnet.l"
 scope = "launch"
 evidence = "bartle:FE4 lists stings by STINGER-class objects as 07 02, one param"
 open = "Same question as 07 01: 07 02 or 07 02 00 on the wire?"
+default = "Both 07 02 and 07 02 00 play clio.070200.wav."
 
 [[sound]]
 file = "clio.070201.wav"
@@ -333,9 +348,9 @@ scope = "launch"
 file = "clio.070202.wav"
 trigger_kind = "code"
 trigger = "07 02 02"
-description = "Jellyfish stings"
+description = "Jellyfish or electric eel stings (bartle:FE4 gives both 07 02 02)"
 category = "Combat hits"
-name = "Jellyfish sting"
+name = "Jellyfish or eel sting"
 default_enabled = true
 origin = "clio"
 source = "bartle:FE4 code 07 02 02"
@@ -345,15 +360,15 @@ scope = "launch"
 file = "clio.070203.wav"
 trigger_kind = "code"
 trigger = "07 02 03"
-description = "Electric eel hits"
+description = "Code 07 02 03, which no Bartle list defines (Clio reads it as the electric eel)"
 category = "Combat hits"
-name = "Electric eel sting"
+name = "Sting 07 02 03"
 default_enabled = true
 origin = "clio"
 source = "clio:src/telnet.l"
 scope = "launch"
 evidence = "bartle:FE4 gives 07 02 02 twice: once for the jellyfish, once for the electric eel"
-open = "Is the eel's code 07 02 03 (Clio's reading) or 07 02 02? Unconfirmed by capture."
+decision = "The electric eel's sting is 07 02 02, as Bartle writes it, so it plays clio.070202.wav. Deprecating that needs two or more independent captures, and there are none; Clio's 07 02 03 reading is rejected. This row plays only if the server ever sends 07 02 03. source: director (evidence ranking: Bartle first); bartle:FE4 code 07 02 02"
 
 [[sound]]
 file = "clio.0703.wav"
@@ -1111,6 +1126,7 @@ origin = "Mucka; shipped with the tell-alert sounds. Author and licence undocume
 source = "reference"
 scope = "launch"
 open = "Origin/licence of mucka.1307.wav is not recorded anywhere. Director to confirm (own production?)."
+default = "Ship it, as Mucka shipped it."
 
 [[sound]]
 file = "tell.wav"
@@ -1125,6 +1141,7 @@ source = "bartle:FE4 code 09 03; reference"
 scope = "launch"
 notes = "Lines starting 'You tell your listeners' (your own tell echoed back; every outbound tell echoes this way) play no tell alert. Tell alerts never overlap (rule no-overlap-tells)."
 open = "Origin/licence of tell.wav, tell-invis.wav, tell-wiz.wav not documented. Director to confirm."
+default = "Ship them, as Mucka shipped them."
 
 [[sound]]
 file = "tell-invis.wav"
@@ -1163,6 +1180,7 @@ source = "reference"
 scope = "launch"
 notes = "Gated by master, the Client alerts group and its own row, like every sound. Not tied to any panel being visible. Plays as soon as the line completes."
 open = "The reference detects this through its combat tracker; confirm it should fire on the bare line regardless of whether a fight is believed open."
+default = "Fire on the bare line, whether or not a fight is believed open. Combat tracking is scope later."
 
 [[sound]]
 file = "beep.wav"
@@ -1176,6 +1194,7 @@ origin = "Mucka. Author and licence undocumented."
 source = "reference"
 scope = "launch"
 open = "Origin/licence of beep.wav not documented."
+default = "Ship it, as Mucka shipped it."
 
 [[sound]]
 file = "mucka_theme.wav"
@@ -1189,6 +1208,7 @@ origin = "Mucka. Author and licence undocumented."
 source = "reference"
 scope = "launch"
 open = "See rule theme-at-startup. Origin/licence not documented."
+default = "Ship it, as Mucka shipped it; play it as rule theme-at-startup's default says."
 
 [[sound]]
 file = "Perc_Stick_hi.wav"
@@ -1203,6 +1223,7 @@ source = "reference"
 scope = "later"
 notes = "Only sounds while the combat rail is visible; its only switch is on the rail."
 open = "Licence of the percussion samples not documented."
+default = "Ship them, as Mucka shipped them (scope later: not built until the combat rail is)."
 
 [[sound]]
 file = "Perc_Stick_lo.wav"

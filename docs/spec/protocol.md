@@ -103,6 +103,7 @@ scope: launch
 
 open: The reference colours an unlisted variant by its family (any `04 ...` is magenta, any `03 01 ...`
 cyan) where Clio's catch-all pushes white on black.
+default: white on black, as Clio does and as the RULE above states.
 
 FACT Fall-through between cases in the older document's sample code is not semantics; only its
 treatment of missing parameters is.
@@ -126,14 +127,20 @@ scope: launch
 | throw | `90 01`, and any other `90 xx` | Discard the current stack and reinstate the saved one; no frame | bartle:FE4 section 4 |
 | throw with no catch | `90 01` with nothing saved | Ignored | clio:src/wstack.c |
 | pop below catch | Lone 255 when the stack begun by the catch is empty | Ignored; cannot reach frames saved by the catch | clio:src/wstack.c |
-| reset | `00` | Clear every stack and saved stack; start again from white on black | clio:src/telnet.l |
+| push (`00`) | `00` | As push, with white on black; its own lone 255 pops it. No reset of the stack | bartle:FE4 section 4 |
 
 FACT Catches nest: each throw reinstates the stack saved by the most recent unmatched catch.
 source: clio:src/wstack.c
 scope: launch
 
-open: Clio never pops the base frame `00` sets, so a surplus pop after a reset leaves white on black;
-the reference pops it and falls to the terminal default.
+DECISION `00` (Initialise) is an ordinary bracketed code: it pushes a frame and has its own closing
+255, like every code except catch and throw. It does not reset the stack, so there is no base frame
+for a surplus pop to remove. Bartle states that only catch and throw lack a matching 255, and no
+capture holds a `00`, so nothing deprecates that. Rejected: Clio's and the reference's stack reset
+(Clio: the base frame is never popped; reference: it can be popped). `c1-codes.toml` code `00`
+records it as `stack = "push"`.
+source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more independent
+captures); bartle:FE4 section 4
 
 EVIDENCE A frame can span a line end. `12` brackets "The water-snake1 looks fit.\r\0\r\n" and closes
 after the line end; `02 02` brackets a long description the server wrapped over four lines.
@@ -199,6 +206,8 @@ scope: launch
 
 open: Does the server send any code when a player quits to the option menu? No capture covers a
 quit.
+default: no code is expected. Game mode ends on the exit triggers in the table above (the menu
+prompt text at column 0, `95 03`, or the connection closing).
 
 FACT Clio also accepts `Option: ` at the start of a line as the menu prompt.
 source: clio:src/telnet.l
@@ -269,6 +278,9 @@ open: The captures `invisible-player-joins.c1`, `wyvern-poison-death.c1` and
 started outside game mode renders `(*)` or `*` glued to the next line. `events.md` primes the
 decoder into game mode for captures to keep it out of golden diffs. Should the entering prompt be
 shown as a prompt instead?
+default: yes. An outer `01` bracket whose core header enters game mode is captured and shown as a
+prompt, because the prompt is the bracket, never a guess at its text (root `CLAUDE.md`). Priming
+keeps the golden diffs unchanged.
 
 FACT If a line end arrives while the outer `01` bracket is still open, the reference abandons the
 prompt capture and renders what it held as ordinary text on that line.
@@ -280,9 +292,12 @@ prompt and the earlier one's capture is restarted.
 source: reference
 scope: launch
 
-open: Bartle defines `98 nn` only as the prefix of a snooped line. The reference also flushes the
-pending text as a partial line on every `98` and says `98` precedes the prompt; Clio re-arms its
-prompt gate on `98`. Neither use of `98` appears in the captures.
+DECISION `98 nn` is only the prefix of a line snooped through snoop `nn`, as Bartle defines it. It
+does not flush pending text as a partial line and does not re-arm the prompt gate. No capture holds
+a `98`, so nothing deprecates Bartle's definition. Rejected: the reference's flush on `98`, and
+Clio's prompt-gate re-arm. `c1-codes.toml` code `98` records the same ruling.
+source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more independent
+captures); bartle:FE4 code 98
 
 ## Echo
 
@@ -301,6 +316,7 @@ scope: launch
 open: `persistence.md` reports a reference wire-log pair where `wave` was sent and echoed as
 `wave\r\r\n`, while the captures show the echo ending `\r\n` and every spec says outbound lines end
 CR LF. Which terminator does the server receive and echo?
+default: send `0D 0A`, as Clio does, the captures' echo shows and every spec states.
 
 ## Line model
 
@@ -339,6 +355,9 @@ scope: launch
 
 open: Each pre-game flush starts the next partial empty, and a partial replaces the previous one, so a
 login prompt split across two reads would show only its second half. No capture covers it.
+default: the line model appends a `partial` to the live partial when no line end came between them,
+so a split prompt shows whole. Prompt recognition matches over the byte stream, as Clio does
+(`connection.md` 3.1).
 
 FACT In game mode, a completed line consisting only of `*` characters is not displayed.
 source: reference
@@ -464,12 +483,17 @@ scope: launch
 
 open: Clio turns bold plus 30-37 into the bright colours 8-15; the reference keeps bold as a separate
 attribute and leaves the colour as sent.
+default: the decoder keeps bold as an attribute and the colour as sent, so the event records what
+the wire said. `ui.md` 1.3 draws bold with bright promotion, so the screen shows Clio's colours.
 
 open: Clio honours `ESC [ J` and `ESC [ 2 J` as clear screen; the reference ignores them. MUD2 is said
 to send clear screen, and no capture shows which form.
+default: honour both as clear screen, as Clio does. Root `CLAUDE.md` says the server sends ANSI
+clear-screen.
 
 open: Clio accepts `ESC [ 0 ; 3 7 ; 4 0 \r \n m` as one SGR reset, calling it a server bug
 workaround. The reference abandons the CSI at the CR, so the LF ends a line and `m` prints as text.
+default: accept it as one SGR reset, as Clio does. Clio outranks the reference on mechanics.
 
 ## Encoding
 

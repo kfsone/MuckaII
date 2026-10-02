@@ -11,11 +11,12 @@ source: director
 | Wire log | `scope: launch` |
 | Schema forward-compatibility | `scope: launch` |
 | First-run import of `mucka.ini` | `scope: launch` |
-| Session transcript (`rec`) | `scope: later` |
+| Session transcript (`rec`) | `scope: later`: `later/session-transcript.md` |
 
 source: director
 
 open: the session transcript is not in the launch scope list in `INTERNAL.md`. Confirm it is later.
+default: later.
 
 ## Data directory
 
@@ -41,13 +42,18 @@ source: reference
 | one SQLite database | the wire log, and any later store that joins it |
 | the settings file | MuckaII's own settings, profiles, F-keys and the imported `[watch]` text, in MuckaII's own format |
 | the import marker | written once when the `mucka.ini` import is finished (see "Import") |
-| session transcripts | `scope: later`. One text file per recording (see "Session transcript") |
+| session transcripts | `scope: later`. One text file per recording (`later/session-transcript.md`) |
 
 open: proposed contents. Only the SQLite wire log and the import are director rulings
 (`INTERNAL.md`). The settings file and the marker follow from them.
+default: the contents in the table above.
 
 open: file names inside `~/.muckaii/` (database, settings file, marker, transcript location) are
 not yet ruled.
+default: the database is `muckaii.db` and the import marker is `mucka-ini-imported`, both directly in
+`~/.muckaii/`. The settings file takes the base name `settings`, with the extension of whatever format
+`persistence` gives it. Transcripts (later) go in `~/.muckaii/` itself, as the transcript's Location
+row gives.
 
 FACT Mucka kept its data in `~/.mucka/` on Windows (one database, `mucka.db`) and in the app's
 private files directory on Android. MuckaII does not read, import or modify `mucka.db`.
@@ -60,11 +66,36 @@ enable it.
 enforced_by: none: judgement
 source: director
 
-RULE Every byte in both directions is recorded verbatim, as it came off or went onto the socket.
-That includes telnet negotiation, C1 sequences, ANSI and the login exchange. Nothing is decoded,
-filtered, compressed or reframed before it is stored.
+RULE Every byte in both directions is recorded as it came off or went onto the socket, with the two
+masked sends below as the only exception. That includes telnet negotiation, C1 sequences, ANSI and
+the login exchange. Nothing is decoded, filtered, compressed or reframed before it is stored.
 enforced_by: none: judgement
 source: director
+
+DECISION The outbound password line and the outbound account ID line are masked in the wire log.
+Each is stored as a sent record of the same length, with every byte before the line's `0D 0A`
+replaced by a placeholder byte, and is followed by an annotation naming what was masked
+(`masked: password`, `masked: account id`). Rejected: keeping them verbatim, which is Mucka's
+behaviour (see below).
+source: director
+
+| Masked send | How the client knows it is that send |
+|-------------|--------------------------------------|
+| password | the login state machine sends it in reply to the recognised password prompt (`connection.md` 3.1, step 3) |
+| account ID | the login state machine sends it in reply to the recognised account prompt (`connection.md` 3.1, step 2) |
+
+source: director
+
+open: With `telnetlogin` off, the user types the account ID and password into the command box, so
+the login state machine does not send them. Should a line sent while the recognised account or
+password prompt is the live partial be masked the same way? A masked typed line no longer equals
+what was typed, so Invariant #1's acceptance check (`session.md`) must then skip masked records.
+default: yes, mask it the same way, with the same annotation.
+
+open: The account ID also arrives inbound: in the server's echo of the account line and in the
+`95` client-mode block (`events.md`, `client_mode`). Received bytes are recorded verbatim. Mask the
+account ID in received records too, or keep them verbatim?
+default: keep received records verbatim until the director rules.
 
 RULE The log opens with the connection, before the first byte, so the login exchange is in it like
 everything else.
@@ -87,6 +118,8 @@ source: reference
 
 open: two instances started together on first run can both see the import marker missing. Which
 one imports?
+default: the instance that first creates a lock file beside the marker, using an exclusive create,
+imports. The other does not offer the import in that run.
 
 ### What a record is
 
@@ -145,6 +178,9 @@ source: reference
 
 open: which annotations MuckaII writes. Annotations are a log of client decisions, not wire
 traffic.
+default: every row above except the reset-timer diagnostics (`logttr` is a later debug key), plus
+the masking annotations ("Wire log") and the probe and raw-console marks (`architecture.md`,
+`origin` table).
 
 ### What the user can do with it
 
@@ -169,7 +205,7 @@ FACT Nothing prunes, rotates or consolidates the wire log. The user reclaims spa
 by hand.
 source: reference
 
-FACT Measured on Mucka over 13 sessions, 18.11 play-hours: 119,921 records, 10,141,176 bytes of
+EVIDENCE Measured on Mucka over 13 sessions, 18.11 play-hours: 119,921 records, 10,141,176 bytes of
 payload, 0.156 KB/s average. Received 76,633 records (9,668,270 bytes), sent 42,946 records
 (465,243 bytes, about 11 bytes per typed command), 342 annotations. Stored one row per record with no
 indexes, about 0.74 MB per play-hour.
@@ -177,12 +213,16 @@ source: reference
 
 FACT In Mucka's wire log the password record is stored in clear in the sent direction, like
 every other sent byte. The server does not echo it, so it is absent from the received direction and
-from the screen.
+from the screen. MuckaII masks it (see "Wire log").
 source: reference
 
-open: "every byte, verbatim" puts the login password in the wire log in clear, while passwords
-otherwise live only in OS secure storage. Director to rule: keep verbatim, or mask the password
-record.
+FACT A reference wire-log record pair showing the echo: sent `wave\r\r\n`, then received
+`wave\r\r\n`.
+source: reference
+
+open: The pair above ends CR CR LF, while `connection.md` gives the outbound terminator as `0D 0A`
+and the captures show the echo ending `\r\n` (`protocol.md`, Echo). Which does the server receive?
+default: `0D 0A`, as `connection.md` 1 gives it.
 
 ## Schema forward-compatibility
 
@@ -211,6 +251,9 @@ source: reference
 
 open: what a client does with a database written by a NEWER MuckaII (unknown later steps recorded).
 Read-only, refuse, or carry on.
+default: carry on logging, and say so once in the terminal. Steps are additive, so the tables this
+version knows are still there. It never runs, repeats or undoes a step it does not know. The wire log
+stays always on.
 
 ## Retention and deduplication
 
@@ -227,77 +270,68 @@ source: director
 
 open: The retention policy. What ages out, after how long, and whether old payloads are
 compressed.
+default: nothing ages out and nothing is compressed, as "What the user can do with it" states.
+Retention is `scope: later` (`INTERNAL.md`, Scope).
 
 ## Settings storage
 
 DECISION A settings store holds only the keys the user has changed. A missing key means "use the
-default". This is what lets the UI show that a setting is at its default, and it is what will let
-a later release say "this setting's default changed: keep or switch?" (`flow.md`, Settings).
+built-in value". This is what lets the UI show that a setting is at its built-in value, and it is
+what lets a later release say "this setting's built-in value changed: keep or switch?" (`flow.md`,
+Settings).
 source: director
 
-DECISION Per-profile settings layer on top of the global settings, one key at a time. A key a
-profile does not set falls through to the global value, and from there to the default. The
-profile page can edit them without logging in. Rejected: a per-profile section that replaces the
-global settings wholesale (Mucka's semantics, see `mucka-ini.md` "How the sections combine").
+DECISION Settings resolve through three layers, one key at a time, strongest first:
+
+| Layer | Holds | Edited by |
+|-------|-------|-----------|
+| profile | the keys this profile sets | the profile page (without logging in), Save, Save to this profile |
+| global | the keys set for every profile | global settings, Save as default (`flow.md`, Settings) |
+| built-in | every key's built-in value | nobody; it ships with MuckaII |
+
+A key a profile does not set falls through to the global layer, and from there to the built-in
+value. Rejected: a per-profile section that replaces the global settings wholesale (Mucka's
+semantics, see `mucka-ini.md` "How the sections combine").
+source: director
+
+DECISION A layer can hold a text-valued key (an F-key slot, or any other key whose value is text)
+as `cleared`: an explicit empty value that stops the fall-through. Numeric and boolean keys have
+no `cleared` value. A profile that holds F-key slot 7 as `cleared` has slot 7 empty even when the
+global layer fills it. Removing a key from a layer (Reset to inherited) is different: the key falls through again. A
+`cleared` F-key slot counts as empty for `defaulthotkeys`, so a cleared F1-F5 slot takes its
+built-in macro while `defaulthotkeys` is on, exactly as an empty slot does in Mucka (`mucka-ini.md`,
+`[profile:Name]`). Rejected: treating an empty string as "not set", which leaves no way for a
+profile to empty a slot the global layer fills.
 source: director
 
 RULE The importer keeps each Mucka profile's *effective* values. Mucka replaces wholesale while
-MuckaII layers, so for a profile that has a `[settings:Name]` section, the importer writes a
-profile-level value for every key whose Mucka value differs from what MuckaII's layering would
-otherwise produce.
+MuckaII layers, so:
+
+| Mucka part present for profile P | What the importer writes to P's profile layer |
+|----------------------------------|-----------------------------------------------|
+| `[settings:P]` | a profile-level value for every settings-scope key whose Mucka value differs from what MuckaII's layering would otherwise produce |
+| `[fkeys:P]` | all 36 slots explicitly: the slot's text from `[fkeys:P]`, or `cleared` where `[fkeys:P]` lacks the slot. An empty `[fkeys:P]` gives 36 `cleared` slots |
+| neither | nothing: P inherits the global layer, as it did in Mucka |
+
+The F-key test: after import, editing a global F-key slot changes no profile that had its own
+`[fkeys:P]`, because Mucka's replace semantics guaranteed that.
 source: director
 enforced_by: none: judgement
 
+open: For a profile with `[settings:P]`, a settings-scope key that matched the global value at
+import is not written, so a later global edit reaches that profile, which Mucka's replace semantics
+would not have allowed. Write every settings-scope key explicitly for such a profile instead?
+default: keep the rule above (differences only).
+
 ## Session transcript (`rec`)
 
-`scope: later`
+FACT The session transcript is specified outside the launch spec:
 
-FACT The transcript is the lossy, human-readable half of the pair. It records the screen, not the
-socket. The wire log is the byte-exact half. Where the two disagree, the transcript is wrong.
-source: reference
+| Feature | Scope | Spec |
+|---------|-------|------|
+| Session transcript (`rec`) | `scope: later` | `later/session-transcript.md` |
 
-| Behaviour | Rule |
-|-----------|------|
-| Arming | by hand only, never always on. One toggle, available at all times: at the shell, before login, mid-fight |
-| Controls | a `rec` chip in the status bar, a compact `(R)` marker (grey idle, red recording), a checkable menu item, and a command-line switch |
-| Command-line switch | arms, never toggles. It fires on first game-mode entry and does nothing if recording is already on |
-| One file per recording | starting a new recording opens a new file |
-| File name | `session-rec.{host}.{yyyyMMdd-HHmmss}.txt`, local time when recording started |
-| Host in the name | every character illegal in a file name becomes `_`. A blank host becomes `unknown` |
-| Location | the data directory |
-| Encoding | UTF-8, no byte-order mark |
-| Header | `Recording by Mucka from {host} starting on {yyyy-MM-dd HH:mm:ss}.` then one blank line |
-| Footer | one blank line, then `Recording by Mucka from {host} finished on {yyyy-MM-dd HH:mm:ss}.` |
-| Content | each screen line as it is committed, as plain text with markup resolved, sanitised and tab-expanded the way the screen shows it |
-| Prompt | a prompt that is replaced in place is written once, merged with its echoed command, as the screen shows it |
-| Commands | not written separately. MUD2 echoes commands, so the screen already carries them after alias and F-key expansion |
-| F-key note | the on-screen `// <macro>` note is written as a standalone line above the prompt it was raised against |
-| Client system lines | written, since they are on screen |
-| Clear screen | written as `[screen cleared]`. The file never clears. A prompt live at the clear is written first |
-| Recording started/stopped/failed notes | shown on screen, never written to the file |
-| On stop | a live, uncommitted prompt is written before the footer |
-| Durability | every line reaches disk as it is written, so a crash keeps everything up to that point |
-| Write failure | ends the recording and says so in the terminal |
-| Account ID | not masked. Armed before login, the file holds the echoed account ID. The password is never echoed, so it never appears |
-| Chat filter | does not apply. The transcript is the whole stream, recorded once |
-| Retention | nothing deletes old transcripts |
-
-source: reference
-
-FACT A reference wire-log record pair showing the echo: sent `wave\r\r\n`, then received
-`wave\r\r\n`.
-source: reference
-
-open: The pair above ends CR CR LF, while `connection.md` gives the outbound terminator as `0D 0A`
-and the captures show the echo ending `\r\n` (`protocol.md`, Echo). Which does the server receive?
-
-FACT File name examples: host `mud2.co.uk` at 2026-09-14 20:30:15 gives
-`session-rec.mud2.co.uk.20260914-203015.txt`. Host `a/b` gives `session-rec.a_b.20260914-203015.txt`.
-A blank host gives `session-rec.unknown.20260914-203015.txt`.
-source: reference
-
-open: header and footer wording for MuckaII (the reference names "Mucka"), and whether the file
-name keeps the `session-rec.` prefix.
+source: director
 
 ## Import of `mucka.ini`
 
@@ -353,14 +387,15 @@ source: director (the director's machine, observed read-only)
 
 open: when both Windows candidates exist, should the importer take the first silently, or show both
 and let the user choose?
+default: take the first silently. It is the file Mucka itself was using.
 
 ### What is imported
 
 | Item | Rule |
 |------|------|
 | Profiles | in MRU order, as `mucka-ini.md` "`[profiles]`" defines it, with every identity key |
-| Settings | per profile, keeping the global / "profile only" split for each part, as `mucka-ini.md` "How the sections combine" defines it |
-| F-keys | `F1`-`F36`, global and per profile, same split |
+| Settings | per profile, keeping the global / "profile only" split for each part, as `mucka-ini.md` "How the sections combine" defines it, written as explicit per-key values ("Settings storage") |
+| F-keys | `F1`-`F36`, global and per profile, same split. A profile with `[fkeys:Name]` gets all 36 slots as explicit values, `cleared` included ("Settings storage") |
 | `[watch]` | the whole `[watch]` family as raw lines, verbatim, comments included |
 | Keys for `later` features | imported and kept, unused until the feature is built |
 | Obsolete keys | dropped (`mucka-ini.md`, "Obsolete keys") |
@@ -380,6 +415,9 @@ source: reference
 
 open: does declining the import (or cancelling the picker) write the marker, or is it offered again
 on the next run? And can the user re-run the import later from a menu?
+default: declining writes the marker. Cancelling the picker does not, so the import is offered
+again on the next run. There is no menu item to re-run it.
 
 open: does the importer show the user a summary of what it imported (profile count, F-keys, watch
 rules)?
+default: yes, as one client line: the number of profiles, F-key slots and `[watch]` lines imported.

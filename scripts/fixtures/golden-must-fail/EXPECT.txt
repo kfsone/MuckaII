@@ -1,0 +1,15 @@
+# Must-fail golden fixtures for check-goldens.py --self-test.
+# Each line: <fixture file> <substring every one of its violations must contain>.
+# Each fixture is a truncated copy of docs/evidence/golden/wyvern-poison-death.jsonl with one fault.
+attrs-unsorted.jsonl expected attrs
+colour-out-of-range.jsonl expected colour
+first-not-stream.jsonl first record must be stream
+key-order.jsonl keys ['chat_continues', 'kind']
+missing-capture.jsonl capture no-such-capture.c1 not found
+rx-backwards.jsonl rx 0 after rx 1
+rx-beyond-capture.jsonl rx 6 beyond the 6 rx record(s)
+source-not-capture.jsonl is not capture:<file>.c1
+unknown-event.jsonl unknown event 'txt'
+wire-tier-event.jsonl wire-tier event 'close'
+wrong-schema.jsonl stream schema 1
+wrong-type.jsonl chat_continues: expected bool
