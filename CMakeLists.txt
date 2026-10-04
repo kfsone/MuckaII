@@ -1,12 +1,19 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 4.3)
 
-project(MuckaII VERSION 0.0.0 LANGUAGES CXX)
+# MSVC debug information and runtime checks are selected by abstraction, not by /Zi and /RTC1 in
+# the flag strings (cmake/MuckaiiToolchain.cmake). Both must be set before project(). CMake 4.3
+# sets CMP0141 and CMP0184 to NEW already; the variables are what MuckaII chooses.
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>")
+set(CMAKE_MSVC_RUNTIME_CHECKS "")
+
+project(MuckaII VERSION 0.0.0 LANGUAGES CXX C)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(MuckaiiToolchain)
 
 set(CMAKE_CXX_STANDARD          20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CTest)
 include(MuckaiiTargets)

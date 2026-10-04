@@ -20,6 +20,7 @@ CHECKS = [
     ("spec-tags", ["check-spec-tags.py"]),
     ("goldens", ["check-goldens.py"]),
     ("goldens-self-test", ["check-goldens.py", "--self-test"]),
+    ("c1-code-table", ["gen-c1-codes.py", "--check"]),
     ("format", ["check-format.py"]),
 ]
 

@@ -49,6 +49,7 @@ source: agent
 | core | one reactor | socket, `transport`, `mud`, `session`, `client` instances, settings store | renders, touches disk |
 | audio | miniaudio device callback | mixer voices | locks, allocates, decodes |
 | writer | one background SQLite writer | the database connection, settings file writes | touches the socket |
+| resolver | Windows: none of MuckaII's; `GetAddrInfoExW`'s completion routine on a system thread wakes core. POSIX: one short-lived detached thread per connect running `getaddrinfo` (`connection.md` 1) | the resolved addresses until core takes them | touches the server socket |
 
 RULE Only the core thread touches the socket. `transport`, `mud`, `session` and `client` contain no
 locks: each instance is touched by exactly one thread. Synchronisation lives only in the channels
@@ -64,7 +65,9 @@ source: agent
 
 RULE Each reactor turn, in this order: read the socket and decode; drain the wake socket and the
 UI -> core FIFO into `session`'s queue; fire due `session` timers; write the queue. A timer send
-(keepalive, wake probe) therefore never overtakes a line already in the FIFO (`input.md`).
+(keepalive, wake probe) therefore never overtakes a line already in the FIFO (`input.md`). One turn
+reads at most 16 times (`kMaxReadsPerTurn`), so a flooding server never starves the FIFO, and a
+failed `poll()` ends the connection as a socket error rather than spinning.
 enforced_by: none: judgement
 source: agent
 
@@ -80,7 +83,7 @@ source: agent
 | UI -> core | `Submit{text, origin}`, settings edits, connect/disconnect | mutex-guarded vector, swapped out whole by core | one byte to the wake socket |
 | core -> UI | one event batch per socket read | `slint::invoke_from_event_loop` moving the batch (`gui`); in-place call (`tui`, `bot`) | Slint's own |
 | core -> audio | `Play{sound, startFrame}` | lock-free SPSC ring, fixed capacity | none: the callback drains it each period |
-| core -> writer | wire records, settings snapshots | mutex + condition variable queue | condition variable |
+| core -> writer | wire records, settings snapshots | mutex + condition variable queue, bounded: a record that does not fit is dropped and counted (`persistence.md`) | condition variable |
 
 RULE The UI side of each channel holds its lock only for a push. The audio callback takes no lock.
 enforced_by: none: judgement
@@ -155,6 +158,14 @@ call the same entry point, so all sends from one frontend share one FIFO in UI a
 enforced_by: none: judgement
 source: agent
 
+DECISION Core alone decides whether input is sensitive (`persistence.md`, Wire log). It publishes
+its verdict (an atomic, updated before each event batch is delivered); `submitLine` returns the
+verdict at that moment and carries it with the line. The frontend keeps a line out of the recall
+list on that returned verdict and hides the command box on `Core::isInputSensitive()`, never on its
+own copy of the flow state. The wire log masks a line when its carried verdict or the flow when it
+is sent says so, so a flow change between Enter and the send never unmasks it. Rejected: the
+frontend deciding from the flow events it has received (one batch behind core).
+source: agent, on a review finding
 DECISION The history recall list is owned by the frontend and appended at Enter on the UI thread.
 Rejected: history owned by core, where Up straight after Enter could miss the line just entered
 (`input.md` typing-path failure 4).
@@ -178,14 +189,31 @@ source: agent
 
 | `origin` | Produced by | 7-bit filter | Probe insertion | Wire log |
 |----------|-------------|--------------|-----------------|----------|
-| `typed` | Enter, Send button | yes | at reported boundaries | verbatim |
-| `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at reported boundaries | verbatim |
-| `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at reported boundaries | verbatim |
-| `raw` | raw console | no; no expansion | none | marked raw-console send |
-| `login` | `session` login drive | n/a | none | verbatim |
+| `typed` | Enter, Send button | yes | at reported boundaries | verbatim in game mode; outside it masked, same length, followed by an annotation (`persistence.md`, Wire log) |
+| `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at reported boundaries | as `typed` |
+| `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at reported boundaries | as `typed` |
+| `raw` | raw console | no; no expansion | none | marked raw-console send; outside game mode masked as `typed` |
+
+RULE Every user-originated send (`typed`, `macro`, `hotkey`, `raw`, and any origin added later
+that the user produces) is masked in the wire log outside game mode. `session::isUserOrigin`
+classifies each origin with no default case, and `Session::queue`, which every send passes, applies
+the mask, so no path can skip it.
+enforced_by: none: judgement; clang's -Wswitch (Linux gate) fails an unclassified origin
+source: agent, on a review finding
+| `login` | `session` login drive | n/a | none | verbatim, except the account ID line: masked, same length, annotated (`persistence.md`) |
 | `password` | `session` login drive | n/a | none | masked, same length, annotated (`persistence.md`) |
 | `keepalive` | `session` idle timer | n/a | none | verbatim |
 | `probe` | `session` | n/a | is the block | marked with position |
+| `telnet` | `session`'s answers to telnet negotiation, and NAWS (`connection.md` 2) | n/a | none | verbatim |
+| `width` | `session`'s `$-[/T{cols}$-]` on a resize in game mode (`connection.md` 4.1) | n/a | none | verbatim |
+
+DECISION Masking is carried with each send, beside its `origin`: the login drive's account ID line
+is a `login` send masked as the account ID, so the `login` row is not verbatim for that one line,
+as `persistence.md` "Wire log" already requires. Telnet replies and NAWS have their own `origin`,
+`telnet`, because they share the one ordered queue (`connection.md` 1, Outbound order) but no row
+above produced them. Rejected: a separate `account` origin, which would split one login drive into
+two producers.
+source: agent; director (masking the account ID, `persistence.md`)
 
 RULE Raw console sends bypass `client` expansion and the 7-bit filter but still go through
 `session`'s queue, so they keep their place in the one ordered stream.

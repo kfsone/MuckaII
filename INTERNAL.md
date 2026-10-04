@@ -34,8 +34,11 @@ DECISION One library per layer, all in one process, no IPC; layers, threads and 
 `docs/spec/architecture.md`. Frontends (GUI, TUI, bot) subscribe to the session layer's event
 stream in-process. The first frontend is a TUI on FTXUI: it proves the layering with no GUI risk.
 
-DECISION The bot frontend exists for tests and for the director's future AI experiments against a
-private MUD2 instance. It is not a player feature.
+DECISION The bot frontend exists for tests and for the director's possible future AI experiments.
+Those would run only against a private MUD2 server, with Bartle's permission. No such server exists
+yet. A bot never connects to the public game. It is not a player feature. Keep the architecture
+able to host one (a frontend over the same core), but build no bot features until that server
+exists.
 source: director
 
 open: Is the bot built into release artifacts?

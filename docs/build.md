@@ -6,16 +6,17 @@ source: agent
 
 ## CMake
 
-DECISION `cmake_minimum_required(VERSION 3.28)` and `CMakePresets.json` schema version 8. 3.28 is
-Ubuntu 24.04's packaged CMake; Slint needs 3.21. Rejected: 4.x as the minimum (schema 11-12), which
-Ubuntu 24.04 does not package.
+DECISION `cmake_minimum_required(VERSION 4.3)` and `CMakePresets.json` `cmakeMinimumRequired` 4.3,
+schema version 8: 4.3.1 is the CMake the director's machine uses, and there are no other builders
+(root `CLAUDE.md`). The `windows-2025-vs2026` image carries 4.4.3. Policies CMP0141 and CMP0184 are
+therefore NEW by version, with no `if(POLICY ...)` fallback. Rejected: 3.28 (Ubuntu 24.04's packaged
+CMake), a minimum kept for a builder that does not exist.
+source: director
 source: https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
-source: https://docs.slint.dev/latest/docs/cpp/cmake
 
-open: the lowest CMake that knows the generator `Visual Studio 18 2026` (the Windows presets need it;
-the 3.28 minimum is for the Linux gate).
-default: not pinned; CMake 4.3.1 (the director's machine) and 4.4.3 (the `windows-2025-vs2026` image)
-both have it.
+open: which CMake the `ubuntu-24.04` image puts on `PATH` for the `linux-gate` and `android` jobs is
+unverified; Ubuntu 24.04's own package is 3.28.
+default: those jobs install CMake 4.3 or newer before configuring when the image's is older.
 
 ## Language standard
 
@@ -119,6 +120,62 @@ source: https://www.sqlite.org/download.html
 source: https://github.com/ArthurSonzogni/FTXUI/releases
 source: https://github.com/google/googletest/releases
 
+EVIDENCE `cmake/MuckaiiDependencies.cmake` fetches GoogleTest, SQLite and FTXUI with the URLs and
+`URL_HASH` values in the tables above, and the configure verified all three hashes, SQLite's
+`SHA3_256` included. SQLite is built from the amalgamation as the static C library
+`sqliteAmalgamation` (`SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION`, `SQLITE_DQS=0`); its name
+is not `muckaii<Word>`, so the layer check does not take it for a layer. FTXUI is linked as
+`ftxui::component`, `ftxui::dom` and `ftxui::screen`, with its examples, docs, tests and install
+off. Slint and miniaudio are not fetched yet.
+source: measured on the director's machine, 2026-10-04
+
+DECISION C is enabled in `project(... LANGUAGES CXX C)` for SQLite (not later by `enable_language`,
+which would initialise C's flags after `cmake/MuckaiiToolchain.cmake` had settled them). On MSVC the
+sanitizer is a Debug compile option for C and C++ alike, so SQLite is instrumented like the rest
+(Presets RULE: sanitizer flags stay global); the Linux presets still give `CMAKE_C_FLAGS` theirs.
+Rejected: leaving C on CMake's defaults, which would build SQLite without ASan and with `/RTC1` beside
+`/fsanitize=address`.
+source: agent
+
+FACT The director's warnings came from a plain configure, `build/oliver`, made without a preset:
+CMake's MSVC defaults (`/DWIN32 /D_WINDOWS /EHsc`, Debug `/Ob0 /Od /RTC1`) met our per-target
+`/EHs-c-` and `/fsanitize=address`, and cl printed `warning D9025: overriding '/EHc' with '/EHc-'`.
+A clean plain `cmake -G "Visual Studio 18 2026"` build gave 184 of them per configuration (Debug and
+Release alike). The presets had hidden this by replacing `CMAKE_CXX_FLAGS` whole.
+source: measured on the director's machine, 2026-10-04
+
+DECISION MSVC flag ownership lives in CMake, not in `CMakePresets.json`, so the build is
+warning-free however it is configured (preset, plain `cmake -G`, the VS IDE).
+`cmake/MuckaiiToolchain.cmake`, included straight after `project()`, strips `/EH*`, `/RTC*` and `/ZI`
+from every inherited `CMAKE_<CXX|C>_FLAGS*`; `CMakeLists.txt` relies on `CMP0141 NEW` with
+`CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>` (`/Zi`),
+and `CMP0184 NEW` with an empty `CMAKE_MSVC_RUNTIME_CHECKS`, both before `project()`; both policies
+are NEW by the 4.3 minimum. Option `MUCKAII_ASAN` (default ON, MSVC) adds `/fsanitize=address` to C and C++
+Debug compiles and `/INCREMENTAL:NO` to Debug links. The presets are thin selectors: generator,
+x64 toolset, binary dir, `MUCKAII_ASAN`. Rejected: presets that replace `CMAKE_CXX_FLAGS` (invisible
+to a plain configure and the IDE); `/wd4xxx`-style suppression of D9025.
+source: agent
+evidence: plain configure, Debug and Release: 184 D9025 each before, 0 warnings after.
+
+FACT FTXUI's own sources and
+the MSVC STL headers they include (`<chrono>`, `__msvc_ostream.hpp`) contain `try`/`catch`, so a
+clean build of 7.0.3 printed warning C4530 ("C++ exception handler used, but unwind semantics are not
+enabled") 26 times per preset, 52 in all, and nothing else: no D9xxx, no LNK4xxx, no CMake warning.
+Origin was FTXUI targets `ftxui-screen`, `ftxui-dom`, `ftxui-component` (`chrono(2387,9)`,
+`__msvc_ostream.hpp(820,9)`). GoogleTest already compiles with `/EHsc`; SQLite is C.
+source: measured on the director's machine, 2026-10-04, clean build of both Windows presets
+
+DECISION FTXUI is built with `/EHsc`, appended to `CMAKE_CXX_FLAGS` inside a `block()` around its
+`FetchContent_MakeAvailable` in `cmake/MuckaiiDependencies.cmake`, so the flag reaches FTXUI's
+directory tree and nothing else. MuckaII's own targets keep `/EHs-c-` and `_HAS_EXCEPTIONS=0`
+(exceptions disabled in our code, `docs/style.md`). Rejected: `/wd4530` or a pragma (hides a real
+diagnostic: a dependency that can throw would terminate); `/EHsc` in the global `CMAKE_CXX_FLAGS`
+(our targets then see `/EHsc` and `/EHs-c-` together, the D9025 above); marking FTXUI's sources
+SYSTEM (C4530 is raised in the STL headers FTXUI includes, which `/external` does not cover, and the
+real cause is a missing flag).
+source: agent
+evidence: warning C4530 x52 (26 per preset) in clean builds before the change; 0 after.
+
 open: the hash of Slint's prebuilt Windows package.
 default: hash the release asset when the Windows preset is written.
 
@@ -137,8 +194,8 @@ default: spike step 1 verifies both before any other Android work.
 
 | Preset | Toolchain | Builds | Global flags |
 |--------|-----------|--------|--------------|
-| `windows-msvc-debug` | MSVC | everything | `/fsanitize=address`; `/RTC1`, `/ZI` and `/INCREMENTAL` removed (`/INCREMENTAL:NO`; MSVC rejects them with ASan); `/Zi` |
-| `windows-msvc-release` | MSVC | everything | `/O2` |
+| `windows-msvc-debug` | MSVC | everything | none in the preset (`MUCKAII_ASAN=ON`). From `cmake/MuckaiiToolchain.cmake`: Debug `/fsanitize=address` and `/INCREMENTAL:NO`; `/RTC*`, `/ZI` and `/EH*` never inherited (MSVC rejects the first two with ASan); `/Zi`. Per target, ours: `/W4 /WX /permissive- /Zc:__cplusplus /EHs-c-`, `_HAS_EXCEPTIONS=0`. FTXUI only: `/EHsc` |
+| `windows-msvc-release` | MSVC | everything | none in the preset; CMake's Release default `/O2 /Ob2 /DNDEBUG`. Same per-target flags as Debug |
 | `linux-clang-asan-ubsan` | clang 22, libc++ | core libraries, `tui`, `bot`, tests; no Slint | `-stdlib=libc++ -fsanitize=address,undefined -fno-sanitize-recover=all` |
 | `linux-clang-fuzz` | clang 22, libc++ | `mud` and its fuzz target only | `-stdlib=libc++ -fsanitize=fuzzer-no-link,address,undefined`; `-fsanitize=fuzzer` on the `muckaiiMudFuzz` link only |
 | `android-arm64` | NDK r30 | core libraries, `gui` | ABI `arm64-v8a`, API 26 |
@@ -158,13 +215,13 @@ source: agent
 
 | Library | Test target | Extra |
 |---------|-------------|-------|
-| `muckaiiTransport` | `muckaiiTransportTests` | loopback fake server |
+| `muckaiiTransport` | `muckaiiTransportTests` | `muckaiiTransportLoopback` (the 127.0.0.1 listener the fake servers accept on, test support) |
 | `muckaiiMud` | `muckaiiMudTests` | `muckaiiMudGolden` (golden serialiser), `muckaiiMudFuzz` (seeded from `docs/evidence/captures/`) |
 | `muckaiiPersistence` | `muckaiiPersistenceTests` | |
 | `muckaiiSession` | `muckaiiSessionTests` | injectable clock |
 | `muckaiiClient` | `muckaiiClientTests` | |
 | `muckaiiAudio` | `muckaiiAudioTests` | book-end frame positions |
-| `muckaiiCore` | `muckaiiCoreTests` | ordering test at the fake server's received bytes |
+| `muckaiiCore` | `muckaiiCoreTests` | ordering test at the fake server's received bytes; `muckaiiCoreFakeServer` (the loopback fake MUD2 server, test support) |
 
 | Executable | Frontend |
 |------------|----------|
@@ -212,10 +269,17 @@ Android preset exists here; that work lives on the `android` branch.
 source: measured on the director's machine, 2026-10-02
 
 EVIDENCE `muckaii<Layer>` and `muckaii<Layer>Tests` exist for transport, mud, persistence, session,
-client, audio and core, and the placeholder executable `muckaiiTui` links `muckaiiCore`. Each
-library holds one small function. Only GoogleTest is fetched; Slint, miniaudio, SQLite and FTXUI
-are not yet.
-source: measured on the director's machine, 2026-10-02
+client, audio and core, and `muckaiiTui` is the FTXUI frontend. `audio` is still a placeholder
+holding one function. Test support: `muckaiiMudGolden` (capture reader, replay, golden serialiser),
+`muckaiiTransportLoopback` and `muckaiiCoreFakeServer`. `src/mud/codeTable.cpp` is generated from `docs/spec/c1-codes.toml` by
+`scripts/gen-c1-codes.py`; `scripts/check-all.py` runs it with `--check` and fails if the
+committed table is stale.
+source: measured on the director's machine, 2026-10-04
+
+DECISION `scripts/check-tidy.py` adds `src/<layer>/<part>/include` (test support) and, with
+`-isystem`, the fetched SQLite and FTXUI headers under `build/<preset>/_deps`, so it needs a
+configured preset; it fails, rather than skipping files, when none has them.
+source: agent
 
 EVIDENCE `cmake/MuckaiiLayers.cmake` holds the layer table of `docs/spec/architecture.md`. It fails
 the configure on an upward or sideways link between targets, and runs as the ctest test

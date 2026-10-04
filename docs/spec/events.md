@@ -359,6 +359,12 @@ on anyone in the room.
 source: bartle:FE4 Codes and their meanings
 source: capture:blind-vs-water-snake.c1
 
+DECISION `c1-codes.toml` writes the disabling spell's id as `11`, not `11 00`; the two are the same
+code (`protocol.md` "Parameters"), and the header arrives as `11 00` in every capture. The matched
+id `11` is written `11 00` in `spell_phrase`, the form this schema's `id` enum and the goldens use.
+Rejected: writing `11`, which the schema does not allow, and renaming the table entry.
+source: capture:blind-vs-water-snake.c1; agent
+
 FACT Which effect a phrase describes, and whether it is the player's own, is read from its words:
 `ui.md` "Effect icons" gives the rules (own phrases begin `You `, `Your ` or `Some of your `; the stat
 and direction come from words such as `fitter` and `less adroit`). That is the status bar's layer, not

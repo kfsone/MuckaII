@@ -40,6 +40,13 @@ source: agent
 | Capture | Event | Difference |
 |---------|-------|------------|
 | dark-two-rats | `room_long` | MuckaII reports the last row of each long description (`events.md` Readings); the golden has no record for it, because the server closes `02 02` before that row's line end. Both rooms in the capture |
+| invisible-man-preemptive | `room_long` | The same rule. All four long descriptions here (rx 1, 5, 15, 23) are one row whose `02 02` closes before its line end, so the golden has no `room_long` for any of them and MuckaII writes one each |
+
+EVIDENCE The six captures hold six `02 02` headers (`c1-codes.toml` `observed`): two in
+dark-two-rats and four in invisible-man-preemptive. Every one closes before the line end of the
+description's last row, so each is a known difference. `src/mud/goldenTests.cpp` lists all six
+insertions exactly; the golden replay test fails on any other difference.
+source: capture:dark-two-rats.c1; capture:invisible-man-preemptive.c1
 
 ## Gaps
 

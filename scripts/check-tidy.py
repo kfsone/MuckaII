@@ -5,8 +5,9 @@ Usage: check-tidy.py
 
 Runs clang-tidy, at the major version docs/build.md pins (scripts/llvmtools.py), over every .cpp
 under src/ except the *Tests.cpp files (GoogleTest's macros do not follow the naming rules). The
-compile flags are given directly after `--`, so no build directory is needed: each library's
-include directory is src/<layer>/include. On Windows the MSVC environment comes from the Visual
+compile flags are given directly after `--`: each library's include directory is
+src/<layer>/include (src/<layer>/<part>/include for test support), and third-party headers come
+from the FetchContent sources under build/<preset>/_deps, so a preset must have been configured. On Windows the MSVC environment comes from the Visual
 Studio 18 (2026) install's vcvars64.bat, located with vswhere. If clang-tidy cannot be found the
 check FAILS with a message saying where it looked.
 """
@@ -21,7 +22,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import llvmtools  # noqa: E402
 import repofiles  # noqa: E402
 
-FLAGS = ["-std=c++20", "-fno-exceptions", "-D_HAS_EXCEPTIONS=0", "-Wno-unknown-pragmas"]
+FLAGS = ["-std=c++20", "-fno-exceptions", "-D_HAS_EXCEPTIONS=0", "-Wno-unknown-pragmas",
+         "-DMUCKAII_REPO_ROOT=\".\"", "-DMUCKAII_VERSION=\"0.0.0\""]
+
+# Third-party include directories under build/<preset>/_deps, relative to it.
+DEPENDENCY_INCLUDES = ["sqlite3-src", "ftxui-src/include"]
 
 
 def vcvars():
@@ -48,6 +53,22 @@ def msvc_environment():
     return env
 
 
+def dependency_includes():
+    """-isystem flags for the fetched third-party headers MuckaII's sources include.
+
+    FetchContent puts them under build/<preset>/_deps (docs/build.md, "Dependencies"); the first
+    preset directory that has all of them is used. None, after printing why, when none has them:
+    the gate then fails rather than skipping the files that need them.
+    """
+    for deps in sorted(glob.glob(os.path.join(repofiles.ROOT, "build", "*", "_deps"))):
+        found = [os.path.join(deps, rel) for rel in DEPENDENCY_INCLUDES]
+        if all(os.path.isdir(d) for d in found):
+            return ["-isystem" + d.replace("\\", "/") for d in found]
+    print("FAIL: no build/<preset>/_deps holds %s; configure a preset first (cmake --preset "
+          "windows-msvc-debug)" % ", ".join(DEPENDENCY_INCLUDES))
+    return None
+
+
 def run(cmd, env):
     return subprocess.run(cmd, cwd=repofiles.ROOT, env=env, stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT)
@@ -67,8 +88,13 @@ def main(argv):
     if not sources:
         print("FAIL: no sources found under src/, so nothing was checked")
         return 1
-    includes = ["-I" + d.replace("\\", "/") for d in sorted(glob.glob(
-        os.path.join(repofiles.ROOT, "src", "*", "include")))]
+    includes = ["-I" + d.replace("\\", "/") for d in sorted(
+        glob.glob(os.path.join(repofiles.ROOT, "src", "*", "include"))
+        + glob.glob(os.path.join(repofiles.ROOT, "src", "*", "*", "include")))]
+    deps = dependency_includes()
+    if deps is None:
+        return 1
+    includes += deps
     failed = []
     env = msvc_environment()
     for src in sources:

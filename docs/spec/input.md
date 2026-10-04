@@ -85,10 +85,11 @@ RULE The keepalive (an empty line sent after the idle interval, `scope: later`, 
 enforced_by: none: judgement
 source: reference
 
-RULE Recalling a history entry always puts the stored text in the box, even when the box shows an
-edited copy of that entry or the same entry already. Escape always leaves the box empty.
+RULE Recalling a history entry puts its text in the box: the stored text, or the edited copy of it
+the user left behind with Up or Down since the last Enter (see History, DECISION). Escape always
+leaves the box empty.
 enforced_by: none: judgement
-source: reference
+source: reference; agent (edited copies, on a review finding)
 
 ## History
 
@@ -123,8 +124,20 @@ source: reference, clio:src/history.c
 open: Down with no recall in progress destroys the typed draft. An accidental Down at typing speed
 loses the line. Keep, or make Down a no-op (or stash the draft) when not recalling?
 default: Down with no recall in progress is a no-op, and the draft stays. Typed text is never
-discarded by one key (Invariant #1). Down during a recall behaves as in the table.
-source: reference
+discarded by one key (Invariant #1). Down during a recall behaves as in the table, except that Up
+stashes the unsent draft and Down past the newest entry restores it rather than emptying the box
+(the "Unsent draft" row's discard is a lost draft too). Built so in `client::LineEditor`.
+source: reference; agent (the stash, on a review finding: Up then Down lost the draft)
+
+DECISION No key but Enter and Escape discards typed text. The draft and each history entry are
+places the box can show; Up and Down move between them, and an edit changes only the text of the
+place shown. Leaving an edited recall with Up or Down keeps its edited copy, shown again on return;
+the stored entry never changes. Enter (which sends the box) and Escape (which empties it on
+purpose) drop the draft and every edited copy. Up at the oldest entry leaves the box untouched.
+History is trimmed of spaces and tabs. This replaces the reference's "Recalled line" and "Unsent
+draft" rows wherever they would lose text. Rejected: the reference's rule that recalling always
+shows the stored text (an edit, then Up, then Down, lost the edit).
+source: agent, on a review finding (an edited recall was lost on Up or Down)
 
 ## Escape
 

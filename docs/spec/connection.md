@@ -22,7 +22,7 @@ source: director
 | Default profile "MUD2.COM" | host `www.mud2.com`, port 27723 | launch | reference |
 | New-profile default | host `mud2.co.uk`, port 23 | launch | reference |
 | Port when none given | 23 | launch | clio:src/main.c (CLIOPORT fallback); reference |
-| Connect timeout | 15 s, then the connect page shows the error text | launch | reference |
+| Connect timeout | 15 s overall, name resolution included, then the connect page shows the error text | launch | reference; agent (overall) |
 | Nagle | off: each write goes out immediately | launch | reference |
 | Outbound line terminator | `0D 0A` | launch | clio:src/telnet.l autologin rules; reference |
 | Outbound order | one ordered writer; every typed line, macro, probe and telnet reply goes through it | launch | reference; root CLAUDE.md Invariant #1 |
@@ -35,6 +35,37 @@ default: `0D 0A`, as the table above, Clio and the captures' echo give it.
 FACT Clio refuses to start without a host (argument or `CLIOHOST`) and takes its port from the
 second argument or `CLIOPORT`, else 23.
 source: clio:src/main.c
+
+DECISION The connect never blocks the core thread. On Windows name resolution is
+`GetAddrInfoExW`, asynchronous: its completion routine wakes the core, and a quit or the deadline
+cancels it with `GetAddrInfoExCancel` and waits for the routine, so nothing outlives the connect.
+On POSIX `getaddrinfo` cannot be cancelled (`getaddrinfo_a` is glibc only, absent from Android's
+bionic), so it runs on a short-lived detached thread that holds only its own result and the wake
+socket, and an abandoned lookup finishes harmlessly after the connect has returned. The connect
+itself is non-blocking and polled together with the wake socket. A quit while connecting therefore
+returns at once. Rejected: a blocking connect with a per-address timeout (a quit waited for it, up
+to 15 s per address); a detached thread on Windows, where cancellation exists.
+source: agent, on review findings (Ctrl+C during connect hung; a thread outlived its connect)
+
+RULE The 15 s connect timeout bounds resolution and every address tried, together. Each address
+gets an equal share of what is left when its attempt starts, split over the addresses not yet
+tried, itself included (`transport::getAttemptBudget`); the last gets all that is left. An address
+that never answers therefore cannot spend the budget of the addresses after it.
+enforced_by: none: judgement
+source: agent, on a review finding
+
+RULE A data byte 255 in an outbound line is sent doubled (`FF FF`), as telnet requires
+(`protocol.md`, Telnet residue in the stream). The 7-bit filter means a typed line never holds one;
+NAWS doubles its own (2.2).
+enforced_by: none: judgement
+source: protocol.md (bartle:FE4; clio:src/telnet.l)
+
+RULE A quit (Ctrl+C, closing the window) writes the lines already submitted before the socket
+closes, within a bounded wait of 2 s. Any typed line not written by then, or left when the
+connection closes or never opens, is reported once in the terminal (`N typed lines were not sent:
+<why>`) and in the wire log; no typed line is lost silently.
+enforced_by: none: judgement
+source: agent, on review findings (Ctrl+C dropped queued sends; lines after a drop vanished)
 
 ### 1.1 Disconnect detection
 

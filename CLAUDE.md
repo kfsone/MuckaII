@@ -135,7 +135,7 @@ elsewhere in the tree.
 | Toolchain, presets, dependencies, CI | `docs/build.md` |
 | C++ style | `docs/style.md`, enforced by `.clang-format` and `.clang-tidy` |
 | Code | `src/<layer>/`; public headers in `src/<layer>/include/muckaii/<layer>/` |
-| Repo gates | `scripts/check-all.py` (captures, 7-bit text, tripwire, spec tags, goldens, format) |
+| Repo gates | `scripts/check-all.py` (captures, 7-bit text, tripwire, spec tags, goldens, C1 code table, format) |
 | Lint gate | `scripts/check-tidy.py`, run by ctest |
 | Layer direction gate | `cmake/` (checked at configure) and a ctest include check |
 

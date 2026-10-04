@@ -75,10 +75,22 @@ source: director
 
 source: director
 
-open: With `telnetlogin` off, the user types the account ID and password into the command box, so
-the login state machine does not send them. Mask a line sent while the recognised account or
-password prompt is the live partial? If so, Invariant #1's acceptance check must skip masked records.
-default: yes, mask it the same way, with the same annotation.
+DECISION Every send the user originates (typed, macro, hotkey, raw console; `architecture.md`, the
+origin table) while the flow is not Game (`flow.md`: Profile and Pre-game, connecting included) is
+masked in the wire log the same way: same length, every byte before the `0D 0A` replaced. A line
+core judged sensitive when it was submitted stays masked if the game has begun by the time it is
+sent (`architecture.md`, Input: core's verdict). The annotation names the recognised prompt when one is live (`masked: account
+id`, `masked: password`), else `masked: pre-game line`. The rule depends on no prompt text, so it
+covers type-ahead (a line typed while connecting waits in the UI -> core FIFO and is sent before any
+prompt exists) and a credential typed at a prompt the login drive does not recognise ("Enter
+password:", "PASSWORD:", "Old Password:"). Persona names and menu choices typed pre-game are masked
+too: over-masking a public name is the safe side. Invariant #1's acceptance check skips masked
+records. A frontend hides typed text in the command box on the same rule and keeps such lines out of
+the recall list (`session::isInputSensitive`, one rule for both). Rejected: masking only while a
+recognised prompt is the live partial (leaks type-ahead and every unrecognised prompt); holding
+typed lines until the prompt they answer is live (needs the same unreliable prompt recognition, and
+stalls the one ordered stream).
+source: agent, on a review finding (type-ahead and unrecognised prompts left credentials in clear)
 
 open: The account ID also arrives inbound: in the server's echo of the account line and in the
 `95` client-mode block (`events.md`, `client_mode`). Mask it in received records too, or keep them
@@ -134,6 +146,13 @@ timestamp.
 enforced_by: none: judgement
 source: reference
 
+DECISION A record's timestamp is the run's start, read once from the wall clock (unix ms UTC), plus
+the time elapsed since on the monotonic (steady) clock. A wall-clock step during a run (NTP, a manual
+change) therefore never makes timestamps run backwards against the sequence; the cost is drift from
+wall time over a long run. The run's `ended` uses the same clock. Rejected: reading the wall clock
+for every record, which can run backwards.
+source: agent, on a review finding
+
 RULE The direction numbers are stored values and are never renumbered.
 enforced_by: none: judgement
 source: reference
@@ -186,6 +205,27 @@ source: agent
 | The client is closed | queued records are flushed before exit, with a bounded wait |
 
 source: reference
+
+DECISION Three refinements of the table above. (1) A lock held by another instance (`SQLITE_BUSY`,
+`SQLITE_LOCKED`) is not a failure: the writer keeps the batch and retries, backing off from 50 ms
+to 2 s, at open and at every write, and reports nothing; only other errors stop the log. (2) The
+hand-over queue holds at most 16384 records (`persistence::kMaxQueuedRecords`) and at most 64 MiB of
+their bytes (`persistence::kMaxQueuedBytes`). A record handed over that would pass either bound is
+dropped at once, never waited for: its sequence number stays used, so the gap shows, the first drop
+is reported once in the terminal, and the next record that fits is preceded by an annotation
+`wire log: N records dropped here; the writer fell behind`, where N is the number of dropped records
+(the width of the gap). The count annotation uses a sequence number only when it is stored. (3) The bounded wait at
+close is 3 s; after it the writer finishes only the batch in hand (at most 512 records, one 250 ms
+lock wait) and the rest is dropped. Rejected: a permanent stop on a transient lock (two instances
+share one database by design); an unbounded queue; blocking the core thread on a full queue.
+source: agent, on review findings (a lock disabled the log; the queue and the close wait were
+unbounded)
+
+DECISION No home directory (`USERPROFILE` on Windows, `HOME` elsewhere, unset or empty) means no
+data directory: the connection goes ahead, no records are kept, and the run says so once in the
+terminal, as for a database that cannot be opened. The database path reaches SQLite as UTF-8, never
+through the ANSI code page.
+source: agent, on a review finding
 
 FACT Nothing prunes, rotates or consolidates the wire log. The user reclaims space by deleting rows
 by hand.

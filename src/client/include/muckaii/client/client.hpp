@@ -1,11 +1,13 @@
 #pragma once
 
-#include <charconv>
+#include <string>
 #include <string_view>
 
 namespace muckaii::client
 {
-// Parses the whole of `text` as a decimal count into `count`. Non-throwing, std::from_chars style:
-// success is std::errc{}; on failure `count` is untouched.
-std::errc parseCount(std::string_view text, int& count) noexcept;
+// The single send boundary's 7-bit filter (root CLAUDE.md, "Bytes, not strings"): UTF-8 text the
+// player typed, reduced to printable 7-bit characters. Typographic punctuation is transliterated
+// (curly quotes, dashes, the ellipsis, non-breaking spaces); a TAB becomes a space; anything else
+// outside 0x20-0x7E, and any byte that is not well-formed UTF-8, is dropped.
+[[nodiscard]] std::string toSevenBit(std::string_view utf8);
 } // namespace muckaii::client

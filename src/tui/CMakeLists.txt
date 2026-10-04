@@ -1,4 +1,5 @@
-add_executable(muckaiiTui main.cpp)
-target_link_libraries(muckaiiTui PRIVATE muckaiiCore muckaiiClient)
+add_executable(muckaiiTui main.cpp scroll.cpp)
+target_link_libraries(muckaiiTui PRIVATE muckaiiCore muckaiiClient ftxui::component ftxui::dom ftxui::screen)
+target_compile_definitions(muckaiiTui PRIVATE MUCKAII_VERSION="${PROJECT_VERSION}")
 muckaiiTargetDefaults(muckaiiTui)
 muckaiiExecutableRuntime(muckaiiTui)

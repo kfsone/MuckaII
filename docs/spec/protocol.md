@@ -42,6 +42,18 @@ bytes as more header and keeps reading.
 source: reference
 scope: launch
 
+## Telnet subnegotiation
+
+DECISION Inside a subnegotiation (`FF FA` ... `FF F0`) only `FF FF` (a data byte 255) and `FF F0`
+(the end) are valid. Recovery from anything else: `FF` followed by any other byte abandons the
+subnegotiation and those two bytes are a telnet command of their own; the bytes after it are data
+again, so a malformed subnegotiation's remaining payload is shown as text and its eventual `FF F0`
+is a stray command (both ignored by the session). A subnegotiation that reaches 1024 bytes
+(`connection.md` 2.1) is abandoned at that ceiling and decoding resumes with the next byte as
+data, so one that never ends cannot swallow the stream. Rejected: swallowing until `FF F0` however
+long it takes (an unterminated subnegotiation would hide the rest of the session).
+source: RFC 854; RFC 855; agent, on a review finding
+
 ## C1 framing
 
 FACT A C1 code is a header of 1 to 4 numbers, each 0 to 99, sent as one byte per number with 155
