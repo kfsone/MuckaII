@@ -4,19 +4,14 @@ FACT Each `<capture>.jsonl` here is the previous client's parser output for
 `docs/evidence/captures/<capture>.c1`, mapped into schema 2 in `docs/spec/events.md`.
 source: reference
 
-RULE The goldens are the reference's output, and they rank below Bartle's documents and below the
-captures. A diff between the MuckaII decoder and a golden is a lead to investigate, not a target to
-match. Where the spec follows Bartle or a capture against the reference, MuckaII is right and the
-golden differs; each such place is listed under "Known differences".
-enforced_by: none: judgement
-source: director
+Goldens rank below Bartle and the captures; a diff is a lead, not a target (`events.md`, the golden
+RULE). Places where MuckaII is right and the golden differs are under "Known differences".
 
 FACT The producer fed the 18 priming bytes `events.md` specifies as one read (all six captures begin
-mid-session), then the `rx` records one at a time, and signalled end-of-read after each record. Within
-a record it handed the parser one byte per call, so it could watch the parser's state between bytes;
-this is the same as one call per record, because the parser's feed is a loop over single bytes and
-end-of-read fires only at record boundaries. No wire-tier events are written. `scripts/check-goldens.py` validates every file against the
-schema block in `events.md`.
+mid-session), then the `rx` records one at a time, signalling end-of-read after each record. It fed
+the parser one byte per call, which is equivalent to one call per record (end-of-read fires only at
+record boundaries). No wire-tier events are written. `scripts/check-goldens.py` validates every
+file against the schema block in `events.md`.
 source: reference
 
 FACT `sound_code` and `spell_phrase` come from the reference's per-header sound queue and its 11-phrase
@@ -37,16 +32,10 @@ source: reference (counted in the `.jsonl` files here)
 | phone-login-at-20-columns | 112 | 0 | 0 |
 | wyvern-poison-death | 59 | 5 | 0 |
 
-FACT Against the schema 1 goldens the only changes are the added `sound_code` and `spell_phrase`
-records, and the first `prompt` of `phone-login-at-20-columns.jsonl`, which the gate now closed by
-priming discards (it follows a leading FES reply).
-source: reference
-
 ## Known differences
 
-FACT Places where the spec departs from the reference, so a correct MuckaII decoder's stream
-differs from these goldens.
-source: director
+FACT Where the spec departs from the reference, so a correct decoder differs from these goldens:
+source: agent
 
 | Capture | Event | Difference |
 |---------|-------|------------|
@@ -70,9 +59,8 @@ source: reference
 | `reset_signal` | The reference's reset signals | It reports `06 04` and `06 06` only when sent with exactly two numbers. No capture has a `06` code. |
 | `teller` | The reference's tell sender | No capture has a `09` code. |
 
-FACT No slot: the reference reports these, and the schema has nowhere to put them, because they
-belong to a layer above the decoder or are client policy. They are left out of the goldens. The
-counts are in the EVIDENCE table after this one.
+FACT No slot: the reference reports these, but they belong to a layer above the decoder or are
+client policy, so the goldens leave them out. Counts: the EVIDENCE table below.
 source: reference
 
 | Capture | Reference output | Issue |

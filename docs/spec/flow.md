@@ -37,8 +37,8 @@ be changed without logging in.
 source: director
 enforced_by: none: judgement
 
-RULE The Profile state also gives access to the global settings and to the score graph. The score
-graph is `scope: later`; until it exists there is no way into it.
+RULE The Profile state also gives access to the global settings and to the score graph
+(`scope: later`; until it exists there is no way into it).
 source: director
 enforced_by: none: judgement
 
@@ -88,8 +88,7 @@ RULE Game mode ends when the client detects a return to the Option menu.
 source: director
 enforced_by: none: judgement
 
-open: How the server signals the return to the Option menu (OPEN A5). It is launch-critical.
-default: the text trigger and `95 03` in `protocol.md` "Game mode"; no code is expected.
+How the server signals that return is launch-critical and open: `protocol.md` "Game mode" (OPEN A5).
 
 ## Tombstone
 

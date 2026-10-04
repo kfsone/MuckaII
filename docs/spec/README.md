@@ -1,34 +1,34 @@
 # docs/spec
 
-FACT This directory says what MuckaII must do, as behaviour that can be observed from outside the
-program. It is the only form in which the previous client (Mucka) reaches this project.
+FACT This directory is what MuckaII must do, as behaviour observable from outside the program. It
+is the only form in which the previous client (Mucka) reaches this project.
 source: director
 
 ## Source tags
 
-Every statement ends with a `source:` line. The sources, strongest first (`CLAUDE.md`, Evidence):
+Every statement ends with a `source:` line. Statement tags are those of the root `CLAUDE.md`. Sources,
+strongest first (ranking: `CLAUDE.md`, Evidence):
 
-- `bartle:FE4 <section or code>`: `G:\Source\mud-fe\mud2_FE4.txt`
-- `bartle:FECodes <section>`: `G:\Source\mud-fe\MUD-FECodes.txt`
-- `capture:<file>.c1`: `docs/evidence/captures/`
-- `clio:<relative path>`: `G:\Source\clio-1.8a`
-- `director`: a rule the director set
-- `reference`: what Mucka observably does. This is the weakest source. It is a behaviour to keep
-  unless evidence says otherwise, and it is never a claim about how the server works.
-
-Statement tags are the same as in the root `CLAUDE.md`: FACT, RULE, DECISION, EVIDENCE.
+| Token | Means |
+|-------|-------|
+| `bartle:FE4 <section or code>` | `G:\Source\mud-fe\mud2_FE4.txt` |
+| `bartle:FECodes <section>` | `G:\Source\mud-fe\MUD-FECodes.txt` |
+| `capture:<file>.c1` | `docs/evidence/captures/` |
+| `clio:<relative path>` | `G:\Source\clio-1.8a` |
+| `director` | a rule or ruling the director set |
+| `agent` | an agent's design choice, inference or count, not ruled by the director. Marks authorship, not evidence: it never settles server behaviour, and the director may overturn it without new evidence |
+| `reference` | what Mucka observably does. Weakest: a behaviour to keep unless evidence says otherwise, never a claim about the server |
 
 ## What a spec line may not contain
 
 RULE No names from the reference implementation: no type, file, method, namespace, setting
-property, or test name. Names that belong to the outside world are fine: `mucka.ini` section and key
-names (they are user data), protocol code names (C98, FES), telnet option names, key chords, `$`
-commands.
+property, or test name. Outside-world names are fine: `mucka.ini` sections and keys (user data),
+protocol code names (C98, FES), telnet option names, key chords, `$` commands.
 source: director
 enforced_by: scripts/check-tripwire.py (for the listed names); otherwise none: judgement
 
 RULE A workaround for MAUI, WinUI, or Android is not a requirement. Record the user-visible need it
-served, if there was one, and drop the mechanism.
+served, if any, and drop the mechanism.
 source: director
 enforced_by: none: judgement
 
@@ -36,33 +36,28 @@ RULE Mark each feature `scope: launch` or `scope: later`. The launch scope is in
 source: director
 enforced_by: none: judgement
 
-RULE Tables over prose. Where a list of codes, keys, or fields exists, it is a TOML or Markdown
-table, not a paragraph.
+RULE Tables over prose. A list of codes, keys, or fields is a TOML or Markdown table.
 source: director
 enforced_by: none: judgement
 
-RULE Where sources disagree, record both and apply the evidence ranking in `CLAUDE.md`. If the
-ranking decides, record a DECISION that names the deciding source. If it does not, add an `open:`
-line with a `default:`. Never silently pick one.
+RULE Where sources disagree, record both and apply the evidence ranking (`CLAUDE.md`). If it
+decides, record a DECISION naming the deciding source. If not, add an `open:` line with a
+`default:`. Never silently pick one.
 source: director
 enforced_by: none: judgement
 
-RULE Every `open:` line is followed by a `default:` line saying what to build until the director
-rules. An `open:` with a `default:` can be implemented. One without is a question for the director
-before any code is written.
+RULE Every `open:` line is followed, in the same paragraph, by a `default:` line: what to build
+until the director rules. An `open:` with a `default:` can be implemented; one without blocks code.
 source: director
-enforced_by: scripts/check-spec-tags.py (report-only until every default is written)
+enforced_by: scripts/check-spec-tags.py
 
-RULE Spec files contain only 7-bit characters. This is a rule about the files. The wire format is
-MUD2's own markup encoding and is described in `protocol.md`.
-source: director
-enforced_by: scripts/check-text-files.py
+Spec files are 7-bit text (`CLAUDE.md`, Comments and docs); the wire encoding is in `protocol.md`.
 
 ## Which specs each layer answers to
 
 | Layer or part | Read |
 |---------------|------|
-| everything | `CLAUDE.md`, `fair-play.md`, `architecture.md` |
+| everything | `CLAUDE.md`, `fair-play.md`, `architecture.md`, `docs/style.md` |
 | mud | `protocol.md`, `c1-codes.toml`, `events.md`, `docs/evidence/golden/README.md`, `docs/evidence/captures/README.md` |
 | transport | `connection.md` sections 1-2 |
 | session | `connection.md` sections 3-5, `session.md`, `flow.md` |

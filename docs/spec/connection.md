@@ -1,24 +1,18 @@
 # connection.md
 
-FACT This file covers the transport, telnet option negotiation, the login sequence, client-mode
-entry, terminal width, probes, keepalive and session-drop handling. Byte values are hex. `ESC` is
-`1B`. `CRLF` is `0D 0A`. Wording such as "the reference" means observable behaviour of Mucka.
-source: director
-
-FACT `$-` is the director's notation, and Bartle's, for the two bytes `ESC -` (`1B 2D`). A command
-interrupt is written with no spaces: `$-[FES$-]` is exactly the bytes `1B 2D 5B 46 45 53 1B 2D 5D`.
-There is no space before `$-]` and none after `$-[`.
+FACT Byte values are hex. `ESC` is `1B`. `CRLF` is `0D 0A`. `$-` (the director's and Bartle's
+notation) is the two bytes `ESC -` (`1B 2D`), written with no spaces: `$-[FES$-]` is exactly
+`1B 2D 5B 46 45 53 1B 2D 5D`, with no space after `$-[` or before `$-]`.
 source: director; bartle:FE4 2)
 
-FACT None of the `.c1` captures has a `tx` record, an IAC byte, or a login prompt. The only capture
-that touches this file is `phone-login-at-20-columns.c1`, and it starts at the first game-mode FES
-reply. Every telnet and login row below therefore rests on Bartle, Clio or the reference, never on a
-capture.
+FACT No `.c1` capture has a `tx` record, an IAC byte, or a login prompt; `phone-login-at-20-columns.c1`
+starts at the first game-mode FES reply. Every telnet and login row below rests on Bartle, Clio or
+the reference.
 source: capture:phone-login-at-20-columns.c1
 
 ## 1. Transport
 
-RULE MuckaII connects over plain TCP. There is no TLS, because the far end has none.
+RULE MuckaII connects over plain TCP. No TLS: the far end has none.
 enforced_by: none: judgement
 source: director
 
@@ -33,9 +27,9 @@ source: director
 | Outbound line terminator | `0D 0A` | launch | clio:src/telnet.l autologin rules; reference |
 | Outbound order | one ordered writer; every typed line, macro, probe and telnet reply goes through it | launch | reference; root CLAUDE.md Invariant #1 |
 
-open: Outbound terminator. `persistence.md` reports a reference wire-log record `wave\r\r\n` (CR CR
-LF) sent and echoed, against `0D 0A` above and the `\r\n` echo in the captures. Which does the server
-receive?
+open: Outbound terminator. A reference wire-log pair (`persistence.md`) shows `wave\r\r\n` (CR CR
+LF) sent and echoed, against `0D 0A` above and the `\r\n` echo in the captures (`protocol.md`, Echo).
+Which does the server receive?
 default: `0D 0A`, as the table above, Clio and the captures' echo give it.
 
 FACT Clio refuses to start without a host (argument or `CLIOHOST`) and takes its port from the
@@ -76,21 +70,17 @@ the drop must land within a tight window of that announcement's instant. A seen 
 the timing test.
 source: reference
 
-FACT These parts of drop handling are specified outside the launch spec:
+FACT Drop headline overlay and automatic relogin after a Reset drop: `scope: later`,
+`later/drop-overlay.md`.
 source: director
 
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Drop headline overlay, automatic relogin after a Reset drop | `scope: later` | `later/drop-overlay.md` |
+RULE MuckaII classifies drops at launch, because a Reset clears the dreamword (section 5.4).
+enforced_by: none: judgement
+source: reference
 
 open: Are the drop headline overlay and the automatic relogin after a Reset drop launch, now that
 managed persona selection (3.4) is? The Tombstone (`flow.md`) is the launch screen for a death.
 default: both `scope: later`.
-
-RULE MuckaII classifies drops at launch, because the dreamword depends on the result: a Reset
-clears it (section 5.4). The overlay is `scope: later`.
-enforced_by: none: judgement
-source: reference
 
 ## 2. Telnet options
 
@@ -123,7 +113,7 @@ EVIDENCE Clio's DO handler has no case for option 3. DO SGA falls to `default: t
 replies `FF FC 03`.
 source: clio:src/telnet.l {IAC}{DO}.
 open: DO SGA. Clio refuses with WONT, the reference agrees with WILL. Which one does MuckaII send?
-default: `FF FC 03` (WONT), as Clio does. Clio outranks the reference on mechanics.
+default: `FF FC 03` (WONT), as Clio does.
 
 EVIDENCE Clio refuses NEW-ENVIRON (it lists 39 with the other refused options).
 source: clio:src/telnet.l {IAC}{DO}.
@@ -148,7 +138,7 @@ source: reference
 |---------|-------|
 | TTYPE IS "ansi" | `FF FA 18 00 61 6E 73 69 FF F0` |
 | NAWS (width W, height H) | `FF FA 1F Wh Wl Hh Hl FF F0`. Any byte equal to `FF` among Wh Wl Hh Hl is sent doubled (`FF FF`). |
-| NEW-ENVIRON IS USER=<name> | `FF FA 27 00 00 55 53 45 52 01 <name ASCII> FF F0` (IS=00, VAR=00, "USER", VALUE=01) |
+| NEW-ENVIRON IS USER=<name> | `FF FA 27 00 00 55 53 45 52 01 <name, 7-bit bytes> FF F0` (IS=00, VAR=00, "USER", VALUE=01) |
 source: clio:src/tterm.c; clio:src/tnaws.c; reference
 
 FACT The reference does not escape bytes 00-03 inside the NEW-ENVIRON value. Login names are
@@ -171,9 +161,8 @@ open: NAWS. Should it carry the real column count and resend on resize (referenc
 fixed 80 x 21 (Clio)? Bartle is silent on NAWS, and no capture holds an IAC byte, so nothing on the
 wire separates the effect of NAWS from that of `/T`. What NAWS changes on the server is unconfirmed
 (section 4.1).
-default: the reference's form: the effective column count x 21, resent when it changes. Clio's fixed
-80 x 21 goes with its ESC-T entry, which 3.2 rejects on capture evidence; advertising one width in
-NAWS and another in `/T` would contradict itself.
+default: the reference's form: the effective column count x 21, resent when it changes, matching the
+`/T` width 3.2 chose. Clio's fixed 80 x 21 goes with its ESC-T entry, which 3.2 rejects.
 
 FACT The reference sends NAWS from the start of the connection with the same column count it later
 sends in `/T`.
@@ -212,8 +201,7 @@ open: Prompt matching. A substring match on `password` also hits server text suc
 Password:" or a MOTD line containing the word. A prompt split across two TCP reads is missed by the
 reference. Follow Clio (anchored literals, one-shot, ordered) or the reference?
 default: Clio's matching: anchored literals over the byte stream, each prompt one-shot, the password
-sent only after the account ID. Clio outranks the reference, and it never sends a password at an
-"Old Password:" line.
+sent only after the account ID, never at an "Old Password:" line.
 
 FACT The reference handles a "(y/n)" question before the banner, e.g. "Skip the rest? (y/n)" on
 mud2.com, or a usurp-session question. Auto-login does not answer it; guided login
@@ -222,12 +210,16 @@ source: reference
 
 ### 3.2 Client-mode entry
 
-| Variant | Bytes (cols = 80 shown) | Source |
-|---------|-------------------------|--------|
-| Bartle, command form | `/M1` + `0D 0A` at the "Option:" prompt, every login | bartle:FE4 1) |
-| Bartle, transparent form | `1B 06` (ESC ^F), accepted at any prompt, not taken as input; sets maximum compatibility | bartle:FE4 1) |
-| Clio | `1B 06 1B 2D 54` (ESC ^F, ESC-T), bare, no CRLF | clio:src/telnet.l ^"Option: " |
-| Reference | `1B 2D 5B 1B 06 1B 2D 4E 2F 54 38 30 1B 2D 5D` = ESC-[ , ESC ^F , ESC-N , `/T80` , ESC-] , no CRLF | reference |
+DECISION Client-mode entry is the reference's form, no CRLF:
+`1B 2D 5B 1B 06 1B 2D 4E 2F 54 38 30 1B 2D 5D` = `$-[` ESC ^F `$-N/T{cols}$-]` (cols = 80 shown: `/T80`).
+Bartle lists ESC ^F and ESC-N ("user defines wrap") and is silent on `/T`, so this deprecates no
+Bartle statement. The capture decides between the two clients: the server wraps at 20 columns
+there, which ESC-T (fixed at 78 wide) cannot produce. Rejected: Clio's bare `1B 06 1B 2D 54`
+(ESC ^F ESC-T).
+source: director (evidence ranking, CLAUDE.md); capture:phone-login-at-20-columns.c1; reference
+
+EVIDENCE Clio sends ESC ^F ESC-T (text mode, 78 wide), not ESC-N.
+source: clio:src/telnet.l ^"Option: "
 
 | Escape (client to server) | Meaning |
 |---------------------------|---------|
@@ -240,25 +232,14 @@ source: reference
 | `1B 2D` i `49` ESC-iI | identify self with key i (unused) |
 source: bartle:FE4 2)
 
-FACT Bartle gives ESC ^F as an alternative to `/Mn` for entering client/server mode; unlike `/M1`
-it works transparently at any prompt. `/T` is not in Bartle's documents. Its only sources are the
-reference and the capture.
+FACT Bartle's two entry forms: `/M1` + `0D 0A` at the "Option:" prompt, every login; or ESC ^F
+(`1B 06`), accepted transparently at any prompt, not taken as input, at maximum compatibility.
+`/T` is not in Bartle's documents; its only sources are the reference and the capture.
 source: bartle:FE4 1)
 
 EVIDENCE After entry at 20 columns, the server wraps every game line at 20 columns or fewer. Wrapped
 rows end `0D 00 0D 0A`. Examples: "You're already" / "getting object" / "identification".
 source: capture:phone-login-at-20-columns.c1
-
-EVIDENCE Clio sends ESC ^F ESC-T (text mode, 78 wide), not ESC-N.
-source: clio:src/telnet.l ^"Option: "
-
-DECISION Client-mode entry is the reference's form: `$-[` ESC ^F `$-N/T{cols}$-]`, no CRLF (bytes
-in the table above). Bartle lists ESC ^F and ESC-N ("user defines wrap") and is silent on `/T`, so
-this deprecates no Bartle statement. The capture decides between the two clients: the server wraps
-at 20 columns there, which ESC-T (fixed at 78 wide) cannot produce. Rejected: Clio's bare ESC ^F
-ESC-T.
-source: director (evidence ranking: Bartle first, then captures, then Clio, then the reference);
-capture:phone-login-at-20-columns.c1
 
 FACT The reference resends NAWS (2.3) and then sends client-mode entry, once per login, at the
 first Option prompt seen while not in game mode. Clio re-arms at every Option prompt while it is
@@ -274,16 +255,10 @@ source: clio:src/telnet.l ^"Option: "; clio:src/main.c; reference
 
 ### 3.3 Game mode entry and exit
 
-| Transition | Clio | Reference |
-|------------|------|-----------|
-| Enter game | C01 C01/C02/C03 (prompt core) or C02 C01 (room short) | same codes |
-| On entry | C02 C01 sends `$-[FES$-]` plus the optional `game-init-cmds` ini line | first probe beat, setup batch (5.3) |
-| Leave game | `Option: ` / `Option (H for help): ` prompt | the text `Option (H for help)` seen in game text, with the match starting at column 0 |
-source: clio:src/telnet.l {C01}{C01}{C255} {C02}{C01}{C255} ^"Option: "; reference
-
-FACT The reference arms the exit match only at column 0, so a player saying `Option (H for help)`
-does not end game mode.
-source: reference
+FACT The edges of game mode are `protocol.md`, Game mode. On entry the reference sends the first
+probe beat and the setup batch (5.3). Clio, on `C02 C01`, sends `$-[FES$-]` plus the optional
+`game-init-cmds` ini line.
+source: clio:src/telnet.l {C02}{C01}{C255}; reference
 
 ### 3.4 Persona selection (guided login)
 
@@ -319,9 +294,9 @@ source: clio:src/telnet.l ^"Old Password:"
 |------|-------|-------|--------|
 | Fewest columns ever told | 20 | launch | reference |
 | Most columns ever told | 160 | launch | reference |
-| Width unknown, profile on auto | 40 | launch | reference |
-| Max-columns setting | 0 = auto; otherwise a ceiling, clamped 0..160 | launch | reference |
-| Effective columns | auto: every whole cell that fits. Set: min(setting, fits). No width yet: the setting, or 40 on auto. Then clamped 20..160. | launch | reference |
+| Fits | the number of whole character cells that fit across the available space (window or device width) at the current font and font size. It is computed before connecting, from the profile's font, so it is never unknown | launch | director |
+| Max-columns setting | unset (the default until the user sets it) or a ceiling, 20..160 | launch | director |
+| Effective columns | unset: min(80, fits). Set: min(setting, fits). Then clamped 20..160. | launch | director |
 | Columns told at connect | computed from the connect page width and the profile font, before the game screen exists | launch | reference |
 | Rows told | 21 | launch | reference; clio:src/telnet.l {IAC}{DO}. |
 | Clio | 80 columns NAWS; ESC-T asks for 78 wide | - | clio:src/telnet.l |
@@ -367,9 +342,8 @@ source: bartle:FE4 2)
 open: Comma batching inside one interrupt (`FES,FEW,FEI`). The reference relies on it and states
 that FEW/FEI are unreliable without FES alongside. Nothing in Bartle or the captures confirms
 either claim.
-default: send the reference's comma-joined block, FES first (`$-[FES,FEW$-]`). Bartle does not forbid
-it, nothing else speaks, and `session.md` writes probe blocks in this form. The raw console can test
-it.
+default: send the reference's comma-joined block, FES first (`$-[FES,FEW$-]`), the form `session.md`
+uses. Bartle does not forbid it. The raw console can test it.
 
 ### 5.2 Cadence
 
@@ -383,15 +357,11 @@ it.
 | Hold | probes can be suspended, for example while the director runs raw-console experiments. A held beat is delayed one full interval, never dropped. | - | launch | reference; director (the raw console is launch on every platform, `INTERNAL.md`) |
 | FEW and FEI in the beat, inventory (combat), room-entry FEX, reset-time sampling | - | - | later: `later/probe-cadence.md` | reference |
 
-DECISION There is no departed-player probe. Rejected: the reference's `value <name>` sent in front
-of a routine beat to test a player who left the Online list, which reveals invisible players
-(`fair-play.md`, Other players).
+DECISION No departed-player probe (`fair-play.md`, Other players). Rejected: the reference's
+`value <name>` sent in front of a routine beat to test a player who left the Online list.
 source: director
 
-DECISION A probe block costs the player a command slot: MUD2 allows each user one command action
-per server tick (`session.md`, Command understanding). Bartle says only that probes do not wake a
-sleeper, which does not contradict this, and the reference agrees.
-source: director (evidence ranking: Bartle silent, no split); session.md; reference
+A probe block costs the player a command slot: `session.md`, Command understanding.
 
 ### 5.3 Setup batch on game entry
 
@@ -412,10 +382,9 @@ should be well past the stage of needing to use AUTO FEEXITS commands...".
 source: reference
 
 DECISION MuckaII sends the setup batch automatically at each game-mode entry, as the reference does:
-`identify`, `fightbrief`, `auto fex`, `score`, then `$-[FEX$-]`. The batch is part of the persona's
-arrival in the tea room, so `fair-play.md`'s rule that nothing gameplay-affecting happens
-automatically *after* arrival is not broken by it. Arrival is complete once the batch has been
-sent. `scope: launch`. Rejected: sending only `score`, or asking the player first.
+`identify`, `fightbrief`, `auto fex`, `score`, then `$-[FEX$-]`. It is part of arrival in the tea
+room (`fair-play.md`, Automation); arrival is complete once it has been sent. `scope: launch`.
+Rejected: sending only `score`, or asking the player first.
 source: director
 
 ### 5.4 Dreamword sends
@@ -433,13 +402,9 @@ source: reference
 
 ### 5.5 Anti-idle keepalive
 
-DECISION Anti-idle keepalive and keep-screen-on are `scope: later`.
+DECISION Anti-idle keepalive (`later/anti-idle.md`) and keep-screen-on (`later/keep-screen-on.md`)
+are `scope: later`.
 source: director
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Anti-idle keepalive | `scope: later` | `later/anti-idle.md` |
-| Keep screen on | `scope: later` | `later/keep-screen-on.md` |
 
 ## 6. Command-line arguments
 

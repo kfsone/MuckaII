@@ -1,8 +1,7 @@
 # Later: watchwords
 
-FACT `scope: later`. Importing the `[watch]` text verbatim is launch (`persistence.md`, Import;
-`mucka-ini.md`, `[watch]`), so the rules are waiting when the feature is built. `fair-play.md`
-holds an `open:` line asking for a charter review before watchwords are built.
+FACT `scope: later`. Importing the `[watch]` text verbatim is launch (`persistence.md`, Import).
+`fair-play.md` holds an `open:` asking for a charter review before watchwords are built.
 source: director
 
 FACT Watchwords answer puzzles: the player configures a trigger text; `$<` scans recent output
@@ -10,8 +9,8 @@ for it and queues an answer under a slot name; the answer is later spoken with `
 substituted into outgoing text. Nothing scans automatically.
 source: reference
 
-RULE The rules live in `mucka.ini` and are hand-written; the client never writes them. They are
-imported verbatim (`INTERNAL.md`, Data).
+RULE The rules live in `mucka.ini`, hand-written; the client never writes them. Their grammar,
+matching and limits are `mucka-ini.md`, `[watch]` and `[watch slotname]`.
 enforced_by: none: judgement
 source: reference, director
 
@@ -35,36 +34,7 @@ source: reference
 
 ## The `[watch]` rules
 
-RULE The `[watch]` sections of `mucka.ini` are read as follows.
+RULE Each slot queues one answer; speaking or substituting it clears it. Section and slot names are
+case-insensitive. Everything else about the rules is `mucka-ini.md`, `[watch]`.
 enforced_by: none: judgement
-source: reference
-
-| Section | Line format | Meaning |
-|---|---|---|
-| `[watch]` | `slot = prefix...suffix` | A slot whose capture is the text between `prefix` and `suffix`. With no `...`, the whole value is the prefix and the capture runs to the end. |
-| `[watch <slot>]` | `key = answer` | Exact match: if the capture equals `key`, queue `answer`. |
-| `[watch <slot>]` | `key... = answer` | Prefix match: if the capture starts with `key`, queue `answer`. |
-| `[watch <slot>]` | `"key" = answer` | Surrounding quotes on a key are removed. |
-| (none) | - | A slot with no `[watch <slot>]` section is in echo mode: the capture itself is queued. |
-source: reference
-
-RULE Watchword parsing and matching follow these limits.
-enforced_by: none: judgement
-source: reference
-
-| Limit or detail | Value |
-|---|---|
-| Separator | ` = ` (space, equals, space); lines without it are ignored |
-| Comments | lines starting `;` or `#` |
-| Section and slot names | case-insensitive |
-| Max slots | 20 |
-| Max answers per slot | 32 |
-| Max capture | 80 characters (longer captures are cut, not rejected) |
-| Max answer | 48 characters |
-| Whitespace | every run of whitespace in triggers, keys and scanned text is collapsed to one space before matching; the capture is trimmed |
-| Queue | one answer per slot; speaking or substituting it clears it |
-source: reference
-
-FACT In the reference on Android, watchwords were effectively unavailable: its ini was app-private,
-so nobody could hand-edit `[watch]`.
 source: reference

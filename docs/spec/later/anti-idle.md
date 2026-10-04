@@ -11,8 +11,7 @@ source: director
 | Checked | once a second | reference |
 | Condition | in game mode, connected, and no player-sent line for at least N s. Probes and telnet replies do not count as player sends. | reference |
 | Sent | an empty line: `0D 0A` | reference |
-| Related | a "keep screen on" profile switch, default on for mobile, off for desktop | reference |
 
 FACT The keepalive's place in the send order is launch spec: it waits behind any queued line
 (`input.md`, Ordering), and its wire-log origin is `keepalive` (`architecture.md`).
-source: director
+source: agent

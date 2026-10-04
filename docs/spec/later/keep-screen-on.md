@@ -9,5 +9,5 @@ source: director
 | Default on for Android (and iOS), off on desktop | reference |
 | Applied while the game view is showing; released when it is left. A settings dialog over the game view does not release it | reference |
 
-FACT The need it serves: an idle screen-lock mid-session gets the player killed.
+FACT Need served: an idle screen-lock mid-session gets the player killed.
 source: reference

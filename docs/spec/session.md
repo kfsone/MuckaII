@@ -11,7 +11,7 @@ the client does not track sleep, the status bar goes stale without anyone notici
 bar is in launch scope.
 source: director
 
-RULE The session layer tracks a sleep state. Tracking it, and waking, takes a little finesse:
+RULE The session layer tracks a sleep state:
 
 | State | Entered by | Left by | Probes |
 |-------|-----------|---------|--------|
@@ -44,25 +44,16 @@ enforced_by: none: judgement
 
 ## Command understanding and probe injection (scope: launch)
 
-RULE After the persona has finished arriving in the tea room, MuckaII never does anything that
-affects gameplay automatically. Every gameplay action needs a manual input. Before arrival
-(login and persona selection) the client may drive the shell itself.
+Nothing gameplay-affecting happens automatically after arrival, and injected commands are
+read-only probes only: `fair-play.md`, Automation. The setup batch is part of arrival:
+`connection.md` 5.3.
+
+RULE Before arrival (login and persona selection) the client may drive the shell itself.
 source: director
 enforced_by: none: judgement
 
-DECISION The setup batch on game entry (`identify`, `fightbrief`, `auto fex`, `score`, then
-`$-[FEX$-]`) is part of arrival and is sent automatically. Arrival is complete once it has been
-sent (`connection.md` 5.3).
-source: director
-
-RULE The client injects only read-only probes (FES, FEW, FEI, FEX), and never a command that
-changes game state.
-source: director
-enforced_by: none: judgement
-
-FACT Probe blocks here use `$-` as defined in `connection.md` (the bytes `ESC -`). A probe block
-is written with no spaces: `$-[fes,few$-]` is exactly the bytes
-`1B 2D 5B 66 65 73 2C 66 65 77 1B 2D 5D`. There is no space after `$-[` and none before `$-]`.
+FACT `$-` is `ESC -` (`connection.md`). A probe block has no spaces: `$-[fes,few$-]` is exactly
+`1B 2D 5B 66 65 73 2C 66 65 77 1B 2D 5D`.
 source: director; bartle:FE4 2)
 
 FACT Probes are not free. MUD2 allows each user one command action per server tick: the `n` out of
@@ -83,6 +74,19 @@ without quotes, so a comma inside one is not a boundary. Rather than sending pro
 lines, it embeds them in commands the player sends.
 source: director
 enforced_by: none: judgement
+
+FACT MUD2 separates commands with `,` and with `.`.
+source: director
+
+open: Which layer finds command boundaries and recognises sleep commands (OPEN H3)? This is
+deferred until the proof of concept plays. The candidate design, from two independent agent
+brainstorms: the `mud` layer gets a pure, policy-free parse of an outbound line into commands and
+separators, and an unsure parse gives no mid-line slot. The outbound line is carried as segments
+(typed, separator, probe). A probe can sit only at the start of a line or after a separator, and
+stripping the probe segments gives back the client's output. Session raises probe "wants" with a
+placement and a deadline, resolved when a line is written. Probes are an optional subsystem
+(`architecture.md`, Composition).
+default: build no probe injection until this is ruled.
 
 RULE Injection sites around sleep:
 
@@ -127,14 +131,9 @@ existing comma, and never directly after command text. Nothing is added after it
 source: director
 enforced_by: none: judgement
 
-RULE Injection and Invariant #1:
-- The player's commands reach the socket unmodified and in their typed order.
-- An injected probe block goes only at a command boundary: before the first command of a line,
-  between two of its commands, or between two lines. It never goes inside a command.
-- Every injection is marked in the wire log with its position.
-- The acceptance test removes the marked probe blocks and compares what is left with the typed
-  stream.
-
+RULE Injection under Invariant #1 (root `CLAUDE.md`, checkpoint 2): a probe block goes only at a
+command boundary (before the first command of a line, between two of its commands, or between two
+lines), never inside a command, and each one is marked in the wire log with its position.
 source: director
 enforced_by: none: judgement
 

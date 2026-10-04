@@ -1,14 +1,11 @@
 # Later: session transcript and recording chip
 
-FACT `scope: later`. The wire log is always on and is launch (`persistence.md`, Wire log). The
-transcript is a separate file, armed by hand.
-source: director
+FACT The transcript is a separate file, armed by hand: the lossy, human-readable record of the
+screen. The wire log (launch, always on, `persistence.md`) is the byte-exact record of the socket.
+Where the two disagree, the transcript is wrong.
+source: reference
 
 ## Transcript
-
-FACT The transcript is the lossy, human-readable half of the pair. It records the screen, not the
-socket. The wire log is the byte-exact half. Where the two disagree, the transcript is wrong.
-source: reference
 
 | Behaviour | Rule |
 |-----------|------|
@@ -56,14 +53,13 @@ default: `Recording by MuckaII from ...`, and the file name keeps the `session-r
 | Tap | start or stop the plain-text transcript of the screen | same | reference |
 
 FACT The same toggle is in the menu as "Log Recording". A `-record` command-line flag arms it on
-first entering the game (`connection.md` 6). The transcript is separate from the wire log, which is
-always on.
+first entering the game (`connection.md` 6).
 source: reference
 
 open: `INTERNAL.md` lists the wire log at launch, not a transcript. Is the transcript (and so this
 chip) launch or later?
-default: later, as this file's place says.
+default: later.
 
 FACT Related entries elsewhere: the chip's place in the status bar is `ui.md` 3.1 and 3.6; the
 `logttr` debug key writes reset-timer readings into the transcript (`mucka-ini.md`).
-source: director
+source: agent

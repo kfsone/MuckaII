@@ -9,7 +9,8 @@
 #               the FE4 list gives it. A missing trailing number reads as 00 (see protocol.md
 #               "Parameters"), so "08" and "08 00" are the same code.
 #   lead        The first byte on the wire: 155 + the first number (0x9B + n).
-#   name        Unique snake_case identifier, used for the generated enum variant.
+#   name        Unique identifier, snake_case as a data key. The generated C++ enumerator is
+#               named per docs/style.md.
 #   family      The code's first number, named.
 #   params      Names of variable trailing numbers for parametric codes (94-99); [] when fixed.
 #   stack       What the code does to the context stack (protocol.md "Context stack"):

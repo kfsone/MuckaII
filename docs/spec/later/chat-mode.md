@@ -1,7 +1,6 @@
 # Later: chat mode
 
-FACT `scope: later` by default (see the `open:` below). Chat colouring is launch (`ui.md` section 2);
-this file is only the chat-only view filter.
+FACT This file is only the chat-only view filter. Chat colouring is launch (`ui.md` section 2).
 source: director
 
 RULE A latching Chat toggle filters the terminal to chat lines only (lines the server marks as a
@@ -23,9 +22,8 @@ source: reference
 | Focus | Toggling returns focus to the box. |
 source: reference
 
-open: Scope of chat mode (not on the INTERNAL.md launch list). Marked later here.
+open: Scope of chat mode (not on the `INTERNAL.md` launch list).
 default: later.
-source: reference
 
 FACT The session transcript ignores the chat filter (`later/session-transcript.md`).
 source: reference

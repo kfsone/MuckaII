@@ -4,14 +4,13 @@
 # and the playback rules (gating, volume, timing, bell). Behaviour only.
 # source: reference
 #
-# Conventions in this file:
-# - Code notation is Bartle's decrypted form, e.g. "07 02 01" (each integer has 155 added on
-#   the wire and the sequence ends FF FF). source: bartle:FE4 section 3
-# - "params" = the integers after the family number, as sent.
-# - Every table carries tag, source and scope. open = an unresolved question for the director.
-#   default = what to build until the director rules on that open; every open has one.
-#   decision = a ruling on that row, with what it rejects and its source.
-# - category = the group heading the user sees in the Sounds settings tab.
+# Conventions:
+# - Codes in Bartle's decrypted form, e.g. "07 02 01" (on the wire each integer has 155 added and
+#   the sequence ends FF FF). source: bartle:FE4 section 3
+# - params: the integers after the family number, as sent.
+# - Every table carries tag, source and scope. open: a question for the director; default: what
+#   to build until the ruling (every open has one); decision: a ruling, its rejection and source.
+# - category: the group heading in the Sounds settings tab.
 
 # ---------------------------------------------------------------------------
 # Playback rules

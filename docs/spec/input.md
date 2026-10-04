@@ -1,36 +1,24 @@
 # input
 
-FACT This file says how the command box behaves: Enter, the two input orderings, history, F-key
-macros, aliases and `^1`-`^3` slots, every `$` client command, scrollback, the raw console and
-mobile differences. Key chords themselves are listed in `keys.toml`. Watchwords, chat mode and the
-`scope: later` `$` commands are specified in `later/`.
-source: director
+Key chords: `keys.toml`. Later features: `later/README.md`.
 
 ## Invariant #1 and its acceptance condition
 
-RULE Typed text and Enter form one ordered stream, all the way to the socket. When the sent lines
-are concatenated, they equal the typed stream.
-enforced_by: none: judgement
-source: director
+The invariant and its two checkpoints are root `CLAUDE.md`, Invariant #1.
 
-RULE (derived from the invariant above) For any keystrokes typed at any speed (the director types
-at 120-130 wpm), no character is lost, duplicated, reordered, or carried from one line into the
-next, and Enter always ends exactly the line typed before it.
+RULE For keystrokes typed at any speed, no character is lost, duplicated, reordered, or carried
+from one line into the next, and Enter always ends exactly the line typed before it.
 enforced_by: none: judgement
 source: director, reference (the four failure cases at the end of this file)
 
-open: Where is the acceptance condition measured? Several rules in this file change the bytes on
-purpose: the line is trimmed (typing `  look ` sends `look`); `$` and `^` lines are handled locally
-and may send nothing or something else; aliases and `$VER` expand; `$$` collapses; the 7-bit
-boundary transliterates; scrollback swallows typed keys. Candidates: (a) at the handoff from the
-box to the queue, before any of that; (b) at the socket, counting only plain untrimmed ASCII lines
-with no sigil. Should trimming go?
-default: measure at both points root `CLAUDE.md` Invariant #1 names. (1) Frontend to client: the
-text handed over at each Enter equals the line buffer at that Enter, untrimmed and unexpanded, and
-the texts concatenated equal the typed keystroke stream. (2) Client to socket: with the marked probe
-blocks removed, the socket bytes equal the client's documented output. Trimming stays, as part of
-that documented processing.
-source: reference
+open: Where is the acceptance condition measured? Several rules here change the bytes on purpose:
+trimming (`  look ` sends `look`); `$` and `^` lines handled locally; alias and `$VER` expansion;
+`$$` collapse; 7-bit transliteration; scrollback swallowing keys. Candidates: (a) the box-to-queue
+handoff, before any of that; (b) the socket, counting only plain untrimmed 7-bit lines with no
+sigil. Should trimming go?
+default: both checkpoints of root `CLAUDE.md` Invariant #1: (1) the text handed over at each Enter
+is the line buffer at that Enter, untrimmed and unexpanded; (2) with marked probe blocks removed,
+the socket bytes equal the client's documented output. Trimming stays, as documented processing.
 
 ## Enter
 
@@ -58,10 +46,7 @@ RULE A Send button beside the box performs exactly what Enter performs, through 
 enforced_by: none: judgement
 source: reference
 
-RULE Outbound text is 7-bit ASCII, enforced at the single send boundary. Typographic punctuation is
-transliterated and anything else is dropped.
-enforced_by: none: judgement
-source: director
+Outbound text passes the 7-bit send boundary: root `CLAUDE.md`, Bytes, not strings.
 
 EVIDENCE clio has an option (`-e`) that makes a blank input line repeat the last command. The
 reference has no such option; a blank line sends a bare CR LF.
@@ -69,33 +54,22 @@ source: clio:man/clio.6
 
 ## Ordering: two orderings
 
-FACT Input has two orderings, not one queue (`architecture.md`, Input: two orderings): box edits are
-ordered by the UI loop over the line buffer, and sends are ordered by the UI -> core FIFO.
-source: director
+The mechanism (UI loop over the line buffer; `core::submitLine` into the one FIFO; client expands
+and filters; session alone inserts probes) is `architecture.md`, Input: two orderings.
+
+FACT What each ordering holds:
 
 | Ordering | Holds | Ordered by | Crosses a thread |
 |----------|-------|------------|------------------|
 | Box edits | typed keystrokes, history recall, Ctrl+R prefill, name insert, Escape clear, focus | the UI loop, applying input events to the frontend-owned line buffer in arrival order | never |
-| Sends | the line at Enter or Send, F-key and on-screen F-key presses, Ctrl hotkeys (dreamword, flee, wield, `^n` slots), compass clicks | `core::submit_line`, which pushes onto the one UI -> core FIFO in UI arrival order | once, UI to core |
+| Sends | the line at Enter or Send, F-key and on-screen F-key presses, Ctrl hotkeys (dreamword, flee, wield, `^n` slots), compass clicks | `core::submitLine`, which pushes onto the one UI -> core FIFO in UI arrival order | once, UI to core |
 
-source: director
+source: agent
 
-RULE A box edit is applied on the UI thread to the frontend-owned line buffer and never waits on
-the core.
+RULE A box change (recall, prefill) cannot land between a keystroke and its Enter; a hotkey pressed
+after Enter takes its turn behind that line.
 enforced_by: none: judgement
-source: director
-
-RULE Every send goes through `core::submit_line`. On the core, the client layer drains the FIFO in
-order, expands each line, applies the 7-bit filter, and hands it to the session layer. The session
-layer owns the single ordered outbound queue and alone inserts probe blocks (`session.md`). One
-socket writer writes that queue in order.
-enforced_by: none: judgement
-source: director
-
-RULE Both orderings are filled in UI arrival order, so a hotkey pressed after Enter takes its turn
-behind that line, and a box change (recall, prefill) cannot land between a keystroke and its Enter.
-enforced_by: none: judgement
-source: director, reference
+source: agent, reference
 
 RULE Work that an item creates while it is being handled (a client command that sends a line)
 runs after that item and before anything queued later.
@@ -315,11 +289,11 @@ source: reference
 
 | Input | Sent | Why |
 |---|---|---|
-| `say $VER` | `say Mucka v<version>` | `$VER` is case-sensitive; `$ver` is left alone |
+| `say $VER` | `say MuckaII v<version>` | `$VER` is case-sensitive; `$ver` is left alone |
 | `say ^1 now` with `^1=look` | `say look now` | bare `^n` expands mid-line |
 | `say $$VER` | `say $VER` | doubled sigil is a literal |
 | `$$` | `$` | |
-| `say $$$VER` | `say $Mucka v<version>` | pairs collapse left to right, the odd one interpolates |
+| `say $$$VER` | `say $MuckaII v<version>` | pairs collapse left to right, the odd one interpolates |
 | `say ^^1` | `say ^1` | |
 | `say $nosuchalias` | `say $nosuchalias` | unknown names pass through |
 | `^9` mid-line | `^9` | only `^1`-`^3` are slots |
@@ -373,7 +347,7 @@ source: reference
 | `$CHATTEST` | any case | `$CHATTEST [slow\|stop]` | Reserved: `later/diagnostic-commands.md` | later |
 | `$MARK` | any case | `$MARK ...` | Reserved: `later/diagnostic-commands.md` | later |
 | `$SCORE` | any case | `$SCORE [days] [name]` | Reserved: `later/score-graph.md` | later |
-| `$VER` | exact uppercase | `$VER` | Send the version string as a line: `Mucka v<version>` | launch |
+| `$VER` | exact uppercase | `$VER` | Send the version string as a line: `MuckaII v<version>` (the `$VER` open item, Expansion; the reference sends `Mucka v<version>`) | launch |
 | `$map` | - | - | Reserved name with no command; falls to watchword speak | - |
 | `$<alias>` | any case | `$<alias>` | Send the alias body, expanded | launch |
 | `$<anything else>` | - | `$<slot>` | Watchword speak (`later/watchwords.md`). With no watchword slots loaded, nothing is sent and `[watchword] nothing queued for $<slot>` is printed | launch (the no-slot outcome); later (speak) |
@@ -418,12 +392,7 @@ source: reference, director
 
 ## Watchwords (scope: later)
 
-FACT Watchwords are specified outside the launch spec:
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Watchwords (`$?`, `$<`, `$<slot>` speak and substitution) | `scope: later` | `later/watchwords.md` |
-
+FACT Watchwords (`$?`, `$<`, `$<slot>` speak and substitution): `scope: later`, `later/watchwords.md`.
 source: director
 
 ## Scrollback
@@ -460,12 +429,7 @@ source: clio:man/clio.6 SCROLL BACK
 
 ## Chat mode
 
-FACT Chat mode is specified outside the launch spec:
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Chat mode (chat-only view filter) | `scope: later` | `later/chat-mode.md` |
-
+FACT Chat mode (chat-only view filter): `scope: later`, `later/chat-mode.md`.
 source: director
 
 ## Mobile specifics

@@ -1,15 +1,11 @@
 # mucka.ini
 
-FACT `mucka.ini` is the settings file of the previous client, Mucka. MuckaII reads it once, as user
-data, on first run (see `persistence.md`, "Import"). This file is the complete on-disk format as
-Mucka read and wrote it. MuckaII never writes this format.
+FACT `mucka.ini` is the settings file of the previous client, Mucka. MuckaII reads it once, on first
+run (`persistence.md`, "Import"), and never writes this format. This file is the complete on-disk
+format as Mucka read and wrote it. Each key's scope is in the tables below.
 source: reference
 
 DECISION The import of `mucka.ini` is `scope: launch`.
-source: director
-
-FACT Individual keys carry their own scope in the tables below, from the launch list in
-`INTERNAL.md`.
 source: director
 
 open: proposed: a key for a `later` feature is imported and kept, and nothing acts on it until that
@@ -22,13 +18,12 @@ reader behaved this way.
 enforced_by: none: judgement
 source: reference
 
-FACT Sample files with their expected parse are in `docs/evidence/ini-samples/` (see "Samples" at
-the end).
-source: director
+FACT Sample files with their expected parse are in `docs/evidence/ini-samples/` ("Samples" below).
+source: agent
 
 ## Where Mucka kept it
 
-FACT Mucka shipped on Windows and Android only. It never shipped on Linux or macOS.
+FACT Mucka shipped on Windows and Android only, never on Linux or macOS.
 source: reference
 
 | Platform | Lookup order (first existing file wins) | Where a new file was created |
@@ -38,20 +33,16 @@ source: reference
 
 source: reference
 
-FACT On Android the file is private to Mucka's package. No other app, MuckaII included, can open it
-by path. The only route to it is a file the user exports and then hands over through a file picker.
+FACT On Android the file is private to Mucka's package; no other app, MuckaII included, can open it
+by path. The only route is a file the user exports and hands over through a file picker. Hand-written
+`[watch]` rules therefore exist in practice only on Windows.
 source: reference
 
-FACT Hand-written `[watch]` rules therefore exist in practice only on Windows.
+FACT Mucka wrote the file atomically: `mucka.ini.tmp` beside it, then renamed over `mucka.ini`. A
+leftover `mucka.ini.tmp` is an unfinished write, not a settings file.
 source: reference
 
-FACT Mucka wrote the file atomically: it wrote `mucka.ini.tmp` beside it, then renamed that over
-`mucka.ini`. A leftover `mucka.ini.tmp` is a write that never finished. It is not a settings file.
-source: reference
-
-EVIDENCE On the director's machine, with Mucka 0.22.1 installed, the file is `%USERPROFILE%\mucka.ini`.
-There is no `mucka.ini` beside the installed executable in `C:\Program Files\Mucka\`.
-source: director (the director's machine, observed read-only)
+The director's own file location is recorded as EVIDENCE in `persistence.md`, Finding the file.
 
 ## Encoding and lines
 
@@ -69,7 +60,7 @@ EVIDENCE The director's file is plain ASCII with CRLF line endings and no byte-o
 source: director (the director's machine, observed read-only)
 
 FACT Profile names, F-key macros and `[watch]` text are typed by the user, so the file may hold
-non-ASCII UTF-8. The importer reads UTF-8. Anything that later goes to the server still passes the
+non-7-bit UTF-8. The importer reads UTF-8. Anything that later goes to the server still passes the
 7-bit send boundary (root `CLAUDE.md`).
 source: reference
 
@@ -203,19 +194,9 @@ source: reference
 | `columns` | int | `0` | terminal width advertised to the server. `0` means fit the window. Clamped to 0-160 when used. See the precedence note below | launch |
 | `antiidle` | int | `0` | seconds of no input before a blank keep-alive line is sent. `0` means off. Clamped to 0-3600 | later |
 | `keepscreenon` | bool | `no` on desktop, `yes` on Android | keep the display awake while connected | later |
-| `defaulthotkeys` | bool | `yes` | at session start, fill empty F-key slots F1-F5 with the built-in macros below. The built-ins are never written to the ini | launch |
+| `defaulthotkeys` | bool | `yes` | at session start, fill empty F-key slots F1-F5 with the built-in macros (`input.md`, Default macros). The built-ins are never written to the ini | launch |
 | `guidedlogin` | bool | `no` | drive the MUD shell's option menu and persona choice automatically after login (MuckaII: managed persona selection) | launch |
 | `guidedloginpersona` | string | empty | persona to pick under guided login. Empty means ask | launch |
-
-source: reference
-
-| Built-in macro (`defaulthotkeys=yes`) | Slot |
-|---------------------------------------|------|
-| `qscan` | F1 |
-| `wield best weap` | F2 |
-| `open bag,g 1 wafer from bag,eat 1 wafer` | F3 |
-| `flee o` | F4 |
-| `qw,qs` | F5 |
 
 source: reference
 
@@ -303,17 +284,7 @@ source: reference
 
 FACT A stored colour is used as it stands, even when it differs from the theme. The theme is the
 base the colour editor shows and resets to. An absent or malformed colour key takes the selected
-theme's colour.
-source: reference
-
-| Theme (`chattheme`) | emote | say | shout | tell |
-|---------------------|-------|-----|-------|------|
-| `lamplight` (default) | `bfa36a` | `ede6d0` | `ffa033` | `7fb8ff` |
-| `dusk` | `d69a5c` | `f4ddb5` | `ff8a3d` | `a99cff` |
-| `rose` | `d4a04c` | `f7e7b0` | `ff8a3d` | `ff9ec7` |
-| `tidewater` | `d4a04c` | `f7e7b0` | `ff8a3d` | `7fb8ff` |
-| `bland` | `cab872` | `faeca8` | `ffc474` | `d8e09c` |
-
+theme's colour. The theme colours are `ui.md` 2.4; Mucka wrote them as lowercase hex with no `#`.
 source: reference
 
 ### `[fkeys]` and `[fkeys:Name]`
@@ -338,8 +309,7 @@ source: reference
 
 source: reference
 
-FACT The F-key macro syntax and its expansion belong to `input.md` and `keys.toml`. This file
-records only how the macros are stored.
+FACT Macro syntax and expansion are `input.md` and `keys.toml`; this file records only storage.
 source: reference
 
 ### `[watch]` and `[watch slotname]`
@@ -361,11 +331,11 @@ source: director
 | `[watch name]` | `watch`, one space, then the slot name (trimmed, any case). Starts that slot's answer table. Ignored if the slot was not defined in an earlier `[watch]` block |
 | Any other header | ends the current `[watch]` block |
 | Separator | ` = ` (space, equals, space). A line without it is ignored. Text before it, right-trimmed, is the key. Text after it, left-trimmed, is the value. So keys and answers may contain `=` |
-| Slot line (in `[watch]`) | `slotname = prefix...suffix`. The first `...` splits the trigger into prefix and suffix. Without `...` the whole value is the prefix |
+| Slot line (in `[watch]`) | `slotname = prefix...suffix`. The first `...` splits the trigger into prefix and suffix. Without `...` the whole value is the prefix and the capture runs to the end |
 | Answer line (in `[watch name]`) | `key = answer`. One pair of surrounding double quotes on the key is removed. A key ending in `...` (after unquoting) is a prefix match; otherwise it is exact |
 | Echo mode | a slot with no `[watch name]` table queues the captured text itself as the answer |
-| Whitespace | every whitespace run in triggers, keys and scanned text is collapsed to one space before matching |
-| Limits | 20 slots; 32 answers per slot; answers cut to 48 characters; captures cut to 80 characters |
+| Whitespace | every whitespace run in triggers, keys and scanned text is collapsed to one space before matching; the capture is trimmed |
+| Limits | 20 slots; 32 answers per slot; answers cut to 48 characters; captures cut to 80 characters (cut, not rejected) |
 | Use | `$slotname` in outgoing text is replaced by the queued answer, which is then cleared |
 
 source: reference
@@ -374,8 +344,8 @@ FACT A `[watch name]` section also passes the generic line grammar as a section 
 Nothing in the generic sections reads it.
 source: reference
 
-FACT Watchword behaviour is `scope: later`. Importing the `[watch]` text verbatim is `scope: launch`,
-so the rules are waiting when the feature is built.
+FACT Watchword behaviour is `scope: later` (`later/watchwords.md`). Importing the `[watch]` text
+verbatim is `scope: launch`.
 source: director
 
 ## How the sections combine
@@ -396,13 +366,8 @@ enforced_by: none: judgement
 source: reference
 
 FACT The existence of `[settings:P]` or `[fkeys:P]` was itself the user's choice ("Save to profile
-only"). The importer keeps that choice per profile, per part.
-source: reference
-
-FACT MuckaII layers per key instead of replacing. For F-keys the importer carries the replace
-semantics over as 36 explicit per-slot values in P's profile layer, with `cleared` for each slot
-`[fkeys:P]` lacks. Settings-scope keys are written where Mucka's value differs from what layering
-would give (`persistence.md`, "Settings storage").
+only"). The importer keeps that choice per profile, per part, as `persistence.md` "Settings storage"
+specifies (36 explicit F-key slots with `cleared`; settings-scope keys only where they differ).
 source: director
 
 | Value | Precedence, strongest first |

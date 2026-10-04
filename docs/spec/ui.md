@@ -1,17 +1,11 @@
 # UI: terminal look, chat colours, status bar, dreamword
 
-FACT This file says what the launch UI looks like and how it updates, as observable behaviour.
-Sounds are in `sounds.toml`. Per-code text colours are in `c1-codes.toml`. Key chords (Ctrl+D,
-Ctrl+Shift+D) are in `keys.toml`. The FES heartbeat, reset probing and width negotiation are in
-`connection.md`. Scrollback, selection and the F-key bar are in `input.md`.
-source: director
+Elsewhere: sounds `sounds.toml`; per-code colours `c1-codes.toml`; chords `keys.toml`; FES
+heartbeat and width negotiation `connection.md`; scrollback, selection, F-key bar `input.md`.
+Glyphs are written as code points (root `CLAUDE.md`, 7-bit text files).
 
 RULE Every tap or click target in this file (dreamword pill, rec chip, score, menu rows) hands
 keyboard focus back to the command input when it is done (Invariant #0).
-source: director
-enforced_by: none: judgement
-
-RULE Glyphs are given as code points. The repo is ASCII; the program draws the character.
 source: director
 enforced_by: none: judgement
 
@@ -108,9 +102,6 @@ open: The reference never draws reverse video. Should MuckaII swap fg/bg for `$-
 permits ignoring it; nobody has a capture of the server sending it.
 default: parse and track reverse, and do not draw it, as the reference does and Bartle permits.
 
-FACT MUD2 sends only SGR colour and clear-screen, no cursor positioning.
-source: director
-
 ## 2. Chat colouring (scope: launch)
 
 DECISION Chat colouring, its themes, colours and faces, and their settings are `scope: launch`.
@@ -189,10 +180,8 @@ source: reference
 | A missing or malformed stored colour falls back to the selected theme's colour, per colour | reference |
 | The editor shows live example lines for each row, own and other | reference |
 
-FACT Chat settings are global (`[settings]` only): `chattheme`, `emotecolor`, `saycolor`,
-`shoutcolor`, `tellcolor` (6 hex digits, optional `#`), and faces `emoteown`, `emoteother`,
-`sayown`, `sayother`, `shoutown`, `shoutother`, `tellown`, `tellother` (comma list of `italic`,
-`bold`, `dim`, or `none`; anything else = default).
+FACT Chat settings are global (`[settings]` only); keys and value formats: `mucka-ini.md`,
+`[settings]` only.
 source: reference
 
 ### 2.5 Tell lines
@@ -203,10 +192,7 @@ never a tappable sender.
 source: reference
 enforced_by: none: judgement
 
-open: `input.md` (Box prefills) prepends a clicked player name to typed text whenever the caret is
-at the start; this rule inserts only into an empty box. One rule or two?
-default: one rule, `input.md`'s: prepend `Name ` when the caret is at the start and nothing is
-selected. An empty box meets that condition, so this rule's case is included.
+Whether this is one rule with `input.md`'s clicked-name prefill is open there (Box prefills, OPEN D6).
 
 ## 3. Status bar (scope: launch)
 
@@ -348,25 +334,18 @@ source: reference
 
 open: The wide cluster also has a combat icon (combat.svg, crossed blades) lit while a fight is
 believed open. It depends on combat tracking, which belongs to the later combat rail. Launch or
-later? Listed as later in section 8 pending this.
+later? Listed as later (section 8, `later/README.md`) pending this.
 default: `scope: later` (`later/combat-panel.md`). At launch the wide cluster has no combat slot.
 
 ### 3.5 Recording chip
 
-FACT The recording chip is specified outside the launch spec:
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Recording chip and the session transcript it toggles | `scope: later` | `later/session-transcript.md` |
-
+FACT Recording chip and the session transcript it toggles: `scope: later`,
+`later/session-transcript.md`.
 source: director
 
 ### 3.6 Effective columns and narrow widths
 
-FACT Effective columns = clamp(min(max-columns setting, columns that fit), 20, 160). With
-max-columns = 0 (auto) it is the columns that fit. Before the first measurement it is the setting,
-or 40 on auto (`connection.md`, section 4).
-source: reference
+Effective columns, and re-sending the width when they change: `connection.md` 4 and 4.1.
 
 | Effective columns | Behaviour | source |
 |-------------------|-----------|--------|
@@ -374,11 +353,6 @@ source: reference
 | 76-79 | Wide, one row. Weather glyph only | reference |
 | < 76 | Compact, two rows: a label row (`Sta Mag Str Dex Score Wth Rst`, 11 pt, #58A6FF) over a value row. Score at one point below the values, delta one point smaller again. No `Score:` label, no magnifier. Rec chip becomes `(R)` right-aligned in the spare space | reference |
 | < 50 | Values 12 pt (13 pt otherwise); `/max` 2 pt below the value. `/max` hidden for any stat whose max is 100 or more | reference |
-
-RULE A width change that changes effective columns re-sends the terminal width to the server so
-new output wraps at the new width (see `connection.md`).
-source: reference
-enforced_by: none: judgement
 
 ## 4. Dreamword (scope: launch)
 
@@ -432,8 +406,7 @@ default: `muckaii`, in the reference's lower-case form: `<character>@<profile> m
 
 ## 6. Keep screen on (scope: later)
 
-DECISION Keep screen on is `scope: later`, with anti-idle keepalive (`connection.md` 5.5). Its spec
-is `later/keep-screen-on.md`.
+DECISION Keep screen on is `scope: later`: `later/keep-screen-on.md`.
 source: director
 
 ## 7. Settings for launch UI features
@@ -448,7 +421,7 @@ source: director
 | Mute beep permanently | Settings | on/off | off | `mutebeep` | reference |
 | Save settings to this profile only | Settings | on/off | off | `[settings:<profile>]` section exists. In Mucka that section replaced `[settings]` wholesale; MuckaII writes the edited keys to the profile layer and lets the rest fall through (`persistence.md`, Settings storage) | reference, director |
 | Default font size (all profiles) | Display | 9-24 | 15 | `defaultfontsize` | reference |
-| Default max columns (all profiles) | Display | 0 (auto) - 160 | 0 | `defaultcolumns`: stored only, nothing reads it (`mucka-ini.md`, scope later) | reference |
+| Max columns | Display (global layer; a profile may override) | unset, or 20 - 160 | unset: min(80, fits) (`connection.md` 4) | how Mucka's `columns` keys import: `mucka-ini.md` | director |
 | Dreamword size offset | Display | -2 to +4 | 0 | `dreamwordsizeoffset` | reference |
 | Chat theme, colours, faces | Display | see 2.4 | Lamplight, faces 2.3 | see 2.4 | reference |
 | Sounds: master, groups, rows, volumes, fallbacks, bell | Sounds | see `sounds.toml` | all on | see `sounds.toml` | reference |
@@ -470,22 +443,8 @@ source: reference
 
 ## 8. Later (scope: later)
 
-FACT Recorded so they are not lost. Each is re-justified against `fair-play.md` before it is built.
-source: director
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Combat rail, combat metronome, combat edge, combat status icon | `scope: later` | `later/combat-panel.md` |
-| Side panel, floating widgets | `scope: later` | `later/side-panel.md` |
-| Radar compass | `scope: later` | `later/compass.md` |
-| Score graph, score tap target | `scope: later` | `later/score-graph.md` |
-| Recording chip, session transcript | `scope: later` | `later/session-transcript.md` |
-| Drop headline overlay | `scope: later` | `later/drop-overlay.md` |
-| Keep screen on | `scope: later` | `later/keep-screen-on.md` |
-| Watchwords | `scope: later` | `later/watchwords.md` |
-| Chat mode | `scope: later` | `later/chat-mode.md` |
-
-DECISION Managed persona selection (Mucka's guided login) and the raw console are `scope: launch`
-and are not in this table (`flow.md`, Pre-game; `input.md`, Raw console). Mucka's Friends tab is
-not in it either: it is rejected (`fair-play.md`, Other players).
+FACT Later UI features (combat rail, metronome, edge and status icon; side panel and floating
+widgets; radar compass; score graph; recording chip; drop overlay; keep screen on; watchwords; chat
+mode) are indexed in `later/README.md`. Managed persona selection and the raw console are launch
+(`flow.md`, Pre-game; `input.md`, Raw console); the Friends tab is rejected (`fair-play.md`).
 source: director

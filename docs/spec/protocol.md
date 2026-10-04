@@ -1,16 +1,10 @@
 # Protocol: the inbound byte stream
 
-FACT This file says how MuckaII turns the bytes MUD2 sends into styled text, lines, a prompt and
-structured readings. `c1-codes.toml` lists every C1 code. `events.md` defines the event stream a
-decoder emits, which is how every statement here is tested against the captures. Telnet option
-negotiation, login and client-mode entry belong to `connection.md`.
-source: director
-
 ## Layers
 
 FACT The stream is decoded in this order. Each layer hands the next one bytes, never decoded
 strings.
-source: director
+source: agent
 
 | Order | Layer | Consumes | Produces |
 |-------|-------|----------|----------|
@@ -19,7 +13,7 @@ source: director
 | 3 | Line model | Text runs, line ends, prompts, clears | Completed lines and one live partial line |
 | 4 | Render | Lines | Rows hard-wrapped at the column count |
 
-source: director
+source: agent
 
 ## Telnet residue in the stream
 
@@ -36,7 +30,7 @@ source: capture:blind-vs-water-snake.c1
 RULE Statements below about "255" mean the telnet-decoded byte. Statements quoting wire bytes say
 "on the wire".
 enforced_by: none: judgement
-source: director
+source: agent
 
 FACT An `FF` on the wire followed by anything other than `FF` is a telnet command. The reference
 accepts telnet commands between C1 codes and text at any point.
@@ -139,8 +133,7 @@ for a surplus pop to remove. Bartle states that only catch and throw lack a matc
 capture holds a `00`, so nothing deprecates that. Rejected: Clio's and the reference's stack reset
 (Clio: the base frame is never popped; reference: it can be popped). `c1-codes.toml` code `00`
 records it as `stack = "push"`.
-source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more independent
-captures); bartle:FE4 section 4
+source: director (evidence ranking, CLAUDE.md); bartle:FE4 section 4
 
 EVIDENCE A frame can span a line end. `12` brackets "The water-snake1 looks fit.\r\0\r\n" and closes
 after the line end; `02 02` brackets a long description the server wrapped over four lines.
@@ -279,8 +272,7 @@ started outside game mode renders `(*)` or `*` glued to the next line. `events.m
 decoder into game mode for captures to keep it out of golden diffs. Should the entering prompt be
 shown as a prompt instead?
 default: yes. An outer `01` bracket whose core header enters game mode is captured and shown as a
-prompt, because the prompt is the bracket, never a guess at its text (root `CLAUDE.md`). Priming
-keeps the golden diffs unchanged.
+prompt. Priming keeps the golden diffs unchanged.
 
 FACT If a line end arrives while the outer `01` bracket is still open, the reference abandons the
 prompt capture and renders what it held as ordinary text on that line.
@@ -296,8 +288,7 @@ DECISION `98 nn` is only the prefix of a line snooped through snoop `nn`, as Bar
 does not flush pending text as a partial line and does not re-arm the prompt gate. No capture holds
 a `98`, so nothing deprecates Bartle's definition. Rejected: the reference's flush on `98`, and
 Clio's prompt-gate re-arm. `c1-codes.toml` code `98` records the same ruling.
-source: director (evidence ranking: Bartle first; deprecating Bartle needs two or more independent
-captures); bartle:FE4 code 98
+source: director (evidence ranking, CLAUDE.md); bartle:FE4 code 98
 
 ## Echo
 
@@ -313,10 +304,7 @@ FACT The echo is ordinary text to the decoder. The line model merges it onto the
 source: reference
 scope: launch
 
-open: `persistence.md` reports a reference wire-log pair where `wave` was sent and echoed as
-`wave\r\r\n`, while the captures show the echo ending `\r\n` and every spec says outbound lines end
-CR LF. Which terminator does the server receive and echo?
-default: send `0D 0A`, as Clio does, the captures' echo shows and every spec states.
+Outbound terminator (`0D 0A` or CR CR LF): open in `connection.md` 1 (OPEN A1).
 
 ## Line model
 
@@ -378,15 +366,10 @@ source: capture:dark-two-rats.c1
 
 FACT The client also hard-wraps each logical line at render time to the column count it told the
 server: no word awareness, a row break every `columns` characters, styles kept across the break. When
-the server has already wrapped, this changes nothing.
+the server has already wrapped, this changes nothing. Column limits and the default width:
+`connection.md` 4.
 source: reference
 scope: launch
-
-| Value | Columns | Source |
-|-------|---------|--------|
-| fewest told to the server | 20 | reference |
-| most told to the server | 160 | reference |
-| told when no width can be measured | 40 | director |
 
 FACT A tab expands to spaces up to the next multiple of 8 columns, counted across style runs, before
 wrapping.
@@ -488,12 +471,11 @@ the wire said. `ui.md` 1.3 draws bold with bright promotion, so the screen shows
 
 open: Clio honours `ESC [ J` and `ESC [ 2 J` as clear screen; the reference ignores them. MUD2 is said
 to send clear screen, and no capture shows which form.
-default: honour both as clear screen, as Clio does. Root `CLAUDE.md` says the server sends ANSI
-clear-screen.
+default: honour both as clear screen, as Clio does.
 
 open: Clio accepts `ESC [ 0 ; 3 7 ; 4 0 \r \n m` as one SGR reset, calling it a server bug
 workaround. The reference abandons the CSI at the CR, so the LF ends a line and `m` prints as text.
-default: accept it as one SGR reset, as Clio does. Clio outranks the reference on mechanics.
+default: accept it as one SGR reset, as Clio does.
 
 ## Encoding
 
@@ -501,17 +483,12 @@ FACT Inbound text is bytes 0x20-0x7E. The decoder never decodes inbound bytes lo
 source: director
 scope: launch
 
-RULE What the player types is reduced to printable 7-bit characters at the single send boundary.
-Typographic punctuation is transliterated, and anything else is dropped. The client's own escape
-sequences (`ESC-[ ... ESC-]`) are added after that step and are never filtered. Each line ends
-CR LF.
-enforced_by: none: judgement
-source: director
-scope: launch
+Outbound: the 7-bit send rule is root `CLAUDE.md`, "Bytes, not strings"; each line ends CR LF
+(`connection.md` 1).
 
-DECISION Player-typed text is masked to 7 bits. Rejected: the reference's behaviour of encoding outbound
-text as Latin-1 and sending bytes 0x80-0xFF unmasked, which MUD2 does not accept and which would need
-IAC doubling for 0xFF.
+DECISION Player-typed text is masked to 7 bits. Rejected: the reference's Latin-1 encoding of
+outbound text with bytes 0x80-0xFF unmasked, which MUD2 does not accept and which would need IAC
+doubling for 0xFF.
 source: director
 source: reference
 

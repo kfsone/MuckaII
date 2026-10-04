@@ -1,22 +1,14 @@
 # Persistence
 
-FACT This file says what MuckaII keeps on disk and what the user can see and query there: the data
-directory, the wire log, the session transcript, the schema rules, and the one-time import of
-Mucka's `mucka.ini`. The ini format itself is in `mucka-ini.md`.
-source: director
-
 | Feature | Scope |
 |---------|-------|
 | Data directory | `scope: launch` |
 | Wire log | `scope: launch` |
 | Schema forward-compatibility | `scope: launch` |
 | First-run import of `mucka.ini` | `scope: launch` |
-| Session transcript (`rec`) | `scope: later`: `later/session-transcript.md` |
+| Session transcript (`rec`) | `scope: later`: `later/session-transcript.md` (open: OPEN E1) |
 
 source: director
-
-open: the session transcript is not in the launch scope list in `INTERNAL.md`. Confirm it is later.
-default: later.
 
 ## Data directory
 
@@ -31,9 +23,8 @@ source: director
 
 source: director, reference (the Android row is inferred from Mucka's Android behaviour)
 
-RULE On Android, data goes in the app's private files directory, never its cache directory. Android
-deletes a cache directory under storage pressure without asking or telling the app, and the user's
-"Clear cache" button empties it. The wire log cannot survive that.
+RULE On Android, data goes in the app's private files directory, never its cache directory: Android
+empties a cache directory under storage pressure or on "Clear cache", and the wire log must survive.
 enforced_by: none: judgement
 source: reference
 
@@ -45,11 +36,10 @@ source: reference
 | session transcripts | `scope: later`. One text file per recording (`later/session-transcript.md`) |
 
 open: proposed contents. Only the SQLite wire log and the import are director rulings
-(`INTERNAL.md`). The settings file and the marker follow from them.
+(`INTERNAL.md`); the settings file and the marker follow from them.
 default: the contents in the table above.
 
-open: file names inside `~/.muckaii/` (database, settings file, marker, transcript location) are
-not yet ruled.
+open: file names inside `~/.muckaii/` (database, settings file, marker, transcript location).
 default: the database is `muckaii.db` and the import marker is `mucka-ini-imported`, both directly in
 `~/.muckaii/`. The settings file takes the base name `settings`, with the extension of whatever format
 `persistence` gives it. Transcripts (later) go in `~/.muckaii/` itself, as the transcript's Location
@@ -75,8 +65,7 @@ source: director
 DECISION The outbound password line and the outbound account ID line are masked in the wire log.
 Each is stored as a sent record of the same length, with every byte before the line's `0D 0A`
 replaced by a placeholder byte, and is followed by an annotation naming what was masked
-(`masked: password`, `masked: account id`). Rejected: keeping them verbatim, which is Mucka's
-behaviour (see below).
+(`masked: password`, `masked: account id`). Rejected: keeping them verbatim (Mucka).
 source: director
 
 | Masked send | How the client knows it is that send |
@@ -87,23 +76,21 @@ source: director
 source: director
 
 open: With `telnetlogin` off, the user types the account ID and password into the command box, so
-the login state machine does not send them. Should a line sent while the recognised account or
-password prompt is the live partial be masked the same way? A masked typed line no longer equals
-what was typed, so Invariant #1's acceptance check (`session.md`) must then skip masked records.
+the login state machine does not send them. Mask a line sent while the recognised account or
+password prompt is the live partial? If so, Invariant #1's acceptance check must skip masked records.
 default: yes, mask it the same way, with the same annotation.
 
 open: The account ID also arrives inbound: in the server's echo of the account line and in the
-`95` client-mode block (`events.md`, `client_mode`). Received bytes are recorded verbatim. Mask the
-account ID in received records too, or keep them verbatim?
+`95` client-mode block (`events.md`, `client_mode`). Mask it in received records too, or keep them
+verbatim?
 default: keep received records verbatim until the director rules.
 
-RULE The log opens with the connection, before the first byte, so the login exchange is in it like
-everything else.
+RULE The log opens with the connection, before the first byte, so the login exchange is in it.
 enforced_by: none: judgement
 source: reference
 
-RULE Recording a record must never stall typing or the screen (root `CLAUDE.md`, Invariant #1). The
-socket and UI threads only hand a record over. One background writer does all the disk work.
+RULE Recording never stalls typing or the screen (root `CLAUDE.md`, Invariant #1). The socket and
+UI threads only hand a record over; one background writer does all the disk work.
 enforced_by: none: judgement
 source: reference
 
@@ -136,7 +123,7 @@ source: reference
 | Direction | One record is | Data encoding |
 |-----------|---------------|---------------|
 | `0` received | one socket read, whatever its length | raw bytes. Decoding as Latin-1 is the identity map |
-| `1` sent | one socket write | raw bytes. 7-bit ASCII once past the send boundary |
+| `1` sent | one socket write | raw bytes. 7-bit once past the send boundary |
 | `2` annotation | one client-side note | UTF-8 text |
 
 source: reference
@@ -160,7 +147,7 @@ source: reference
 | started | unix ms UTC, when the log opened for this connection |
 | ended | unix ms UTC; empty means the client died before closing it |
 | host | the server this run was against |
-| client version | the MuckaII version that wrote it, so a decoder can tell which client wrote the bytes |
+| client version | the MuckaII version that wrote it |
 
 source: reference
 
@@ -176,8 +163,7 @@ source: reference
 
 source: reference
 
-open: which annotations MuckaII writes. Annotations are a log of client decisions, not wire
-traffic.
+open: which annotations MuckaII writes.
 default: every row above except the reset-timer diagnostics (`logttr` is a later debug key), plus
 the masking annotations ("Wire log") and the probe and raw-console marks (`architecture.md`,
 `origin` table).
@@ -191,7 +177,7 @@ source: reference
 
 FACT MuckaII's table and column names are its own. The fields above are the requirement, not a
 schema.
-source: director
+source: agent
 
 | Failure | Behaviour |
 |---------|-----------|
@@ -211,22 +197,19 @@ payload, 0.156 KB/s average. Received 76,633 records (9,668,270 bytes), sent 42,
 indexes, about 0.74 MB per play-hour.
 source: reference
 
-FACT In Mucka's wire log the password record is stored in clear in the sent direction, like
-every other sent byte. The server does not echo it, so it is absent from the received direction and
-from the screen. MuckaII masks it (see "Wire log").
+FACT In Mucka's wire log the password record is stored in clear in the sent direction. The server
+does not echo it, so it is absent from the received direction and from the screen.
 source: reference
 
 FACT A reference wire-log record pair showing the echo: sent `wave\r\r\n`, then received
 `wave\r\r\n`.
 source: reference
 
-open: The pair above ends CR CR LF, while `connection.md` gives the outbound terminator as `0D 0A`
-and the captures show the echo ending `\r\n` (`protocol.md`, Echo). Which does the server receive?
-default: `0D 0A`, as `connection.md` 1 gives it.
+This pair is the source of the outbound-terminator question owned by `connection.md` 1 (OPEN A1).
 
 ## Schema forward-compatibility
 
-FACT MuckaII is released on GitHub. Its databases live on strangers' machines that nobody here can
+FACT MuckaII is released on GitHub. Its databases live on users' machines that nobody here can
 inspect or repair.
 source: director
 
@@ -240,13 +223,12 @@ never deletes rows. Changes are additive.
 enforced_by: none: judgement
 source: director
 
-RULE The schema is never converged on whatever shape the file happens to have. A rule
-re-evaluated at every open keeps acting on a stranger's file, unprompted and with no backup.
-enforced_by: none: judgement
+FACT The reference's schema history includes a step that deleted rows; the rule above is stricter.
 source: reference
 
-FACT The reference's schema history includes a step that deleted rows. The no-destructive-migration
-rule above is stricter than the reference.
+RULE The schema is never converged on whatever shape the file happens to have: a rule re-evaluated
+at every open keeps acting on a user's file, unprompted and with no backup.
+enforced_by: none: judgement
 source: reference
 
 open: what a client does with a database written by a NEWER MuckaII (unknown later steps recorded).
@@ -257,15 +239,15 @@ stays always on.
 
 ## Retention and deduplication
 
-FACT The wire log builds up a lot of redundant bloat as the player walks around. Seeing the same
-long room descriptions over and over is one example.
+FACT The wire log fills with repeats as the player walks around, such as the same long room
+descriptions over and over.
 source: director
 
 DECISION Wire payloads are stored content-addressed from the first release. One table maps a hash
 to the bytes, and each wire row references a payload by its hash, so repeated text is stored once.
-This has to be in the first schema, because a later migration may not rewrite a stranger's
-database destructively. Retention policies and compaction come later and work on top of this
-table. Rejected: storing each payload inline per row (Mucka's layout).
+It is in the first schema because no later migration may rewrite a user's database destructively.
+Retention policies and compaction come later, on top of this table. Rejected: storing each payload
+inline per row (Mucka's layout).
 source: director
 
 open: The retention policy. What ages out, after how long, and whether old payloads are
@@ -276,9 +258,8 @@ Retention is `scope: later` (`INTERNAL.md`, Scope).
 ## Settings storage
 
 DECISION A settings store holds only the keys the user has changed. A missing key means "use the
-built-in value". This is what lets the UI show that a setting is at its built-in value, and it is
-what lets a later release say "this setting's built-in value changed: keep or switch?" (`flow.md`,
-Settings).
+built-in value". This lets the UI show that a setting is at its built-in value, and lets a later
+release say "this setting's built-in value changed: keep or switch?" (`flow.md`, Settings).
 source: director
 
 DECISION Settings resolve through three layers, one key at a time, strongest first:
@@ -302,7 +283,7 @@ global layer fills it. Removing a key from a layer (Reset to inherited) is diffe
 built-in macro while `defaulthotkeys` is on, exactly as an empty slot does in Mucka (`mucka-ini.md`,
 `[profile:Name]`). Rejected: treating an empty string as "not set", which leaves no way for a
 profile to empty a slot the global layer fills.
-source: director
+source: agent (follows from the director's per-key layering ruling)
 
 RULE The importer keeps each Mucka profile's *effective* values. Mucka replaces wholesale while
 MuckaII layers, so:
@@ -314,8 +295,8 @@ MuckaII layers, so:
 | neither | nothing: P inherits the global layer, as it did in Mucka |
 
 The F-key test: after import, editing a global F-key slot changes no profile that had its own
-`[fkeys:P]`, because Mucka's replace semantics guaranteed that.
-source: director
+`[fkeys:P]`.
+source: agent (follows from the director's per-key layering ruling)
 enforced_by: none: judgement
 
 open: For a profile with `[settings:P]`, a settings-scope key that matched the global value at
@@ -325,12 +306,7 @@ default: keep the rule above (differences only).
 
 ## Session transcript (`rec`)
 
-FACT The session transcript is specified outside the launch spec:
-
-| Feature | Scope | Spec |
-|---------|-------|------|
-| Session transcript (`rec`) | `scope: later` | `later/session-transcript.md` |
-
+FACT `scope: later`: `later/session-transcript.md`.
 source: director
 
 ## Import of `mucka.ini`
@@ -357,12 +333,9 @@ source: director
 
 source: director, reference
 
-FACT The Windows order matches Mucka's own lookup: beside its executable first, then the user
-profile. The first candidate that exists is the file Mucka itself was using.
-source: reference
-
-FACT Mucka never shipped on Linux or macOS, so the `$HOME/mucka.ini` candidate there only finds a
-file the user copied in by hand.
+FACT The Windows order is Mucka's own lookup, so the first candidate that exists is the file Mucka
+was using. On Linux and macOS `$HOME/mucka.ini` only finds a file the user copied in by hand
+(`mucka-ini.md`, Where Mucka kept it).
 source: reference
 
 FACT Mucka's Windows installer (Inno Setup, 64-bit) registers the application id
@@ -405,8 +378,9 @@ default: take the first silently. It is the file Mucka itself was using.
 | `mucka.db` | not imported |
 
 source: director (profiles in MRU order, settings, F-keys, `[watch]` verbatim, passwords,
-`mucka.db`: `INTERNAL.md`), reference (how each is read). The four rows from "Keys for `later`
-features" to "Orphan" are proposals; see the `open:` lines in `mucka-ini.md`.
+`mucka.db`: `INTERNAL.md`), reference (how each is read), agent (the per-part "profile only" split
+and the explicit per-key and `cleared` values in the Settings and F-keys rows). The four rows from
+"Keys for `later` features" to "Orphan" are proposals; see the `open:` lines in `mucka-ini.md`.
 
 RULE The importer never fails as a whole because of one bad value. A malformed value takes the
 default, as Mucka's own reader did.

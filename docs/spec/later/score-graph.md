@@ -5,10 +5,8 @@ the Profile state has no way into it (`flow.md`, Profile). `$SCORE` stays a rese
 `input.md`.
 source: director
 
-FACT What the user saw of Mucka's score graph:
-
-| Feature | What the user sees | source |
-|---------|--------------------|--------|
+| Feature | What the user saw in Mucka | source |
+|---------|----------------------------|--------|
 | Score graph | `$SCORE` / tapping the score opens a graph of score over the session, with a skull U+2620 at a persona wipe | reference |
 | Score tap target | Tapping the score (with a magnifier U+1F50D) opens the graph | reference |
 
@@ -23,4 +21,4 @@ source: reference
 FACT Related entries elsewhere: Escape closes the score graph panel (`input.md`, Escape;
 `keys.toml` Escape); the panel's size keys `scorepanelwidth` and `scorepanelheight` are in
 `mucka-ini.md`; Score is a menu item (`ui.md` section 7).
-source: director
+source: agent

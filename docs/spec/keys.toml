@@ -33,12 +33,11 @@
 # enforced_by: none: judgement
 # source: reference
 #
-# RULE A hotkey that sends goes through core::submit_line onto the one UI -> core FIFO, behind any
-# line already entered. A hotkey that edits the box (Ctrl+R, Escape, Up, Down) is a box edit,
-# applied by the UI loop in arrival order (input.md, Ordering; architecture.md, Input: two
-# orderings). A hotkey never overtakes an earlier Enter.
+# RULE A hotkey that sends is a send (core::submitLine); one that edits the box (Ctrl+R, Escape,
+# Up, Down) is a box edit (architecture.md, Input: two orderings). A hotkey never overtakes an
+# earlier Enter.
 # enforced_by: none: judgement
-# source: director, reference
+# source: agent, reference
 #
 # RULE After any hotkey action, keyboard focus is in the command box.
 # enforced_by: none: judgement

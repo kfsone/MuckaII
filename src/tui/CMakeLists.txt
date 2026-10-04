@@ -1,0 +1,4 @@
+add_executable(muckaiiTui main.cpp)
+target_link_libraries(muckaiiTui PRIVATE muckaiiCore muckaiiClient)
+muckaiiTargetDefaults(muckaiiTui)
+muckaiiExecutableRuntime(muckaiiTui)

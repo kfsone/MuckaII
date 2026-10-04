@@ -1,0 +1,113 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-msvc-base",
+      "hidden": true,
+      "generator": "Visual Studio 18 2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "toolset": { "value": "host=x64", "strategy": "set" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS",
+        "CMAKE_EXE_LINKER_FLAGS": "/INCREMENTAL:NO",
+        "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT": "ProgramDatabase"
+      }
+    },
+    {
+      "name": "windows-msvc-debug",
+      "displayName": "Windows MSVC Debug (ASan)",
+      "inherits": "windows-msvc-base",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /fsanitize=address",
+        "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Ob0 /Od",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG /INCREMENTAL:NO"
+      }
+    },
+    {
+      "name": "windows-msvc-release",
+      "displayName": "Windows MSVC Release",
+      "inherits": "windows-msvc-base",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG"
+      }
+    },
+    {
+      "name": "linux-clang-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-22",
+        "CMAKE_CXX_COMPILER": "clang++-22",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "linux-clang-asan-ubsan",
+      "displayName": "Linux clang 22 libc++ ASan+UBSan (unverified)",
+      "inherits": "linux-clang-base",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -fsanitize=address,undefined -fno-sanitize-recover=all",
+        "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++ -fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "displayName": "Linux clang 22 libc++ fuzz (unverified; no fuzz target yet)",
+      "inherits": "linux-clang-base",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++ -fsanitize=fuzzer-no-link,address,undefined -fno-sanitize-recover=all",
+        "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++ -fsanitize=address,undefined"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-asan-ubsan",
+      "configurePreset": "linux-clang-asan-ubsan"
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "configurePreset": "linux-clang-fuzz"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc-debug",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc-release",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-clang-asan-ubsan",
+      "configurePreset": "linux-clang-asan-ubsan",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-clang-fuzz",
+      "configurePreset": "linux-clang-fuzz",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

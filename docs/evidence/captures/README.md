@@ -1,8 +1,6 @@
 # Captures
 
-FACT Each `.c1` file here is a capture of live MUD2 wire traffic: the server's bytes, verbatim, one
-record per line. The captures and the wire corpus are the only safe place to experiment, because
-there is no test server.
+FACT Each `.c1` file here is live MUD2 wire traffic, verbatim, one record per line.
 source: director
 
 ## Line grammar
@@ -46,16 +44,15 @@ source: capture:invisible-player-joins.c1
 source: capture:phone-login-at-20-columns.c1
 source: capture:wyvern-poison-death.c1
 
-RULE Open a capture in binary mode and read bytes. A UTF-8 text reader corrupts it: bytes 0x80-0xFF
-are not valid UTF-8 on their own, and they are MUD2 markup, not characters. Newline translation
-corrupts it too. `scripts/c1.py` is the reader the repo's scripts use.
+RULE Open a capture in binary mode and read bytes. A UTF-8 reader or newline translation corrupts it
+(bytes 0x80-0xFF are MUD2 markup, not characters). `scripts/c1.py` is the repo's reader.
 enforced_by: none: judgement
 source: director
 
-RULE The golden streams count `rx` records only, from zero, in file order (`docs/spec/events.md`
-"Driving the decoder"). `tx` and `an` records are not fed to the decoder and take no ordinal.
+RULE Golden `rx` ordinals count `rx` records only, from zero, in file order; `tx` and `an` records
+take none (`docs/spec/events.md`, Driving the decoder).
 enforced_by: scripts/check-goldens.py
-source: director
+source: agent
 
 ## What the six captures hold
 

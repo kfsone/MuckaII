@@ -1,45 +1,42 @@
 # Events: the golden-stream schema
 
-FACT This file defines the stream of events a decoder emits for an inbound byte stream. It is written
-as JSON Lines so that two independent producers can be diffed: an exporter that maps the reference's
-output into it, and the MuckaII decoder under test. Every behaviour in `protocol.md` that can be seen
-in a capture is visible as one of these events.
-source: director
+FACT The decoder's event stream, as JSON Lines, so two producers can be diffed: an exporter mapping
+the reference's output, and the MuckaII decoder under test. Every capture-visible behaviour in
+`protocol.md` is one of these events.
+source: agent
 
-RULE A golden stream is the reference's output. It ranks below Bartle and below the captures. A
-difference between the MuckaII decoder's stream and a golden is a lead to investigate, not a target
-to match: where this file or `protocol.md` follows Bartle or a capture against the reference, the
-decoder follows the spec and the golden differs there. Every known difference of that kind is named
-here and in `docs/evidence/golden/README.md`.
+RULE A golden stream is the reference's output and ranks below Bartle and the captures. A diff
+against a golden is a lead to investigate, not a target to match: where this file or `protocol.md`
+follows Bartle or a capture against the reference, the decoder follows the spec. Each known
+difference is listed in `docs/evidence/golden/README.md`, Known differences.
 enforced_by: none: judgement
 source: director
 
-RULE The JSON block in "Machine-readable schema" at the end of this file is the single source of
-truth for event names, key order and value types. The prose tables say the same thing for people.
-`scripts/check-goldens.py` validates every golden against the block and checks that the prose tables
-name the same events and keys.
+RULE The JSON block in "Machine-readable schema" is the single source of truth for event names, key
+order and value types; the prose tables repeat it for people. `scripts/check-goldens.py` validates
+every golden against the block and checks the prose tables name the same events and keys.
 enforced_by: scripts/check-goldens.py
-source: director
+source: agent
 
 ## File format
 
-RULE A golden stream is a UTF-8 file containing only ASCII: one JSON object per line, LF line ends, no
-blank lines. The first line is a `stream` record. Any non-ASCII character in a string is written as a
-`\uXXXX` escape.
+RULE A golden stream is a file of 7-bit characters only: one JSON object per line, LF line ends, no
+blank lines. The first line is a `stream` record. Any character above 0x7F in a string is written as
+a `\uXXXX` escape.
 enforced_by: scripts/check-goldens.py
-source: director
+source: agent
 
 RULE Every record has `ev` (the event name) and `rx` (the zero-based ordinal of the capture's `rx`
 record whose bytes completed the event; `-1` for the `stream` record). Keys are written in the order
 listed below. Absent optional values are written as `null`, never omitted. `rx` never decreases from
 one record to the next.
 enforced_by: scripts/check-goldens.py
-source: director
+source: agent
 
 RULE Two streams are equal when they have the same records in the same order and each pair of records
 is equal as parsed JSON values. Whitespace and key order do not count.
 enforced_by: none: judgement
-source: director
+source: agent
 
 ## Driving the decoder
 
@@ -48,7 +45,7 @@ capture escapes (`\\`, `\r`, `\n`) and mapping each character to the byte of the
 `an` records are not fed. After each read it signals end-of-read, which is when a pre-game partial
 line is flushed.
 enforced_by: none: judgement
-source: director
+source: agent
 
 RULE The decoder starts outside game mode, with an empty context stack and the prompt gate open, as
 at the start of a connection.
@@ -65,26 +62,26 @@ the producer first feeds these 18 bytes as a read of its own, and writes none of
 
 All six captures in `docs/evidence/captures` begin mid-session.
 enforced_by: none: judgement
-source: director
+source: agent
 
 DECISION After priming, the decoder is in game mode with an empty context stack, no pending text, no
 deferred code events, and the prompt gate closed: the state just after a prompt has been shown, which
 is where a mid-session capture is most likely to begin. The first prompt of a capture is therefore
 shown only if a displayed line ends before it. Rejected: leaving the gate open (the start-of-connection
 state), which shows a prompt after a leading FE reply that a running client would have discarded.
-source: director
+source: agent
 
 DECISION End of capture is not an event. A producer writes nothing after the last read: no
 `game_exit`, no partial, no deferred code events. Rejected: emitting `game_exit` as if the connection
 closed, which the capture does not record.
-source: director
+source: agent
 
 | `ev` | Keys after `ev`, `rx` |
 |------|-----------------------|
 | `stream` | `schema` integer, `source` string, `start_in_game` boolean |
 
 FACT `schema` is 2. `source` is `capture:<file>.c1`.
-source: director
+source: agent
 
 ## Names
 
@@ -95,14 +92,14 @@ prompt, exits, inventory, who, dream word, the FES field names) and protocol nam
 English words are exempt only as the bare word (`text`, `partial`, `stats`, `code`, `close`), where a
 match with a generic member such as a `Text` property carries no borrowed meaning. Rejected: matching
 any occurrence of the word anywhere in the reference, which would rule out every plain English word.
-source: director
+source: agent
 
 ## Shared types
 
 ### style
 
 FACT A style is an object `{"fg": F, "bg": B, "attrs": [..]}`.
-source: director
+source: agent
 
 | Key | Type | Meaning |
 |-----|------|---------|
@@ -113,13 +110,13 @@ source: director
 ### run
 
 FACT A run is an object `{"text": T, "style": S}`: `text` is a non-empty string, `style` a style.
-source: director
+source: agent
 
 RULE Runs and `text` events are maximal: two adjacent pieces of text with equal styles and no other
 event between them are one run. A producer whose source splits text at every code merges the pieces
 before writing.
 enforced_by: none: judgement
-source: director
+source: agent
 
 RULE Text never contains CR, LF or NUL. TAB is kept as `\t`. Other bytes 0x01-0x1F and 0x7F are
 dropped. A byte 0x80-0x9A is written as the character of the same value (`\u0080`-`\u009a`).
@@ -129,7 +126,7 @@ source: reference
 ### player
 
 FACT A player is an object `{"name": N, "fg": F}`: `name` a string, `fg` an integer 0-15 or `null`.
-source: director
+source: agent
 
 ## Events
 
@@ -167,14 +164,14 @@ DECISION A `text` event's `rx` is the record holding its last character, and it 
 stream at that character: an event completed by a later byte comes after it. Rejected: the record of
 its first character, and the record of the byte that ends the run (the next style change or line
 end), which would move text behind events that the wire sends after it.
-source: director
+source: agent
 
 DECISION Text that a `partial` takes off the line is written only inside that `partial`, never also as
 `text` events. The `partial` is written at end-of-read, after every other event of that read; an
 event that completed while the text was pending comes before it. Before game mode a decoder therefore
 holds pending text until it knows whether a line end or end-of-read takes it. Rejected: writing the
 text as it arrives and repeating it in the `partial`, which would show it twice.
-source: director
+source: agent
 
 DECISION `clear_screen` emits no `line_end`. Text pending before it is written as `text` events before
 the `clear_screen`, and the line model commits it (`protocol.md` "Line model"). The clear does not open
@@ -210,7 +207,7 @@ RULE Stat keys are written in this order. For `source` `fes` every key is presen
 `stamina_colour` may be `null`). For `source` `code` only `stamina`, `max_stamina` and `score` are
 present, each `null` unless the line carried that bracket with a valid number.
 enforced_by: scripts/check-goldens.py
-source: director
+source: agent
 
 | Key | Type | FES field |
 |-----|------|-----------|
@@ -267,7 +264,7 @@ source: capture:dark-two-rats.c1
 DECISION A player's `fg` is an integer 0-15, or `null` when the bracket's colour is the terminal
 default, the same rule as a style's `fg`. Rejected: omitting the key, which breaks the fixed key list,
 and writing `-1`, which is not a colour index.
-source: director
+source: agent
 
 DECISION A wrapped FE reply is read line by line. In a FEX reply every line's words are exits, so a
 wrap changes nothing. In a FEI reply each line is one entry, and a row the server wrapped is not
@@ -288,7 +285,7 @@ source: reference
 FACT Prose readings (stats found in a line's words rather than in an 89 bracket, score deltas,
 "Persona saved" totals) are not part of this schema. An exporter whose source merges prose readings
 with code readings writes only the values the line's 89 brackets account for.
-source: director
+source: agent
 
 ### Code events (deferred)
 
@@ -335,12 +332,12 @@ source: clio:src/sound.c
 FACT Whether a `sound_code` is heard is the sound layer's call, made from sounds.toml: the
 `self-act-echo-silent` rule reads the finished line's words (`OK, `), and the gating, volume, override
 and fallback rules are settings. The decoder writes every `sound_code` the table gives.
-source: director
+source: agent
 
 FACT Text-triggered sounds (sounds.toml rows with `trigger_kind` `text`) and the tell alerts
 (`trigger_kind` `event`) read a completed line's words. They belong to the layer above the decoder,
 which has the line's `text` events, its `line_end` and any `teller`; no event here reports them.
-source: director
+source: agent
 
 FACT `reset_signal` `id` is the matched `c1-codes.toml` id. `ui.md` "Reset countdown" anchors the
 countdown at 120 s from `06 04` and treats `06 06` as the reset landing. Minutes to the next reset
@@ -394,7 +391,7 @@ source: reference
 FACT These events report the context stack directly. The decoder emits them for coverage tests (each
 `code` id counted against `observed` in `c1-codes.toml`). They are written to a separate file, or
 filtered out before a golden diff, because the reference exposes no equivalent. A golden holds none.
-source: director
+source: agent
 
 RULE The wire tier reports every header and close in the stream, including those inside FE replies
 and inside the FES line, whose bytes the reference reads as raw data. The `observed` counts in
@@ -409,7 +406,7 @@ source: capture:blind-vs-water-snake.c1
 | `telnet` | `bytes` string | A telnet command, as space-separated hex |
 
 FACT `raw` is written like `"08 00"`.
-source: director
+source: agent
 
 ## Example
 
@@ -418,7 +415,7 @@ EVIDENCE The second `rx` record of `blind-vs-water-snake.c1` is
 source: capture:blind-vs-water-snake.c1
 
 FACT Its golden events:
-source: director
+source: agent
 
 ```
 {"ev":"text","rx":1,"text":"The water-snake1 slithers away.","style":{"fg":5,"bg":0,"attrs":[]}}
@@ -438,7 +435,7 @@ source: capture:blind-vs-water-snake.c1
 FACT Its last line gives `text`, then `{"ev":"sound_code","rx":24,"family":11,"params":[0]}`, then
 `{"ev":"spell_phrase","rx":24,"id":"11 00","phrase":"You have suddenly and magically gone blind!"}`,
 then `line_end`.
-source: director
+source: agent
 
 ## Machine-readable schema
 
@@ -448,7 +445,7 @@ FACT Types in the block: `int`, `bool`, `string`; `text` is a non-empty string; 
 them; `style`, `run` and `player` name the object types in `types`. Each event lists its keys after
 `ev` and `rx`, in order. `stats` has one key list per `source`. Events under `wire` never appear in a
 golden.
-source: director
+source: agent
 
 ```json
 {

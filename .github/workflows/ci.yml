@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows:
+    # Verified locally with the same presets; this workflow file itself has not yet run on GitHub.
+    # windows-2025-vs2026 carries Visual Studio 2026 (docs/build.md, "CI").
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v4
+      # The style gates are pinned to LLVM 22 (docs/build.md) and find Visual Studio 18's bundled
+      # LLVM through vswhere. NOT YET VERIFIED on the runner: that bundle is 22.x; if it is not,
+      # LLVM 22 is installed from Chocolatey (also unverified: the package version and PATH entry).
+      - name: Ensure LLVM 22 (clang-format, clang-tidy)
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -all -prerelease -products * -version '[18.0,19.0)' -property installationPath | Select-Object -First 1
+          $clangFormat = Join-Path $vs 'VC\Tools\Llvm\x64\bin\clang-format.exe'
+          $bundled = (Test-Path $clangFormat) -and ((& $clangFormat --version) -match 'version 22\.')
+          if (-not $bundled) {
+            choco install llvm --version=22.1.3 --allow-downgrade -y --no-progress
+            "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding ascii
+          }
+      - name: Configure (debug)
+        run: cmake --preset windows-msvc-debug
+      - name: Build (debug)
+        run: cmake --build --preset windows-msvc-debug
+      - name: Test (debug, ASan)
+        run: ctest --preset windows-msvc-debug
+      - name: Configure (release)
+        run: cmake --preset windows-msvc-release
+      - name: Build (release)
+        run: cmake --build --preset windows-msvc-release
+      - name: Test (release)
+        run: ctest --preset windows-msvc-release
+
+  linux-gate:
+    # NOT YET VERIFIED: nothing here has run. The presets and the LLVM 22 install are untested.
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LLVM 22 and libc++
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          sudo apt-get install -y ninja-build clang-format-22 clang-tidy-22 libc++-22-dev libc++abi-22-dev
+      - name: Configure
+        run: cmake --preset linux-clang-asan-ubsan
+      - name: Build
+        run: cmake --build --preset linux-clang-asan-ubsan
+      - name: Test (ASan+UBSan)
+        run: ctest --preset linux-clang-asan-ubsan

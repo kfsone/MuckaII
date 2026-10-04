@@ -1,0 +1,99 @@
+---
+# The director's C++ style (docs/style.md). Pinned to clang-format 22 (docs/build.md, LLVM 22).
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+
+# Layout
+ColumnLimit: 110
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+BreakBeforeBraces: Allman
+NamespaceIndentation: None
+AccessModifierOffset: -4
+IndentCaseLabels: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+InsertBraces: false
+RemoveBracesLLVM: false
+KeepEmptyLines:
+  AtStartOfBlock: false
+  AtEndOfFile: false
+  AtStartOfFile: false
+MaxEmptyLinesToKeep: 1
+FixNamespaceComments: true
+InsertNewlineAtEOF: true
+LineEnding: LF
+
+# West const, pointers and references hug the type.
+QualifierAlignment: Left
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+# Heavy vertical alignment.
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignFunctionDeclarations: false
+  AlignFunctionPointers: false
+  PadOperators: true
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveBitFields:
+  Enabled: true
+AlignConsecutiveMacros:
+  Enabled: true
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AlignAfterOpenBracket: Align
+AlignOperands: Align
+AlignEscapedNewlines: Left
+
+# Uniform initialisation: `Type name { value };`
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: true
+SpaceInEmptyBlock: false
+SpacesInContainerLiterals: true
+
+# Spacing. SpaceAfterLogicalNot gives `! isValid(x)`.
+SpaceAfterLogicalNot: true
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpacesInParensOptions:
+  InEmptyParentheses: false
+
+# Wrapping
+BinPackArguments: false
+BinPackParameters: false
+PenaltyBreakAssignment: 40
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: true
+ReflowComments: false
+
+# Includes
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"muckaii/'
+    Priority: 1
+  - Regex: '^<(gtest|gmock|ftxui)/'
+    Priority: 2
+  - Regex: '^<[^.]+>$'
+    Priority: 4
+  - Regex: '.*'
+    Priority: 3
+...

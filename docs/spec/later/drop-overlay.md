@@ -1,7 +1,7 @@
 # Later: drop headline overlay
 
-FACT `scope: later`. Drop classification itself is launch (`connection.md` 1.2). This file holds the
-overlay shown after a drop to the Option menu and the automatic relogin after a Reset drop.
+FACT `scope: later`: the overlay shown after a drop to the Option menu, and the automatic relogin
+after a Reset drop. Drop classification itself is launch (`connection.md` 1.2).
 source: director
 
 | Reason | Headline shown (overlay) | Server tail lines shown |

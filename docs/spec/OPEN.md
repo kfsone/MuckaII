@@ -1,46 +1,30 @@
 # Open questions
 
-FACT This file gathers every open item in `docs/spec/` (including `later/`) into one deduplicated
-table, grouped so the director can rule on them in one pass. An open item is an `open:` line in a
-Markdown spec, an `open =` key in `keys.toml` or `sounds.toml`, or a `# open:` comment in
-`c1-codes.toml`. Each row names the file and the section, key or code that holds it, and repeats in
-short the default that file gives (`default:`, `default =` or `# default:`): what is built until the
-director rules. The open items stay where they are; when one is ruled, it is replaced there by a
-tagged statement and its row here is deleted. "Who decides" is `director` (a choice MuckaII makes),
-`capture` (what the server does) or `bartle-email` (semantics only Bartle can state).
+FACT Every open item in `docs/spec/` (including `later/`), deduplicated and grouped for one ruling
+pass. An open item is an `open:` line in a Markdown spec, an `open =` key in `keys.toml` or
+`sounds.toml`, or a `# open:` comment in `c1-codes.toml` (each with its `default:`, `default =` or
+`# default:`); it stays where it is. Each row names its
+file and anchor and repeats that file's default in short: what is built until the director rules.
+A ruling replaces the item with a tagged statement in its file (settled per `CLAUDE.md`, Evidence)
+and deletes its row here. "Who decides": `director` (a choice MuckaII makes), `capture` (what the
+server does), `bartle-email` (semantics only Bartle can state).
 source: director
 
-FACT The "capture settles" marks are an assessment, not a ruling: `yes` means a fresh capture of a
-full login plus a short play session would certainly exercise the question, assuming the capture
-records `tx` as well as `rx`, starts before the telnet negotiation, and ends with a QUIT back to the
-Option menu. A capture made with Mucka shows the server's response to Mucka's choices only, so
-"which reply should MuckaII send" stays with the director even when a capture informs it.
-source: capture:phone-login-at-20-columns.c1 (the existing captures have no `tx` and no login)
-
-DECISION Evidence questions are settled Bartle first. Bartle's documents may be older than the
-newest server code, so a Bartle statement can be deprecated, but only by two or more independent
-proofs (captures). The ranking is: Bartle's documents, Bartle's own words, captures, Clio, the
-reference. Where Bartle is silent:
-
-| Case | Outcome |
-|------|---------|
-| a capture speaks | the capture decides |
-| no capture, and the remaining sources agree | that agreement decides |
-| no capture, and the remaining sources split | the question stays open for the director |
-
-Each settlement is recorded as a DECISION in the owning spec, citing this rule and the deciding
-source, and its row here is deleted.
-source: director
+FACT "Capture settles" is an assessment, not a ruling. `yes`: a fresh capture of a full login and a
+short play session would exercise the question, provided it records `tx` as well as `rx`, starts
+before telnet negotiation, and ends with a QUIT to the Option menu. A capture made with Mucka shows
+the server's response to Mucka's choices only, so what MuckaII sends stays with the director.
+source: agent
 
 ## A. What the server does (capture)
 
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
-| A1 | connection.md 1. Transport; persistence.md Wire log (`wave` pair); protocol.md Echo | Outbound line terminator: CR LF, or CR CR LF as in a reference wire-log pair `wave\r\r\n`? | reference wire log vs captures (echo ends `\r\n`) and every spec | capture | yes | `0D 0A` |
+| A1 | connection.md 1. Transport (`wave` pair: persistence.md Wire log) | Outbound line terminator: CR LF, or CR CR LF as in a reference wire-log pair `wave\r\r\n`? | reference wire log vs captures (echo ends `\r\n`) and every spec | capture | yes | `0D 0A` |
 | A2 | connection.md 2.1 Replies (NEW-ENVIRON) | Does the server accept USER from NEW-ENVIRON and skip the shell `login:` prompt? Then: WILL or WONT? | Clio (WONT) vs reference (WILL + USER) | capture, then director | yes | WONT (Clio); auto-login answers `login:` |
 | A3 | connection.md 2.1 Replies (WILL SGA) | Does the server send WILL SGA more than once? Answer once (Clio) or every time (reference)? | Clio vs reference | capture, then director | yes | once per connection (Clio) |
 | A4 | protocol.md Line model | A login prompt split across two reads shows only its second half in the reference. Do real login prompts arrive split? | reference behaviour; no capture | capture | yes | append consecutive partials; match prompts over the byte stream |
-| A5 | protocol.md Game mode; flow.md Game | Does the server send any code on a quit to the Option menu? | Clio and reference use text only; no capture of a quit | capture | yes | no code; the text trigger and `95 03` end game mode |
+| A5 | protocol.md Game mode (flow.md Game points to it) | Does the server send any code on a quit to the Option menu? | Clio and reference use text only; no capture of a quit | capture | yes | no code; the text trigger and `95 03` end game mode |
 | A6 | protocol.md Prompt | Sessions start with a prompt before any room name, which the reference glues to the next line. Show the entering prompt as a prompt? | captures vs reference line model | capture, then director | yes | yes, show it as a prompt |
 | A7 | connection.md 5.1 Probe format | Does the server answer comma-batched `FES,FEW,FEI` in one interrupt, and are FEW/FEI unreliable without FES? | reference vs Bartle (one command per interrupt shown) | capture; reliability: bartle-email | yes | comma-joined block, FES first |
 | A8 | sounds.toml clio.070100.wav, clio.070200.wav | Generic bite and sting: `07 01` / `07 02` or with a trailing `00`? | Bartle (one param) vs Clio and reference (two) | capture | no | both forms play the `..00` file |
@@ -75,7 +59,7 @@ source: director
 | D3 | input.md History; keys.toml Down | Down with no recall in progress destroys the draft. Keep, no-op, or stash? | reference | director | no | no-op; the draft stays |
 | D4 | input.md Scrollback; keys.toml `<any other key>` | Scrollback swallows typed keys, against Invariant #1. Return to live and land the keys in the box instead? | reference vs Invariant #1 | director | no | first printable key returns to live and lands in the line buffer; no key discarded |
 | D5 | input.md Scrollback; keys.toml F1..F12, Ctrl+W, Ctrl+R | Do F-keys, Ctrl+R, Ctrl+W and Ctrl+` act in scrollback? keys.toml says Ctrl+R and Ctrl+W return to live first; input.md says the reference swallows them. | keys.toml vs input.md (both reference) | director | no | return to live, then act |
-| D6 | input.md Box prefills; ui.md 2.5 Tell lines | Clicking a name: prepend to typed text when the caret is at the start, or insert only into an empty box? | input.md vs ui.md (both reference) | director | no | one rule: prepend when the caret is at the start |
+| D6 | input.md Box prefills (ui.md 2.5 Tell lines points to it) | Clicking a name: prepend to typed text when the caret is at the start, or insert only into an empty box? | input.md vs ui.md (both reference) | director | no | one rule: prepend when the caret is at the start |
 | D7 | input.md Expansion of outgoing text; ui.md 5. Window title; later/session-transcript.md Transcript | Product string: `$VER` text, window title, transcript header/footer and `session-rec.` prefix | reference says "Mucka" | director | no | `MuckaII v<version>`; title `muckaii`; "Recording by MuckaII"; keep `session-rec.` |
 | D8 | input.md Positional arguments | Adopt the positional `$1`-`$9` alias arguments the reference defines but rarely reaches? | reference definition vs reference behaviour | director | no | yes: `$name rest` runs `name` with `rest` as arguments |
 | D9 | keys.toml Tab | What Tab does inside the box | unspecified | director | no | nothing; focus stays |
@@ -90,7 +74,7 @@ source: director
 
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
-| E1 | persistence.md Persistence; later/session-transcript.md Recording chip | Session transcript and `rec` chip: launch or later? | INTERNAL.md (wire log only) vs reference | director | no | later |
+| E1 | later/session-transcript.md Recording chip | Session transcript and `rec` chip: launch or later? | INTERNAL.md (wire log only) vs reference | director | no | later |
 | E4 | later/chat-mode.md | Chat-only view filter: launch or later? | INTERNAL.md list | director | no | later |
 | E5 | later/diagnostic-commands.md | `$SID`, `$MARK`, `$CHATTEST`: launch or later? | wire log (launch) vs diagnostics | director | no | later |
 | E8 | ui.md 3.4 Effect icons | Combat status icon: launch or later (depends on combat tracking)? | ui.md vs section 8 | director | no | later; no combat slot at launch |
@@ -136,10 +120,10 @@ source: director
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
 | H1 | architecture.md Delivery | Slint's after-rendering notifier fires after rendering, before presentation | none | director (spike step 3 measures) | no | measure to the notifier plus one refresh interval |
-| H2 | architecture.md Input: two orderings | `input.md` "Ordering: one queue" described one queue holding box edits | architecture.md vs input.md | director | no | architecture.md governs; `input.md` is now reconciled ("Ordering: two orderings"), so the default is met and only the line in `architecture.md` remains |
+| H3 | session.md Command understanding (layer split) | Which layer finds command boundaries and recognises sleep commands? | neither; candidate design in session.md | director, after the proof of concept | no | no probe injection until ruled |
 
-FACT 71 items: 13 capture (A1-A13), 58 director choices (C 11, D 15, E 7, F 18, G 5, H 2). The
-group B Bartle-semantics rows are ruled and applied in `c1-codes.toml`, so B is empty. A fresh login
-plus short play session settles the server side of 7 (A1-A7); A2, A3 and A6 then still need a
-director ruling on what MuckaII does. A12 and A13 are settled by mining the wire corpus.
-source: director (counted from the open items in `docs/spec/`)
+FACT 71 items: 13 capture (A1-A13), 58 director choices (C 11, D 15, E 7, F 18, G 5, H 2). Group B
+(Bartle semantics) is ruled and applied in `c1-codes.toml`. A fresh login plus a short play session
+settles the server side of A1-A7; A2, A3 and A6 then still need a director ruling. Mining the wire
+corpus settles A12 and A13.
+source: agent (counted from the rows above)
