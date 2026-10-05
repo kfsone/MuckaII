@@ -103,6 +103,7 @@ struct PromptEvent
 struct PartialEvent
 {
     std::vector<Run> mRuns;
+    bool             mIsContinued {}; // no line end since the previous partial: extend it, else replace
 
     bool operator==(const PartialEvent&) const = default;
 };

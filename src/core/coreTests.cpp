@@ -275,7 +275,10 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
 
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(server.getPort(), collector, database) };
+    // Core publishes the session's hiding verdict: hidden until login completes, then not.
+    EXPECT_TRUE(core->isInputHidden());
     enterGame(*core, collector, server);
+    EXPECT_FALSE(core->isInputHidden());
     ASSERT_TRUE(server.waitDone(15s));
     EXPECT_EQ(server.getError(), "");
     core->stop();
@@ -301,7 +304,8 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
             annotations.push_back(row.mData);
     }
     std::string expectedSent { toString(fake::getExpectedBytes(script)) };
-    for (const std::string_view line : { kAccount, kPassword, std::string_view { "p" }, kPersona })
+    // Persona selection, typed after login completed, is logged verbatim.
+    for (const std::string_view line : { kAccount, kPassword })
     {
         const std::string clear { std::string { line } + "\r\n" };
         expectedSent.replace(expectedSent.find(clear), clear.size(), masked(line));
@@ -309,7 +313,8 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
     EXPECT_EQ(sent, expectedSent);
     EXPECT_NE(std::ranges::find(annotations, "masked: account id"), annotations.end());
     EXPECT_NE(std::ranges::find(annotations, "masked: password"), annotations.end());
-    EXPECT_EQ(std::ranges::count(annotations, "masked: pre-game line"), 2);
+    EXPECT_EQ(std::ranges::count(annotations, "masked: line before login"), 0);
+    EXPECT_NE(sent.find("p\r\n" + std::string { kPersona } + "\r\n"), std::string::npos);
     EXPECT_NE(std::ranges::find(annotations, "terminal width confirmed: 80"), annotations.end());
 }
 
@@ -330,7 +335,9 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(
         server.getPort(), collector, database, session::Credentials {}) };
-    core->submitLine("Z7654321");
+    // Type-ahead is hidden in the box and judged masked before it ever reaches the socket.
+    EXPECT_TRUE(core->isInputHidden());
+    EXPECT_TRUE(core->submitLine("Z7654321"));
     core->submitLine("hunter22");
     ASSERT_TRUE(core->start());
     ASSERT_TRUE(collector.waitFor(
@@ -354,7 +361,7 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
         EXPECT_EQ(row.mData.find("hunter22"), std::string::npos) << "type-ahead reached the wire log";
         if (row.mDirection == 1)
             sent.append(row.mData);
-        if (row.mDirection == 2 && row.mData == "masked: pre-game line")
+        if (row.mDirection == 2 && row.mData == "masked: line before login")
             ++preGameNotes;
         if (row.mDirection == 2 && row.mData == "masked: account id")
             ++preGameNotes;

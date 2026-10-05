@@ -234,6 +234,25 @@ reference. Follow Clio (anchored literals, one-shot, ordered) or the reference?
 default: Clio's matching: anchored literals over the byte stream, each prompt one-shot, the password
 sent only after the account ID, never at an "Old Password:" line.
 
+EVIDENCE A live login to the UK server (port 23) by MuckaII on 2026-10-05. These are the received
+texts, in order. Each prompt arrived as an unterminated partial line, and whether any prompt was
+split across reads was not recorded. The machine name in the shell prompt is shown as `<host>`:
+
+| Step | Received |
+|------|----------|
+| Shell login | `<host> login: ` (MuckaII answered `mud`) |
+| Account | `Please enter your account id (starting Z000) now.\r\nType QUIT to abort login.\r\nAccount ID: ` |
+| Password | `Password: `, straight after the server echoed the account line |
+| Option menu | `...[Checking mail...]\r\n[You have mail: 1 item]\r\nMUD login menu.\r\nOption (H for help): ` |
+| After client-mode entry | `ESC[1;37;40m`, code `00` (`9B FF FF`), the `95` block, `[New terminal width is 80]\r\n`, then `Option (H for help): ` again |
+
+source: director's live session, recorded in the MuckaII wire log on 2026-10-05
+
+EVIDENCE From the same session, the server's telnet offers were: DO TTYPE, DO TSPEED (0x20), DO
+XDISPLOC (0x23), DO NEW-ENVIRON, DO LINEMODE (0x22), WILL SGA, DO ECHO, DO NAWS, WILL STATUS
+(0x05), DO LFLOW (0x21). The shell `login:` prompt still appeared.
+source: director's live session, recorded in the MuckaII wire log on 2026-10-05
+
 FACT The reference handles a "(y/n)" question before the banner, e.g. "Skip the rest? (y/n)" on
 mud2.com, or a usurp-session question. Auto-login does not answer it; guided login
 answers `y`.

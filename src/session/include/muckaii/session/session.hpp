@@ -34,11 +34,12 @@ enum class Mask : std::uint8_t
     kNone,
     kAccountId,
     kPassword,
-    kPregameLine,
+    kBeforeLogin,
 };
 
 // True for a send the user originated (typed; macro, hotkey and raw-console sends when they exist).
-// Outside game mode every such send is masked in the wire log (persistence.md "Wire log").
+// Such a send is masked in the wire log before login completes, and when it answers a recognised
+// account or password prompt (persistence.md "Wire log").
 [[nodiscard]] bool isUserOrigin(Origin origin) noexcept;
 
 // Overwrites a secret's bytes before clearing it. Best effort: copies made earlier (a reallocation,
@@ -77,13 +78,6 @@ enum class FlowState : std::uint8_t
     kPregame,
     kGame,
 };
-
-// Outside game mode every line the user types may be a credential, whatever prompt (if any) the
-// server is showing: the wire log masks it and a frontend hides it (persistence.md "Wire log").
-[[nodiscard]] constexpr bool isInputSensitive(FlowState state) noexcept
-{
-    return state != FlowState::kGame;
-}
 
 struct ConnectionEvent
 {
@@ -151,9 +145,17 @@ public:
     void onClosed(std::string reason, std::vector<SessionEvent>& out);
 
     // A typed line that has passed the client's 7-bit filter. CR LF is added. It is masked in the
-    // wire log when `isTaggedSensitive` (the verdict core gave the frontend at submit) or when the
-    // flow is not Game now, named by the prompt when one is recognised.
+    // wire log when `isTaggedSensitive` (the verdict core gave the frontend at submit) or when
+    // isLineSensitive() holds now, named by the prompt when one is recognised.
     void queueLine(std::string_view text, bool isTaggedSensitive);
+
+    // Whether a user line sent now is masked (persistence.md "Wire log"): before login completes
+    // (the first Option menu), or while a recognised account or password prompt is live.
+    [[nodiscard]] bool isLineSensitive() const noexcept;
+
+    // Whether a frontend shows typed text as `*`: before login completes (every line is masked
+    // then, type-ahead included), and while a recognised password prompt is live.
+    [[nodiscard]] bool isInputHidden() const noexcept;
 
     // The effective column count changed (connection.md 4.1).
     void setColumns(int columns);
@@ -205,5 +207,6 @@ private:
     bool                        mHasSentAccount {};
     bool                        mHasSentPassword {};
     bool                        mHasEnteredClientMode {};
+    bool                        mIsLoginComplete {}; // the first Option menu has been seen
 };
 } // namespace muckaii::session

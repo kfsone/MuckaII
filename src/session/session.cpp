@@ -64,8 +64,8 @@ std::string_view getMaskNote(Mask mask) noexcept
             return "masked: account id";
         case Mask::kPassword:
             return "masked: password";
-        case Mask::kPregameLine:
-            return "masked: pre-game line";
+        case Mask::kBeforeLogin:
+            return "masked: line before login";
     }
     return {};
 }
@@ -256,7 +256,10 @@ void Session::handleEvent(const mud::Event& event, std::vector<SessionEvent>& ou
             else if constexpr (std::is_same_v<T, mud::PartialEvent>)
             {
                 // A partial appends to the live partial when no line end came between them
-                // (protocol.md "Line model", default: line), so a split prompt matches whole.
+                // (protocol.md "Line model", default: line), so a split prompt matches whole;
+                // otherwise it replaces it.
+                if (! payload.mIsContinued)
+                    mLine.clear();
                 for (const mud::Run& run : payload.mRuns)
                     mLine.append(run.mText);
             }
@@ -271,6 +274,7 @@ void Session::handleEvent(const mud::Event& event, std::vector<SessionEvent>& ou
             else if constexpr (std::is_same_v<T, mud::GameEnterEvent>)
             {
                 mLine.clear();
+                mIsLoginComplete = true;
                 setFlow(FlowState::kGame, out);
             }
             else if constexpr (std::is_same_v<T, mud::GameExitEvent>)
@@ -285,6 +289,9 @@ void Session::drivePrompts()
 {
     if (mFlowState == FlowState::kGame)
         return;
+    // Login is complete at the first Option menu: the account and password are behind it.
+    if (isOptionPrompt())
+        mIsLoginComplete = true;
 
     const bool hasLoginName { ! mCredentials.mLoginName.empty()
                               && isValidCredential(mCredentials.mLoginName) };
@@ -335,11 +342,21 @@ void Session::setFlow(FlowState state, std::vector<SessionEvent>& out)
 
 void Session::queue(std::vector<std::byte> bytes, Origin origin, Mask mask)
 {
-    // The one place every send passes: a user-originated send outside game mode is masked,
-    // whatever path queued it (persistence.md "Wire log").
-    if (mask == Mask::kNone && isUserOrigin(origin) && isInputSensitive(mFlowState))
+    // The one place every send passes: a sensitive user-originated send is masked, whatever path
+    // queued it (persistence.md "Wire log").
+    if (mask == Mask::kNone && isUserOrigin(origin) && isLineSensitive())
         mask = getUserMask();
     mOutbound.push_back(Outbound { .mBytes = std::move(bytes), .mOrigin = origin, .mMask = mask });
+}
+
+bool Session::isLineSensitive() const noexcept
+{
+    return ! mIsLoginComplete || isAccountPrompt() || isPasswordPrompt();
+}
+
+bool Session::isInputHidden() const noexcept
+{
+    return ! mIsLoginComplete || isPasswordPrompt();
 }
 
 Mask Session::getUserMask() const noexcept
@@ -348,21 +365,22 @@ Mask Session::getUserMask() const noexcept
         return Mask::kAccountId;
     if (isPasswordPrompt())
         return Mask::kPassword;
-    return Mask::kPregameLine;
+    return Mask::kBeforeLogin;
 }
 
 bool Session::isAccountPrompt() const noexcept
 {
-    return mLine.starts_with(kAccountPrompt);
+    return mFlowState != FlowState::kGame && mLine.starts_with(kAccountPrompt);
 }
 
 bool Session::isPasswordPrompt() const noexcept
 {
-    return std::ranges::any_of(kPasswordPrompts,
-                               [this](std::string_view prompt)
-                               {
-                                   return mLine.starts_with(prompt);
-                               });
+    return mFlowState != FlowState::kGame
+           && std::ranges::any_of(kPasswordPrompts,
+                                  [this](std::string_view prompt)
+                                  {
+                                      return mLine.starts_with(prompt);
+                                  });
 }
 
 bool Session::isOptionPrompt() const noexcept

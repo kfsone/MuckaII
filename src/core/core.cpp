@@ -372,7 +372,8 @@ private:
     void deliver()
     {
         // Published before the batch, so a frontend never holds a newer flow than this verdict.
-        mCore.mIsInputSensitive.store(session::isInputSensitive(mSession.getFlowState()));
+        mCore.mIsInputSensitive.store(mSession.isLineSensitive());
+        mCore.mIsInputHidden.store(mSession.isInputHidden());
         if (mBatch.empty())
             return;
         if (mCore.mConfig.mSink)

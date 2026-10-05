@@ -214,6 +214,8 @@ private:
     bool                    mIsCaptureTentative {};
     bool                    mIsCollectingPhrase {};
     bool                    mIsCollectingDreamword {};
+    bool                    mHasPartial {};             // a partial has been emitted this connection
+    bool                    mHasLineEndSincePartial {}; // a line end, shown or not, since the last partial
     Role                    mReadingRole { Role::kNone };
     Colour                  mBaseFg;
     Colour                  mBaseBg;

@@ -117,6 +117,51 @@ TEST(Decoder, PreGameTextIsAPartialAtEndOfRead)
     EXPECT_FALSE(partial->mRuns[0].mStyle.mFg.has_value());
 }
 
+// A prompt split across two reads: the second partial continues the first.
+TEST(Decoder, APartialWithNoLineEndBetweenContinuesTheLast)
+{
+    Decoder                    decoder;
+    const std::vector<Payload> first { decode(decoder, "Account ") };
+    const std::vector<Payload> second { decode(decoder, "ID: ") };
+    ASSERT_EQ(first.size(), 1U);
+    ASSERT_EQ(second.size(), 1U);
+    EXPECT_FALSE(std::get<PartialEvent>(first[0]).mIsContinued);
+    EXPECT_TRUE(std::get<PartialEvent>(second[0]).mIsContinued);
+}
+
+// An LF inside a CSI (Clio's workaround keeps the CSI going) ends no line, so the next partial
+// still continues the last.
+TEST(Decoder, AnLfInsideACsiEndsNoLine)
+{
+    Decoder                    decoder;
+    const std::vector<Payload> first { decode(decoder, "Account ") };
+    const std::vector<Payload> second { decode(decoder, "\x1b[31\r\nmID: ") };
+    ASSERT_EQ(second.size(), 1U);
+    EXPECT_TRUE(std::get<PartialEvent>(second[0]).mIsContinued);
+}
+
+// The Option menu, client-mode entry, and the server's reply: a 95 block, the hidden width notice,
+// and the Option prompt again (the shape of a live login). A line end came between the two prompts,
+// though no displayed one, so the second replaces the first rather than joining it on one line.
+TEST(Decoder, ThePromptAfterAHiddenLineReplacesTheLast)
+{
+    Decoder                    decoder;
+    const std::vector<Payload> menu { decode(decoder, "MUD login menu.\r\nOption (H for help): ") };
+    ASSERT_FALSE(menu.empty());
+    const std::vector<Payload> reply { decode(
+        decoder,
+        "\x1b[1;37;40m<00><95>Unlicensed product!\r\n1\r\n1\r\nZ0000000\r\n1\r\n</>[New terminal width is "
+        "80]\r\nOption (H for help): ") };
+    ASSERT_FALSE(reply.empty());
+    const auto* partial { std::get_if<PartialEvent>(&reply.back()) };
+    ASSERT_NE(partial, nullptr);
+    EXPECT_FALSE(partial->mIsContinued);
+    ASSERT_EQ(partial->mRuns.size(), 1U);
+    EXPECT_EQ(partial->mRuns[0].mText, "Option (H for help): ");
+    for (const Payload& event : reply)
+        EXPECT_FALSE(std::holds_alternative<LineEndEvent>(event));
+}
+
 TEST(Decoder, PreGameLineIsTextThenLineEnd)
 {
     Decoder                    decoder;

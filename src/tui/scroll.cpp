@@ -167,7 +167,11 @@ void Scroll::applyMud(const mud::Payload& payload)
             }
             else if constexpr (std::is_same_v<T, mud::PartialEvent>)
             {
-                // A pre-game partial appends to the live one (protocol.md, default: line).
+                // A pre-game partial extends the live one when no line end came between them
+                // (protocol.md, default: line), else replaces it, as a second Option prompt after
+                // a hidden width notice does.
+                if (! event.mIsContinued)
+                    mPartial.clear();
                 appendRuns(mPartial, event.mRuns);
             }
             else if constexpr (std::is_same_v<T, mud::ClearScreenEvent>)

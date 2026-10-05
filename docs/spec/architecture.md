@@ -158,14 +158,17 @@ call the same entry point, so all sends from one frontend share one FIFO in UI a
 enforced_by: none: judgement
 source: agent
 
-DECISION Core alone decides whether input is sensitive (`persistence.md`, Wire log). It publishes
-its verdict (an atomic, updated before each event batch is delivered); `submitLine` returns the
-verdict at that moment and carries it with the line. The frontend keeps a line out of the recall
-list on that returned verdict and hides the command box on `Core::isInputSensitive()`, never on its
-own copy of the flow state. The wire log masks a line when its carried verdict or the flow when it
-is sent says so, so a flow change between Enter and the send never unmasks it. Rejected: the
-frontend deciding from the flow events it has received (one batch behind core).
+DECISION Core alone decides whether a typed line is masked (`persistence.md`, Wire log). It
+publishes its verdict (an atomic, updated before each event batch is delivered); `submitLine`
+returns the verdict at that moment and carries it with the line. The frontend keeps a line out of
+the recall list on that returned verdict, and shows `*` in the command box on
+`Core::isInputHidden()` (before login completes, and at a live password prompt), never on its own
+copy of the session's state. The wire log masks a
+line when its carried verdict or the session's state when it is sent says so, so a change between
+Enter and the send never unmasks it. Rejected: the frontend deciding from the events it has
+received (one batch behind core).
 source: agent, on a review finding
+
 DECISION The history recall list is owned by the frontend and appended at Enter on the UI thread.
 Rejected: history owned by core, where Up straight after Enter could miss the line just entered
 (`input.md` typing-path failure 4).
@@ -189,23 +192,24 @@ source: agent
 
 | `origin` | Produced by | 7-bit filter | Probe insertion | Wire log |
 |----------|-------------|--------------|-----------------|----------|
-| `typed` | Enter, Send button | yes | at reported boundaries | verbatim in game mode; outside it masked, same length, followed by an annotation (`persistence.md`, Wire log) |
+| `typed` | Enter, Send button | yes | at reported boundaries | verbatim, except before login completes and at a recognised password or account prompt: masked, same length, followed by an annotation (`persistence.md`, Wire log) |
 | `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at reported boundaries | as `typed` |
 | `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at reported boundaries | as `typed` |
-| `raw` | raw console | no; no expansion | none | marked raw-console send; outside game mode masked as `typed` |
-
-RULE Every user-originated send (`typed`, `macro`, `hotkey`, `raw`, and any origin added later
-that the user produces) is masked in the wire log outside game mode. `session::isUserOrigin`
-classifies each origin with no default case, and `Session::queue`, which every send passes, applies
-the mask, so no path can skip it.
-enforced_by: none: judgement; clang's -Wswitch (Linux gate) fails an unclassified origin
-source: agent, on a review finding
+| `raw` | raw console | no; no expansion | none | marked raw-console send; masked as `typed` |
 | `login` | `session` login drive | n/a | none | verbatim, except the account ID line: masked, same length, annotated (`persistence.md`) |
 | `password` | `session` login drive | n/a | none | masked, same length, annotated (`persistence.md`) |
 | `keepalive` | `session` idle timer | n/a | none | verbatim |
 | `probe` | `session` | n/a | is the block | marked with position |
 | `telnet` | `session`'s answers to telnet negotiation, and NAWS (`connection.md` 2) | n/a | none | verbatim |
 | `width` | `session`'s `$-[/T{cols}$-]` on a resize in game mode (`connection.md` 4.1) | n/a | none | verbatim |
+
+RULE Every user-originated send (`typed`, `macro`, `hotkey`, `raw`, and any origin added later
+that the user produces) is masked in the wire log by the one rule of `persistence.md` "Wire log":
+before login completes, and at a recognised password or account prompt. `session::isUserOrigin`
+classifies each origin with no default case, and `Session::queue`, which every send passes, applies
+the mask, so no path can skip it.
+enforced_by: none: judgement; clang's -Wswitch (Linux gate) fails an unclassified origin
+source: director (only the password needs masking); agent, on a review finding
 
 DECISION Masking is carried with each send, beside its `origin`: the login drive's account ID line
 is a `login` send masked as the account ID, so the `login` row is not verbatim for that one line,

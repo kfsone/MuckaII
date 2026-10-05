@@ -62,8 +62,8 @@ constexpr std::string_view kUsage {
     "\n"
     "Connects once, logs in with the account ID, and enters client mode. The password is asked\n"
     "for at the terminal without echo, or read from MUCKAII_PASSWORD; it is never stored. Pick a\n"
-    "persona by typing at the Option menu (for example p, then the persona name). Until the game\n"
-    "starts, what you type is shown as * and masked in the wire log.\n"
+    "persona by typing at the Option menu (for example p, then the persona name). Until login is\n"
+    "complete, and at a password prompt, what you type is shown as * and masked in the wire log.\n"
     "The wire log is %USERPROFILE%\\.muckaii\\muckaii.db unless --wire-log names another file.\n"
     "The client closes when the connection does. Ctrl+C quits. PageUp/PageDown scroll; Up/Down\n"
     "recall typed lines.\n"
@@ -468,14 +468,15 @@ struct UiState
         return true;
     }
 
-    // The command box: masked while core says input is sensitive, the cursor cell inverted.
+    // The command box: shown as * while core says input is hidden (before login, password prompt), the cursor cell
+    // inverted.
     [[nodiscard]] ftxui::Element renderInput(const core::Core& core) const
     {
         const std::string& text { mEditor.getText() };
         const std::size_t  cursor { mEditor.getCursor() };
         std::string        before { text.substr(0, cursor) };
         std::string        after { text.substr(cursor) };
-        if (core.isInputSensitive())
+        if (core.isInputHidden())
         {
             before = std::string(client::countCodePoints(before), '*');
             after  = std::string(client::countCodePoints(after), '*');

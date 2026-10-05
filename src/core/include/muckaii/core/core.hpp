@@ -70,15 +70,17 @@ public:
     [[nodiscard]] bool start();
 
     // From the UI thread: queues one typed line in arrival order (Invariant #1). Never blocks
-    // beyond a push under the FIFO's lock. Returns core's verdict on whether the line is sensitive
-    // (session::isInputSensitive): the frontend keeps a sensitive line out of its recall list, and
-    // the wire log masks it whatever the flow is when it is sent. Core is the one source of it.
+    // beyond a push under the FIFO's lock. Returns core's verdict on whether the line is masked in
+    // the wire log (session::Session::isLineSensitive): the frontend keeps a masked line out of its
+    // recall list, and the wire log masks it whatever happens before it is sent. Core is the one
+    // source of it.
     bool submitLine(std::string text);
 
-    // From the UI thread: whether a line typed now is sensitive, for hiding the command box.
-    [[nodiscard]] bool isInputSensitive() const noexcept
+    // From the UI thread: whether the command box shows `*` (session::Session::isInputHidden):
+    // before login completes, and at a live password prompt.
+    [[nodiscard]] bool isInputHidden() const noexcept
     {
-        return mIsInputSensitive.load();
+        return mIsInputHidden.load();
     }
 
     // From the UI thread: the effective column count changed.
@@ -112,7 +114,8 @@ private:
     std::shared_ptr<const transport::WakeSocket> mWake;
     std::thread                                  mThread;
     std::atomic<bool>                            mIsStopping; // value-initialised to false (C++20)
-    std::atomic<bool>                            mIsInputSensitive { true }; // no game yet
+    std::atomic<bool>                            mIsInputSensitive { true }; // not logged in yet
+    std::atomic<bool>                            mIsInputHidden { true };    // not logged in yet
     bool                                         mHasStarted {};
 };
 

@@ -327,10 +327,17 @@ void writeBody(JsonWriter& json, const Payload& payload)
                 json.key("chat_continues");
                 json.boolean(event.mIsChatContinued);
             }
-            else if constexpr (std::is_same_v<T, PromptEvent> || std::is_same_v<T, PartialEvent>)
+            else if constexpr (std::is_same_v<T, PromptEvent>)
             {
                 json.key("runs");
                 json.runs(event.mRuns);
+            }
+            else if constexpr (std::is_same_v<T, PartialEvent>)
+            {
+                json.key("runs");
+                json.runs(event.mRuns);
+                json.key("continued");
+                json.boolean(event.mIsContinued);
             }
             else if constexpr (std::is_same_v<T, WidthAckEvent>)
             {

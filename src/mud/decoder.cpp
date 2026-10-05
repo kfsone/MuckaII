@@ -300,7 +300,13 @@ void Decoder::endOfRead(std::vector<Event>& out)
     mPending.clear();
     mLine.mText.clear();
     mLine.mHasPrintable = false;
-    emitRaw(PartialEvent { .mRuns = std::move(runs) }, out);
+    // A line end since the last partial, even one whose line is not displayed (a width notice, a
+    // 95 block), means this partial replaces the live one rather than extending it.
+    emitRaw(
+        PartialEvent { .mRuns = std::move(runs), .mIsContinued = mHasPartial && ! mHasLineEndSincePartial },
+        out);
+    mHasPartial             = true;
+    mHasLineEndSincePartial = false;
 }
 
 void Decoder::endOfConnection(std::vector<Event>& out)
@@ -415,7 +421,9 @@ void Decoder::onDataByte(std::uint8_t byte, std::vector<Event>& out)
         {
             if (byte != kLf)
                 return;
-            mIsSwallowingWidth = false;
+            // The swallowed width notice's own line end: a hidden line ended.
+            mHasLineEndSincePartial = true;
+            mIsSwallowingWidth      = false;
             if (mLine.mText.empty() && mPending.empty())
                 return;
         }
@@ -902,6 +910,9 @@ void Decoder::onDisplayedText(char c, const Style& style, std::vector<Event>& ou
 
 void Decoder::onLineEnd(std::vector<Event>& out)
 {
+    // Every line end, displayed or not (a suppressed reply's, a hidden notice's), ends the live
+    // partial's line (events.md `partial`, `continued`).
+    mHasLineEndSincePartial = true;
     if (isSuppressed())
     {
         onReplyLineEnd(out);

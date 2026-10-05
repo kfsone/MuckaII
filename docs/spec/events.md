@@ -137,7 +137,7 @@ source: agent
 | `text` | `text` string, `style` style | Printable text reaches the current line outside the prompt bracket and outside a suppressed reply |
 | `line_end` | `kind` string, `chat_continues` boolean | A line end completes a displayed line |
 | `prompt` | `runs` array of run | The outer `01` bracket closes and the prompt gate is open |
-| `partial` | `runs` array of run | End-of-read before game mode, with text pending on the line |
+| `partial` | `runs` array of run, `continued` boolean | End-of-read before game mode, with text pending on the line. `continued` is true when no line end (displayed or not) came since the previous `partial`: it then extends the live partial, else it replaces it (`protocol.md`, Line model) |
 | `clear_screen` | (none) | `ESC - C` |
 | `erase_eol` | (none) | `ESC - K` |
 | `end_of_session` | (none) | `ESC - Q` |
@@ -467,7 +467,7 @@ source: agent
     "text": [["text", "text"], ["style", "style"]],
     "line_end": [["kind", {"enum": ["normal", "chat", "fight_start", "fight_end", "creature_invisible"]}], ["chat_continues", "bool"]],
     "prompt": [["runs", {"array": "run"}]],
-    "partial": [["runs", {"array": "run"}]],
+    "partial": [["runs", {"array": "run"}], ["continued", "bool"]],
     "clear_screen": [],
     "erase_eol": [],
     "end_of_session": [],

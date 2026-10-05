@@ -356,8 +356,10 @@ scope: launch
 open: Each pre-game flush starts the next partial empty, and a partial replaces the previous one, so a
 login prompt split across two reads would show only its second half. No capture covers it.
 default: the line model appends a `partial` to the live partial when no line end came between them,
-so a split prompt shows whole. Prompt recognition matches over the byte stream, as Clio does
-(`connection.md` 3.1).
+so a split prompt shows whole. A line end counts whether or not its line is displayed: after the
+hidden `[New terminal width is N]` line (and the `95` block) that answers client-mode entry, the
+server's second `Option (H for help): ` replaces the first instead of joining it on one line.
+Prompt recognition matches over the byte stream, as Clio does (`connection.md` 3.1).
 
 FACT In game mode, a completed line consisting only of `*` characters is not displayed.
 source: reference

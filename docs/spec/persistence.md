@@ -75,22 +75,31 @@ source: director
 
 source: director
 
-DECISION Every send the user originates (typed, macro, hotkey, raw console; `architecture.md`, the
-origin table) while the flow is not Game (`flow.md`: Profile and Pre-game, connecting included) is
-masked in the wire log the same way: same length, every byte before the `0D 0A` replaced. A line
-core judged sensitive when it was submitted stays masked if the game has begun by the time it is
-sent (`architecture.md`, Input: core's verdict). The annotation names the recognised prompt when one is live (`masked: account
-id`, `masked: password`), else `masked: pre-game line`. The rule depends on no prompt text, so it
-covers type-ahead (a line typed while connecting waits in the UI -> core FIFO and is sent before any
-prompt exists) and a credential typed at a prompt the login drive does not recognise ("Enter
-password:", "PASSWORD:", "Old Password:"). Persona names and menu choices typed pre-game are masked
-too: over-masking a public name is the safe side. Invariant #1's acceptance check skips masked
-records. A frontend hides typed text in the command box on the same rule and keeps such lines out of
-the recall list (`session::isInputSensitive`, one rule for both). Rejected: masking only while a
-recognised prompt is the live partial (leaks type-ahead and every unrecognised prompt); holding
-typed lines until the prompt they answer is live (needs the same unreliable prompt recognition, and
-stalls the one ordered stream).
-source: agent, on a review finding (type-ahead and unrecognised prompts left credentials in clear)
+DECISION Only the password needs masking. A send the user originates (typed, macro, hotkey, raw
+console; `architecture.md`, the origin table) is masked in the wire log, same length, every byte
+before the `0D 0A` replaced, in exactly two cases: (a) it is sent before login completes, that is
+before the first Option menu (`connection.md` 3.1, step 4); (b) it answers a recognised password
+prompt, or a recognised account prompt (root `CLAUDE.md`: account IDs are always masked), at any
+time. Everything else is logged verbatim: the pre-game shell after login (mail, the persona menu,
+the examine sub-shell) and the game. The annotation names the recognised prompt (`masked: account
+id`, `masked: password`), else `masked: line before login`. Case (a) covers type-ahead (a line
+typed while connecting waits in the UI -> core FIFO and is sent before any prompt exists) and a
+credential typed at a login prompt the drive does not recognise ("Enter password:", "PASSWORD:");
+it also masks the shell's own login exchange and anything else typed before the first Option menu.
+The trade-off, accepted: after login, a password typed at a prompt that is not recognised (the
+shell's "Old Password:" and "New Password:" when changing the password) is in clear in the wire log,
+in the command box and in the recall list alike. The rule relies on one connection per `Core`
+(`core::Core`, single use): login completes once and never re-arms, so a second login over the same
+session (were one ever built) would log its shell login and unrecognised prompts in clear. A line
+core judged masked when it was submitted stays masked however the state moves before it is sent
+(`architecture.md`, Input: core's verdict). A frontend shows `*` in the command box while login is
+incomplete (every line is masked then, type-ahead included) and while a recognised password prompt
+is live, and keeps masked lines, only those, out of the recall list. Invariant #1's acceptance
+check skips masked records. Rejected:
+masking every pre-game line (the pre-game shell could not be used or read back); masking only while
+a recognised prompt is live (leaks type-ahead).
+source: director ("only the password needs masking"); agent, on a review finding (the type-ahead
+window before login)
 
 open: The account ID also arrives inbound: in the server's echo of the account line and in the
 `95` client-mode block (`events.md`, `client_mode`). Mask it in received records too, or keep them

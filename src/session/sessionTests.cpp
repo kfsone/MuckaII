@@ -176,9 +176,67 @@ TEST(Session, MasksACredentialTypedAtItsPrompt)
         sends[2].mBytes,
         bytes({ 0x1B, 0x2D, 0x5B, 0x1B, 0x06, 0x1B, 0x2D, 0x4E, '/', 'T', '8', '0', 0x1B, 0x2D, 0x5D }));
     EXPECT_EQ(sends[2].mMask, Mask::kNone);
-    // Still pre-game: masked, though it is not a credential.
-    EXPECT_EQ(sends[3].mMask, Mask::kPregameLine);
-    EXPECT_EQ(getLoggedBytes(sends[3]), bytes("*\r\n"));
+    // Login is complete at the Option menu: the pre-game shell is logged verbatim.
+    EXPECT_EQ(sends[3].mMask, Mask::kNone);
+    EXPECT_EQ(getLoggedBytes(sends[3]), bytes("p\r\n"));
+}
+
+// After login only a line answering a recognised password (or account) prompt is masked. A
+// password typed at an unrecognised prompt after login ("Old Password:") is logged in clear: the
+// trade-off persistence.md's DECISION states.
+TEST(Session, AfterLoginOnlyARecognisedCredentialPromptIsMasked)
+{
+    Session                   session { Credentials {}, 80 };
+    std::vector<SessionEvent> events;
+    session.onConnected(events);
+    session.onReceived(bytes("MUD login menu.\r\nOption (H for help): "), events);
+    static_cast<void>(drain(session));
+    EXPECT_FALSE(session.isLineSensitive());
+    session.queueLine("m", false);
+    session.onReceived(bytes("m\r\nOld Password: "), events);
+    EXPECT_FALSE(session.isInputHidden());
+    session.queueLine("oldpass1", false);
+    session.onReceived(bytes("\r\nPassword: "), events);
+    EXPECT_TRUE(session.isInputHidden());
+    EXPECT_TRUE(session.isLineSensitive());
+    session.queueLine("hunter22", false);
+
+    const std::vector<Outbound> sends { drain(session) };
+    ASSERT_EQ(sends.size(), 3U);
+    EXPECT_EQ(sends[0].mMask, Mask::kNone);
+    EXPECT_EQ(sends[1].mMask, Mask::kNone);
+    EXPECT_EQ(getLoggedBytes(sends[1]), bytes("oldpass1\r\n"));
+    EXPECT_EQ(sends[2].mMask, Mask::kPassword);
+    EXPECT_EQ(getLoggedBytes(sends[2]), bytes("********\r\n"));
+}
+
+// Before login the box hides typed text, type-ahead included; after it only a password prompt does.
+TEST(Session, InputIsHiddenUntilLoginAndAtAPasswordPrompt)
+{
+    Session                   session { Credentials {}, 80 };
+    std::vector<SessionEvent> events;
+    session.onConnecting(events);
+    EXPECT_TRUE(session.isInputHidden());
+    session.onConnected(events);
+    session.onReceived(bytes("Account ID: "), events);
+    EXPECT_TRUE(session.isInputHidden());
+    session.onReceived(bytes("Z7654321\r\nOption (H for help): "), events);
+    EXPECT_FALSE(session.isInputHidden());
+}
+
+// A partial after a hidden line (the width notice that answers client-mode entry) replaces the
+// live one in the session's view of the line too: a password prompt left live before it does not
+// stay recognised.
+TEST(Session, APartialAfterAHiddenLineReplacesTheLiveLine)
+{
+    Session                   session { Credentials {}, 80 };
+    std::vector<SessionEvent> events;
+    session.onConnected(events);
+    session.onReceived(bytes("Option (H for help): "), events);
+    session.onReceived(bytes("\r\nPassword: "), events);
+    EXPECT_TRUE(session.isInputHidden());
+    session.onReceived(bytes("[New terminal width is 80]\r\nOption (H for help): "), events);
+    EXPECT_FALSE(session.isInputHidden());
 }
 
 // Type-ahead: a line typed before any prompt exists (while connecting) is masked in the wire log.
@@ -195,15 +253,16 @@ TEST(Session, MasksTypeAheadBeforeAnyPrompt)
     ASSERT_EQ(sends.size(), 2U);
     for (const Outbound& send : sends)
     {
-        EXPECT_EQ(send.mMask, Mask::kPregameLine);
+        EXPECT_EQ(send.mMask, Mask::kBeforeLogin);
         EXPECT_EQ(getLoggedBytes(send), bytes("********\r\n"));
-        EXPECT_EQ(getMaskNote(send.mMask), "masked: pre-game line");
+        EXPECT_EQ(getMaskNote(send.mMask), "masked: line before login");
     }
     // The socket still gets the line in clear.
     EXPECT_EQ(sends[0].mBytes, bytes("Z7654321\r\n"));
 }
 
-// A password typed at a prompt the login drive does not recognise is still masked.
+// Before login completes, a password typed at a prompt the login drive does not recognise is
+// still masked.
 TEST(Session, MasksALineTypedAtAnUnrecognisedPrompt)
 {
     for (const std::string_view prompt : { "Enter password: ", "PASSWORD: ", "\r\nOld Password: ", "Code? " })
@@ -226,10 +285,10 @@ TEST(Session, GameModeLinesAreNotMasked)
     Session                   session { makeSession() };
     std::vector<SessionEvent> events;
     session.onConnected(events);
-    EXPECT_TRUE(isInputSensitive(session.getFlowState()));
+    EXPECT_TRUE(session.isLineSensitive());
     session.onReceived(bytes({ 0x9C, 0x9D, 0xFF, 0xFF, 0xFF, 0xFF }), events);
     ASSERT_EQ(session.getFlowState(), FlowState::kGame);
-    EXPECT_FALSE(isInputSensitive(session.getFlowState()));
+    EXPECT_FALSE(session.isLineSensitive());
     static_cast<void>(drain(session));
     session.queueLine("look", false);
     // A line the frontend was told is sensitive (typed before the game began, drained after) is
