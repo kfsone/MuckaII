@@ -153,10 +153,6 @@ public:
     // (the first Option menu), or while a recognised account or password prompt is live.
     [[nodiscard]] bool isLineSensitive() const noexcept;
 
-    // Whether a frontend shows typed text as `*`: before login completes (every line is masked
-    // then, type-ahead included), and while a recognised password prompt is live.
-    [[nodiscard]] bool isInputHidden() const noexcept;
-
     // The effective column count changed (connection.md 4.1).
     void setColumns(int columns);
 

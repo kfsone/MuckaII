@@ -373,7 +373,6 @@ private:
     {
         // Published before the batch, so a frontend never holds a newer flow than this verdict.
         mCore.mIsInputSensitive.store(mSession.isLineSensitive());
-        mCore.mIsInputHidden.store(mSession.isInputHidden());
         if (mBatch.empty())
             return;
         if (mCore.mConfig.mSink)

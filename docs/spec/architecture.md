@@ -161,10 +161,8 @@ source: agent
 DECISION Core alone decides whether a typed line is masked (`persistence.md`, Wire log). It
 publishes its verdict (an atomic, updated before each event batch is delivered); `submitLine`
 returns the verdict at that moment and carries it with the line. The frontend keeps a line out of
-the recall list on that returned verdict, and shows `*` in the command box on
-`Core::isInputHidden()` (before login completes, and at a live password prompt), never on its own
-copy of the session's state. The wire log masks a
-line when its carried verdict or the session's state when it is sent says so, so a change between
+the recall list on that returned verdict, never on its own copy of the session's state; the command
+box itself never masks (`input.md`, Password entry). The wire log masks a line when its carried verdict or the session's state when it is sent says so, so a change between
 Enter and the send never unmasks it. Rejected: the frontend deciding from the events it has
 received (one batch behind core).
 source: agent, on a review finding

@@ -76,13 +76,6 @@ public:
     // source of it.
     bool submitLine(std::string text);
 
-    // From the UI thread: whether the command box shows `*` (session::Session::isInputHidden):
-    // before login completes, and at a live password prompt.
-    [[nodiscard]] bool isInputHidden() const noexcept
-    {
-        return mIsInputHidden.load();
-    }
-
     // From the UI thread: the effective column count changed.
     void setColumns(int columns);
 
@@ -115,7 +108,6 @@ private:
     std::thread                                  mThread;
     std::atomic<bool>                            mIsStopping; // value-initialised to false (C++20)
     std::atomic<bool>                            mIsInputSensitive { true }; // not logged in yet
-    std::atomic<bool>                            mIsInputHidden { true };    // not logged in yet
     bool                                         mHasStarted {};
 };
 

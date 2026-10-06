@@ -12,14 +12,10 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/terminal.hpp>
 
+#include "options.hpp"
 #include "scroll.hpp"
 
 #include <algorithm>
-#include <array>
-#include <atomic>
-#include <charconv>
-#include <csignal>
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -38,9 +34,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#else
-#include <termios.h>
-#include <unistd.h>
 #endif
 
 namespace
@@ -49,7 +42,6 @@ using namespace muckaii;
 
 constexpr std::string_view kVersion { MUCKAII_VERSION };
 constexpr std::string_view kPasswordVariable { "MUCKAII_PASSWORD" };
-constexpr std::uint16_t    kDefaultPort { 23 };
 // The status line and the command box.
 constexpr int  kChromeRows { 2 };
 constexpr char kEscape { '\x1b' };
@@ -58,154 +50,18 @@ constexpr char kLastPrintable { '~' };
 
 constexpr std::string_view kUsage {
     "usage: muckaiiTui --host <host> [--port <port>] [--account <account id>]\n"
-    "                  [--max-columns <20..160>] [--wire-log <path>]\n"
+    "                  [--password <password>] [--max-columns <20..160>] [--wire-log <path>]\n"
     "\n"
-    "Connects once, logs in with the account ID, and enters client mode. The password is asked\n"
-    "for at the terminal without echo, or read from MUCKAII_PASSWORD; it is never stored. Pick a\n"
-    "persona by typing at the Option menu (for example p, then the persona name). Until login is\n"
-    "complete, and at a password prompt, what you type is shown as * and masked in the wire log.\n"
+    "Connects once, logs in with the account ID, and enters client mode. The password comes from\n"
+    "--password, else from MUCKAII_PASSWORD, else it is asked for at the terminal (and shown as\n"
+    "typed); it is never stored. A --password value is visible to other users of this machine in\n"
+    "process listings, and in your shell's history. Pick a persona by typing at the Option menu\n"
+    "(for example p, then the persona name). Lines typed before login, and at a password prompt,\n"
+    "are masked in the wire log and kept out of Up/Down recall.\n"
     "The wire log is %USERPROFILE%\\.muckaii\\muckaii.db unless --wire-log names another file.\n"
     "The client closes when the connection does. Ctrl+C quits. PageUp/PageDown scroll; Up/Down\n"
     "recall typed lines.\n"
 };
-
-// What one command-line word is (connection.md 6): not a flag, a flag MuckaII does not know, or
-// one of these.
-enum class Flag : std::uint8_t
-{
-    kNotAFlag,
-    kUnknown,
-    kHost,
-    kPort,
-    kAccount,
-    kMaxColumns,
-    kWireLog,
-    kHelp,
-};
-
-struct Options
-{
-    std::string                          mHost;
-    std::string                          mAccount;
-    std::optional<std::filesystem::path> mWireLog;
-    std::optional<int>                   mMaxColumns;
-    std::uint16_t                        mPort { kDefaultPort };
-    bool                                 mIsHelp {};
-};
-
-std::string toLower(std::string_view text)
-{
-    std::string lower;
-    for (const char c : text)
-        lower.push_back((c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c);
-    return lower;
-}
-
-std::optional<int> parseInt(std::string_view text) noexcept
-{
-    int        value {};
-    const auto parsed { std::from_chars(text.data(), text.data() + text.size(), value) };
-    if (parsed.ec != std::errc {} || parsed.ptr != text.data() + text.size())
-        return std::nullopt;
-    return value;
-}
-
-// A flag is -name with any number of leading dashes, case-insensitive, followed by its value
-// (connection.md 6). Words that are not flags are ignored.
-Flag getFlag(std::string_view arg)
-{
-    struct Name
-    {
-        std::string_view mText;
-        Flag             mFlag {};
-    };
-    static constexpr std::array<Name, 6> kNames { {
-        { .mText = "host", .mFlag = Flag::kHost },
-        { .mText = "port", .mFlag = Flag::kPort },
-        { .mText = "account", .mFlag = Flag::kAccount },
-        { .mText = "max-columns", .mFlag = Flag::kMaxColumns },
-        { .mText = "wire-log", .mFlag = Flag::kWireLog },
-        { .mText = "help", .mFlag = Flag::kHelp },
-    } };
-    if (! arg.starts_with('-'))
-        return Flag::kNotAFlag;
-    while (arg.starts_with('-'))
-        arg.remove_prefix(1);
-    const std::string name { toLower(arg) };
-    const auto        found { std::ranges::find(kNames, name, &Name::mText) };
-    return found != kNames.end() ? found->mFlag : Flag::kUnknown;
-}
-
-std::optional<Options> parseArguments(std::span<char*> args, std::string& error)
-{
-    Options options;
-    for (std::size_t i { 1 }; i < args.size(); ++i)
-    {
-        const std::string_view arg { args[i] };
-        const Flag             flag { getFlag(arg) };
-        if (flag == Flag::kNotAFlag)
-            continue;
-        if (flag == Flag::kUnknown)
-        {
-            error = "unknown flag " + std::string { arg };
-            return std::nullopt;
-        }
-        if (flag == Flag::kHelp)
-        {
-            options.mIsHelp = true;
-            continue;
-        }
-        if (i + 1 >= args.size() || getFlag(args[i + 1]) != Flag::kNotAFlag)
-        {
-            error = "missing value for " + std::string { arg };
-            return std::nullopt;
-        }
-        const std::string_view value { args[++i] };
-        switch (flag)
-        {
-            case Flag::kHost:
-                options.mHost = value;
-                break;
-            case Flag::kAccount:
-                options.mAccount = value;
-                break;
-            case Flag::kWireLog:
-                options.mWireLog = std::filesystem::path { value };
-                break;
-            case Flag::kMaxColumns:
-            {
-                const std::optional<int> columns { parseInt(value) };
-                if (! columns.has_value() || *columns < session::kMinColumns
-                    || *columns > session::kMaxColumns)
-                {
-                    error = "--max-columns takes a number from 20 to 160";
-                    return std::nullopt;
-                }
-                options.mMaxColumns = columns;
-                break;
-            }
-            case Flag::kPort:
-            {
-                // Out of range or not a number: ignored without warning (connection.md 6).
-                const std::optional<int> port { parseInt(value) };
-                constexpr int            kMaxPort { 65535 };
-                if (port.has_value() && *port >= 1 && *port <= kMaxPort)
-                    options.mPort = static_cast<std::uint16_t>(*port);
-                break;
-            }
-            case Flag::kNotAFlag:
-            case Flag::kUnknown:
-            case Flag::kHelp:
-                break;
-        }
-    }
-    if (! options.mIsHelp && options.mHost.empty())
-    {
-        error = "--host is required";
-        return std::nullopt;
-    }
-    return options;
-}
 
 // An environment variable as UTF-8 (never the ANSI code page, which would turn a character it
 // lacks into '?').
@@ -250,73 +106,13 @@ void removeEnvironment(std::string_view name)
 #endif
 }
 
-// The console state readHidden changed, restored by the Ctrl+C handler if the user quits there.
-#ifdef _WIN32
-std::atomic<void*> gHiddenInput {};
-std::atomic<DWORD> gHiddenMode {};
-
-BOOL WINAPI restoreEchoOnCtrlC(DWORD /*type*/)
-{
-    if (void* const input { gHiddenInput.load() }; input != nullptr)
-        SetConsoleMode(input, gHiddenMode.load());
-    return FALSE; // the default handler still ends the process
-}
-#else
-termios               gHiddenTermios {};
-volatile sig_atomic_t gIsHiding {};
-
-void restoreEchoOnInterrupt(int signal)
-{
-    if (gIsHiding != 0)
-        tcsetattr(STDIN_FILENO, TCSANOW, &gHiddenTermios);
-    std::signal(signal, SIG_DFL);
-    std::raise(signal);
-}
-#endif
-
-// Reads one line from the terminal without echo. The password never reaches the screen, the log
-// or the disk. Echo comes back even if the user presses Ctrl+C at the prompt.
-std::string readHidden(std::string_view prompt)
+// Reads one line from the terminal, echoed as typed: a password typed here is visible at entry
+// (input.md, DECISION: the input never masks).
+std::string readLine(std::string_view prompt)
 {
     std::cout << prompt << std::flush;
     std::string line;
-#ifdef _WIN32
-    void* const input { GetStdHandle(STD_INPUT_HANDLE) };
-    DWORD       mode {};
-    const bool  isConsole { GetConsoleMode(input, &mode) != 0 };
-    if (isConsole)
-    {
-        gHiddenMode.store(mode);
-        gHiddenInput.store(input);
-        SetConsoleCtrlHandler(restoreEchoOnCtrlC, TRUE);
-        SetConsoleMode(input, mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT));
-    }
     std::getline(std::cin, line);
-    if (isConsole)
-    {
-        SetConsoleMode(input, mode);
-        SetConsoleCtrlHandler(restoreEchoOnCtrlC, FALSE);
-        gHiddenInput.store(nullptr);
-    }
-#else
-    const bool isTerminal { tcgetattr(STDIN_FILENO, &gHiddenTermios) == 0 };
-    if (isTerminal)
-    {
-        gIsHiding = 1;
-        std::signal(SIGINT, restoreEchoOnInterrupt);
-        termios hidden { gHiddenTermios };
-        hidden.c_lflag &= ~static_cast<tcflag_t>(ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &hidden);
-    }
-    std::getline(std::cin, line);
-    if (isTerminal)
-    {
-        tcsetattr(STDIN_FILENO, TCSANOW, &gHiddenTermios);
-        gIsHiding = 0;
-        std::signal(SIGINT, SIG_DFL);
-    }
-#endif
-    std::cout << "\n" << std::flush;
     if (line.ends_with('\r'))
         line.pop_back();
     return line;
@@ -418,9 +214,9 @@ struct UiState
         if (event == ftxui::Event::Return)
         {
             mScroll.returnToLive();
-            // Core alone says whether the line is sensitive; the recall list follows its verdict.
-            const bool isSensitive { core.submitLine(mEditor.getText()) };
-            static_cast<void>(mEditor.submit(isSensitive));
+            // Core alone says whether the line is masked; the recall list follows its verdict.
+            const bool isMasked { core.submitLine(mEditor.getText()) };
+            static_cast<void>(mEditor.submit(isMasked));
             return true;
         }
         if (event.is_character())
@@ -468,20 +264,14 @@ struct UiState
         return true;
     }
 
-    // The command box: shown as * while core says input is hidden (before login, password prompt), the cursor cell
-    // inverted.
-    [[nodiscard]] ftxui::Element renderInput(const core::Core& core) const
+    // The command box, shown as typed (never masked: input.md), the cursor cell inverted.
+    [[nodiscard]] ftxui::Element renderInput() const
     {
         const std::string& text { mEditor.getText() };
         const std::size_t  cursor { mEditor.getCursor() };
-        std::string        before { text.substr(0, cursor) };
+        const std::string  before { text.substr(0, cursor) };
         std::string        after { text.substr(cursor) };
-        if (core.isInputHidden())
-        {
-            before = std::string(client::countCodePoints(before), '*');
-            after  = std::string(client::countCodePoints(after), '*');
-        }
-        std::string atCursor { " " };
+        std::string        atCursor { " " };
         if (! after.empty())
         {
             std::size_t length { 1 };
@@ -498,7 +288,7 @@ struct UiState
 };
 
 // Takes the password over: it is wiped here once the core holds its own copy.
-int runApp(const Options& options, std::string& password)
+int runApp(const tui::Options& options, std::string& password)
 {
     auto    screen { ftxui::App::Fullscreen() };
     UiState state;
@@ -557,7 +347,7 @@ int runApp(const Options& options, std::string& password)
             return ftxui::vbox({
                 state.mScroll.render(state.mColumns, rows) | ftxui::flex,
                 ftxui::text(status) | ftxui::inverted,
-                state.renderInput(*core),
+                state.renderInput(),
             });
         }) };
 
@@ -595,9 +385,9 @@ int runApp(const Options& options, std::string& password)
 
 int main(int argc, char** argv)
 {
-    std::string                  error;
-    const std::optional<Options> options { parseArguments(std::span { argv, static_cast<std::size_t>(argc) },
-                                                          error) };
+    std::string                 error;
+    std::optional<tui::Options> options { tui::parseArguments(
+        std::span<char* const> { argv, static_cast<std::size_t>(argc) }, error) };
     if (! options.has_value())
     {
         std::cerr << "muckaiiTui: " << error << "\n\n" << kUsage;
@@ -608,12 +398,6 @@ int main(int argc, char** argv)
         std::cout << kUsage;
         return 0;
     }
-    // A credential with a control or high byte would end or corrupt its line on the wire.
-    if (! session::isValidCredential(options->mAccount))
-    {
-        std::cerr << "muckaiiTui: the account ID must be printable 7-bit characters\n";
-        return 2;
-    }
 
     std::string password;
     if (! options->mAccount.empty())
@@ -621,9 +405,14 @@ int main(int argc, char** argv)
         std::optional<std::string> fromEnvironment { findEnvironment(kPasswordVariable) };
         // Read once, then gone from the environment, so nothing started later inherits it.
         removeEnvironment(kPasswordVariable);
-        password = fromEnvironment.has_value() ? std::move(*fromEnvironment) : readHidden("Password: ");
-        if (fromEnvironment.has_value())
-            session::wipeSecret(*fromEnvironment);
+        std::optional<std::string> given { tui::findGivenPassword(*options, fromEnvironment) };
+        password = given.has_value() ? std::move(*given) : readLine("Password: ");
+        for (std::optional<std::string>* const copy : { &fromEnvironment, &given, &options->mPassword })
+        {
+            if (copy->has_value())
+                session::wipeSecret(**copy);
+        }
+        // A credential with a control or high byte would end or corrupt its line on the wire.
         if (! session::isValidCredential(password))
         {
             session::wipeSecret(password);

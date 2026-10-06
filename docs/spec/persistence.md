@@ -87,15 +87,14 @@ typed while connecting waits in the UI -> core FIFO and is sent before any promp
 credential typed at a login prompt the drive does not recognise ("Enter password:", "PASSWORD:");
 it also masks the shell's own login exchange and anything else typed before the first Option menu.
 The trade-off, accepted: after login, a password typed at a prompt that is not recognised (the
-shell's "Old Password:" and "New Password:" when changing the password) is in clear in the wire log,
-in the command box and in the recall list alike. The rule relies on one connection per `Core`
+shell's "Old Password:" and "New Password:" when changing the password) is in clear in the wire log
+and in the recall list (the command box never masks: `input.md`, Password entry). The rule relies on one connection per `Core`
 (`core::Core`, single use): login completes once and never re-arms, so a second login over the same
 session (were one ever built) would log its shell login and unrecognised prompts in clear. A line
 core judged masked when it was submitted stays masked however the state moves before it is sent
-(`architecture.md`, Input: core's verdict). A frontend shows `*` in the command box while login is
-incomplete (every line is masked then, type-ahead included) and while a recognised password prompt
-is live, and keeps masked lines, only those, out of the recall list. Invariant #1's acceptance
-check skips masked records. Rejected:
+(`architecture.md`, Input: core's verdict). A frontend keeps masked lines, only those, out of the
+recall list; it never masks the command box. Invariant #1's acceptance check skips masked records.
+Rejected:
 masking every pre-game line (the pre-game shell could not be used or read back); masking only while
 a recognised prompt is live (leaks type-ahead).
 source: director ("only the password needs masking"); agent, on a review finding (the type-ahead

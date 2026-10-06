@@ -104,3 +104,17 @@ replaced with same-length placeholder bytes and annotated (`docs/spec/persistenc
 keeping them verbatim (Mucka's behaviour).
 
 Open protocol and telnet questions are settled by the evidence ranking in `CLAUDE.md`.
+
+## Credentials and threat model
+
+FACT MUD2 accounts are free. They hold no personally identifying data apart from a recovery email
+address. MUD2 itself sends everything, the password included, over unencrypted telnet. Credential
+handling in MuckaII is sized to that: keep the password out of the wire log and the recall history,
+and do nothing more elaborate.
+source: director
+
+DECISION Passwords are expected through the command line or a stored profile, not typed. A typed
+password is visible as it is entered. The TUI never masks its input. A GUI uses the platform's
+native password field, with whatever masking and reveal control the OS or toolkit gives it. That
+behaviour is the platform's concern, not ours.
+source: director

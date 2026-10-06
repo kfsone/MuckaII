@@ -354,11 +354,6 @@ bool Session::isLineSensitive() const noexcept
     return ! mIsLoginComplete || isAccountPrompt() || isPasswordPrompt();
 }
 
-bool Session::isInputHidden() const noexcept
-{
-    return ! mIsLoginComplete || isPasswordPrompt();
-}
-
 Mask Session::getUserMask() const noexcept
 {
     if (isAccountPrompt())

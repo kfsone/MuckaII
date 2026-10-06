@@ -194,10 +194,9 @@ TEST(Session, AfterLoginOnlyARecognisedCredentialPromptIsMasked)
     EXPECT_FALSE(session.isLineSensitive());
     session.queueLine("m", false);
     session.onReceived(bytes("m\r\nOld Password: "), events);
-    EXPECT_FALSE(session.isInputHidden());
+    EXPECT_FALSE(session.isLineSensitive());
     session.queueLine("oldpass1", false);
     session.onReceived(bytes("\r\nPassword: "), events);
-    EXPECT_TRUE(session.isInputHidden());
     EXPECT_TRUE(session.isLineSensitive());
     session.queueLine("hunter22", false);
 
@@ -210,18 +209,18 @@ TEST(Session, AfterLoginOnlyARecognisedCredentialPromptIsMasked)
     EXPECT_EQ(getLoggedBytes(sends[2]), bytes("********\r\n"));
 }
 
-// Before login the box hides typed text, type-ahead included; after it only a password prompt does.
-TEST(Session, InputIsHiddenUntilLoginAndAtAPasswordPrompt)
+// Every line is masked until login completes, type-ahead included.
+TEST(Session, LinesAreSensitiveUntilLogin)
 {
     Session                   session { Credentials {}, 80 };
     std::vector<SessionEvent> events;
     session.onConnecting(events);
-    EXPECT_TRUE(session.isInputHidden());
+    EXPECT_TRUE(session.isLineSensitive());
     session.onConnected(events);
     session.onReceived(bytes("Account ID: "), events);
-    EXPECT_TRUE(session.isInputHidden());
+    EXPECT_TRUE(session.isLineSensitive());
     session.onReceived(bytes("Z7654321\r\nOption (H for help): "), events);
-    EXPECT_FALSE(session.isInputHidden());
+    EXPECT_FALSE(session.isLineSensitive());
 }
 
 // A partial after a hidden line (the width notice that answers client-mode entry) replaces the
@@ -234,9 +233,9 @@ TEST(Session, APartialAfterAHiddenLineReplacesTheLiveLine)
     session.onConnected(events);
     session.onReceived(bytes("Option (H for help): "), events);
     session.onReceived(bytes("\r\nPassword: "), events);
-    EXPECT_TRUE(session.isInputHidden());
+    EXPECT_TRUE(session.isLineSensitive());
     session.onReceived(bytes("[New terminal width is 80]\r\nOption (H for help): "), events);
-    EXPECT_FALSE(session.isInputHidden());
+    EXPECT_FALSE(session.isLineSensitive());
 }
 
 // Type-ahead: a line typed before any prompt exists (while connecting) is masked in the wire log.

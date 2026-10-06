@@ -255,8 +255,9 @@ void enterGame(core::Core& core, Collector& collector, fake::FakeMudServer& serv
     ASSERT_TRUE(core.start());
     // Persona selection is typed by the player, after client mode is entered.
     ASSERT_TRUE(collector.waitFor(isClientMode, 15s)) << server.getError();
-    core.submitLine("p");
-    core.submitLine(std::string { kPersona });
+    // Login is complete: core's published verdict is "not masked", so both stay recallable.
+    EXPECT_FALSE(core.submitLine("p"));
+    EXPECT_FALSE(core.submitLine(std::string { kPersona }));
     ASSERT_TRUE(collector.waitFor(isGameFlow, 15s)) << server.getError();
 }
 
@@ -275,10 +276,7 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
 
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(server.getPort(), collector, database) };
-    // Core publishes the session's hiding verdict: hidden until login completes, then not.
-    EXPECT_TRUE(core->isInputHidden());
     enterGame(*core, collector, server);
-    EXPECT_FALSE(core->isInputHidden());
     ASSERT_TRUE(server.waitDone(15s));
     EXPECT_EQ(server.getError(), "");
     core->stop();
@@ -335,8 +333,7 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(
         server.getPort(), collector, database, session::Credentials {}) };
-    // Type-ahead is hidden in the box and judged masked before it ever reaches the socket.
-    EXPECT_TRUE(core->isInputHidden());
+    // Type-ahead is judged masked (and kept out of recall) before it ever reaches the socket.
     EXPECT_TRUE(core->submitLine("Z7654321"));
     core->submitLine("hunter22");
     ASSERT_TRUE(core->start());

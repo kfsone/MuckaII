@@ -139,6 +139,18 @@ draft" rows wherever they would lose text. Rejected: the reference's rule that r
 shows the stored text (an edit, then Up, then Down, lost the edit).
 source: agent, on a review finding (an edited recall was lost on Up or Down)
 
+## Password entry
+
+DECISION The input box never masks: no `*`, at any prompt, and a password typed at a terminal
+prompt before connecting is echoed too. Passwords are expected from the command line
+(`connection.md` 6, `-password`) or a stored profile that MuckaII uses automatically; a user who
+does type one needs to see it at entry, because some passwords are hard to type on some keyboards
+and on-screen keyboards. A typed password is still masked in the wire log and kept out of the
+recall list (`persistence.md`, Wire log). The TUI takes the password from `--password`, then
+`MUCKAII_PASSWORD`, then a visible prompt. Rejected: masking the box at a password prompt or
+before login (an earlier build did both).
+source: director
+
 ## Escape
 
 RULE Escape acts on the first row that applies.
