@@ -32,7 +32,8 @@ served, if any, and drop the mechanism.
 source: director
 enforced_by: none: judgement
 
-RULE Mark each feature `scope: launch` or `scope: later`. The launch scope is in `INTERNAL.md`.
+RULE Mark each feature `scope: now` or `scope: later`. The now scope is listed in `INTERNAL.md`,
+Scope; a spec's tag follows that list.
 source: director
 enforced_by: none: judgement
 
@@ -81,4 +82,4 @@ Spec files are 7-bit text (`CLAUDE.md`, Comments and docs); the wire encoding is
 | `ui.md`, `sounds.toml` | Status bar, dreamword, terminal look, sounds and their triggers |
 | `persistence.md`, `mucka-ini.md` | `~/.muckaii/`, the wire log, settings storage, and the `mucka.ini` import format |
 | `OPEN.md` | Every `open:` item above, deduplicated and grouped for one ruling pass |
-| `later/` | Specs for features outside the launch scope. Never built until the director triages them |
+| `later/` | Specs for features outside the now scope. Never built until the director triages them |

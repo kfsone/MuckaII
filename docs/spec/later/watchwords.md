@@ -1,6 +1,6 @@
 # Later: watchwords
 
-FACT `scope: later`. Importing the `[watch]` text verbatim is launch (`persistence.md`, Import).
+FACT `scope: later`. Importing the `[watch]` text verbatim is `scope: now` (`persistence.md`, Import).
 `fair-play.md` holds an `open:` asking for a charter review before watchwords are built.
 source: director
 

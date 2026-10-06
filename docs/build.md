@@ -21,8 +21,8 @@ default: those jobs install CMake 4.3 or newer before configuring when the image
 ## Language standard
 
 DECISION C++20: `CMAKE_CXX_STANDARD 20`, `CMAKE_CXX_STANDARD_REQUIRED ON`, `CMAKE_CXX_EXTENSIONS OFF`
-(`/std:c++20`, `-std=c++20`): the highest standard all three toolchains support (the director's
-rule, `INTERNAL.md`), and Slint's C++ API requires it. libc++'s remaining C++20 gaps (parts of
+(`/std:c++20`, `-std=c++20`) (`INTERNAL.md`, Stack): the highest standard all three toolchains
+support, and Slint's C++ API requires it. libc++'s remaining C++20 gaps (parts of
 chrono time zones, `atomic<shared_ptr>`, `<syncstream>` manipulators, parallel `shift`) are not
 used. Rejected: C++23. MSVC has only `/std:c++23preview`, not ABI-stable; stable `/std:c++23`
 arrives with MSVC Build Tools 14.52 in November 2026. libc++ (Linux gate and NDK) still lists
@@ -44,7 +44,7 @@ that needs an expected type.
 |--------|----------|------------------|-----|
 | Windows x64 | MSVC `cl` | MSVC STL | Visual Studio 2026 (VS 18) only |
 | Linux x64 (gate) | clang 22 | libc++ | LLVM 22, latest 22.1.x from apt.llvm.org |
-| Android arm64 | NDK clang | libc++ | NDK r30 (30.0.16248370, LTS) |
+| Android arm64 (later: the `android` spike) | NDK clang | libc++ | NDK r30 (30.0.16248370, LTS) |
 
 source: https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md
 source: https://github.com/llvm/llvm-project/releases
@@ -57,14 +57,15 @@ source: agent
 
 DECISION The Linux gate uses libc++ from LLVM 22, the release line nearest NDK r30's clang
 (`clang-r574158c`, a rolling snapshot of LLVM main from October 2025, after LLVM 21 branched). This
-narrows, but does not close, the gap between what Linux and the NDK accept; the android CI job is
-the final check. Rejected: libstdc++, and LLVM 23.1.2 (latest), which is further from the NDK.
+narrows, but does not close, the gap between what Linux and the NDK accept; the android CI job
+(later, the `android` spike) is the final check. Rejected: libstdc++, and LLVM 23.1.2 (latest), which is further from the NDK.
 source: https://github.com/android/ndk/wiki/Changelog-r30
 source: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+/mirror-goog-main-llvm-toolchain-source/README.md
 source: https://github.com/llvm/llvm-project/releases
 
 open: the exact LLVM commit of NDK r30's clang.
-default: read `toolchains/llvm/prebuilt/*/clang_source_info.md` in the NDK during spike step 1.
+default: read `toolchains/llvm/prebuilt/*/clang_source_info.md` in the NDK during the `android`
+spike's first step.
 
 open: the exact LLVM 22.1.x patch release on apt.llvm.org.
 default: the latest 22.1.x at the time the CI job is written.
@@ -187,18 +188,23 @@ FACT Slint for Android builds from source, Skia renderer included, with API 26 a
 CMake maps the NDK ABI to the Rust target.
 source: https://docs.slint.dev/latest/docs/slint/guide/platforms/mobile/android/
 
-open: Android needs `rustup target add aarch64-linux-android` and a Gradle wrapper for packaging.
-default: spike step 1 verifies both before any other Android work.
+open: Android (later, the `android` spike) needs `rustup target add aarch64-linux-android` and a
+Gradle wrapper for packaging.
+default: the `android` spike's first step verifies both before any other Android work.
+
+DECISION An Android build is signed with one release keystore, held in CI secrets. `scope: later`,
+with the `android` spike.
+source: director
 
 ## Presets
 
 | Preset | Toolchain | Builds | Global flags |
 |--------|-----------|--------|--------------|
 | `windows-msvc-debug` | MSVC | everything | none in the preset (`MUCKAII_ASAN=ON`). From `cmake/MuckaiiToolchain.cmake`: Debug `/fsanitize=address` and `/INCREMENTAL:NO`; `/RTC*`, `/ZI` and `/EH*` never inherited (MSVC rejects the first two with ASan); `/Zi`. Per target, ours: `/W4 /WX /permissive- /Zc:__cplusplus /EHs-c-`, `_HAS_EXCEPTIONS=0`. FTXUI only: `/EHsc` |
-| `windows-msvc-release` | MSVC | everything | none in the preset; CMake's Release default `/O2 /Ob2 /DNDEBUG`. Same per-target flags as Debug |
+| `windows-msvc-release` | MSVC | everything except `muckaiiBot` | none in the preset; CMake's Release default `/O2 /Ob2 /DNDEBUG`. Same per-target flags as Debug |
 | `linux-clang-asan-ubsan` | clang 22, libc++ | core libraries, `tui`, `bot`, tests; no Slint | `-stdlib=libc++ -fsanitize=address,undefined -fno-sanitize-recover=all` |
 | `linux-clang-fuzz` | clang 22, libc++ | `mud` and its fuzz target only | `-stdlib=libc++ -fsanitize=fuzzer-no-link,address,undefined`; `-fsanitize=fuzzer` on the `muckaiiMudFuzz` link only |
-| `android-arm64` | NDK r30 | core libraries, `gui` | ABI `arm64-v8a`, API 26 |
+| `android-arm64` (later: the `android` spike) | NDK r30 | core libraries, `gui` | ABI `arm64-v8a`, API 26 |
 
 RULE Warnings-as-errors is set per target on MuckaII's own targets only: `/W4 /WX` (MSVC),
 `-Wall -Wextra -Werror` (clang). Third-party include directories are `SYSTEM`. Sanitizer flags and
@@ -243,7 +249,7 @@ source: agent
 |-----|--------|---------|-------|
 | windows | windows-2025-vs2026 | `windows-msvc-debug`, `windows-msvc-release` | build, `ctest` under ASan |
 | linux-gate | ubuntu-24.04 | `linux-clang-asan-ubsan`, `linux-clang-fuzz` | `ctest` under ASan+UBSan, fuzz run, clang-tidy, firewall tripwire |
-| android | ubuntu-24.04 | `android-arm64` | build only; the job installs NDK r30, Rust >= 1.92 and `aarch64-linux-android` itself |
+| android (later: the `android` spike) | ubuntu-24.04 | `android-arm64` | build only; the job installs NDK r30, Rust >= 1.92 and `aarch64-linux-android` itself |
 
 FACT The windows-2025 image lists NDK 27-29 only, so no runner image is assumed to carry r30.
 source: https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md
@@ -253,7 +259,26 @@ Visual Studio 18 install that `vswhere -all -prerelease -version [18.0,19.0)` re
 path (Insiders, Preview, Professional) is hard-coded.
 source: agent proposal, accepted by director 2026-10-03
 
-Release builds for launch are Windows and Android only (`INTERNAL.md`, Platforms).
+## Artifacts
+
+DECISION The artifacts now (`INTERNAL.md`, Platforms):
+
+| OS | Artifacts | Built and tested |
+|----|-----------|------------------|
+| Windows | `muckaii` (GUI), `muckaiiTui` | the `windows-msvc-*` presets; the director's machine and the `windows` CI job |
+| Linux | `muckaiiTui` | under WSL on the director's machine |
+| macOS | `muckaiiTui` | later, by the director, when it becomes relevant |
+
+No other OS, distribution or toolchain gets compatibility work (root `CLAUDE.md`, "no others").
+`muckaiiBot` is built only in test and developer presets.
+source: director
+
+open: no preset builds the Linux TUI as an artifact: the two Linux presets are sanitizer gates.
+default: build it under WSL with `linux-clang-asan-ubsan` until the director asks for a Linux
+release preset.
+
+FACT The spike's pass criteria are in `INTERNAL.md`, Stack.
+source: director
 
 ## Scaffold
 

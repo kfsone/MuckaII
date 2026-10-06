@@ -1,6 +1,7 @@
 # Working on MuckaII
 
-FACT MuckaII is a MUD2 client, written from scratch. `INTERNAL.md` says what the project is. This
+FACT MuckaII is a MUD2 client, written from scratch. `INTERNAL.md` says what the project is and
+holds the single scope list. This
 file says what counts as knowledge here and states the invariants that outrank everything else.
 
 RULE Read this file before `INTERNAL.md`.
@@ -150,7 +151,8 @@ exception is while another real text field is open; focus returns when it closes
 one place by structure, not with a list of controls.
 enforced_by: none: judgement
 
-open: On Android, does a tap or drag on the scroll raise the soft keyboard?
+open: On Android (`scope: later`, `INTERNAL.md` Platforms), does a tap or drag on the scroll raise
+the soft keyboard?
 default: Focus stays in the command input and the soft keyboard is left as it was. A scroll gesture
 never raises it.
 

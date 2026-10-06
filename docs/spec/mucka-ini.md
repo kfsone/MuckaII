@@ -1,11 +1,11 @@
 # mucka.ini
 
 FACT `mucka.ini` is the settings file of the previous client, Mucka. MuckaII reads it once, on first
-run (`persistence.md`, "Import"), and never writes this format. This file is the complete on-disk
-format as Mucka read and wrote it. Each key's scope is in the tables below.
+run (`persistence.md`, "Import"), and never writes this format. This file holds what reading and
+importing it needs, and nothing about how Mucka wrote it. Each key's scope is in the tables below.
 source: reference
 
-DECISION The import of `mucka.ini` is `scope: launch`.
+DECISION The import of `mucka.ini` is `scope: now`.
 source: director
 
 open: proposed: a key for a `later` feature is imported and kept, and nothing acts on it until that
@@ -13,8 +13,7 @@ feature is built. Rejected alternative: dropping it at import.
 default: the proposal: import and keep.
 
 RULE Every key and section not listed here is unknown and is ignored. An unknown key, a malformed
-value or an unknown section never fails a read; a malformed value takes the default. Mucka's own
-reader behaved this way.
+value or an unknown section never fails a read; a malformed value takes the default.
 enforced_by: none: judgement
 source: reference
 
@@ -26,33 +25,30 @@ source: agent
 FACT Mucka shipped on Windows and Android only, never on Linux or macOS.
 source: reference
 
-| Platform | Lookup order (first existing file wins) | Where a new file was created |
-|----------|------------------------------------------|------------------------------|
-| Windows | 1. `mucka.ini` in the directory holding Mucka's executable; 2. `%USERPROFILE%\mucka.ini` | `%USERPROFILE%\mucka.ini` |
-| Android | the app-private files directory of package `org.kfs.mucka`, file `mucka.ini` | same |
+| Platform | Lookup order (first existing file wins) |
+|----------|------------------------------------------|
+| Windows | 1. `mucka.ini` in the directory holding Mucka's executable; 2. `%USERPROFILE%\mucka.ini` |
+| Android | the app-private files directory of package `org.kfs.mucka`, file `mucka.ini` |
 
 source: reference
 
 FACT On Android the file is private to Mucka's package; no other app, MuckaII included, can open it
 by path. The only route is a file the user exports and hands over through a file picker. Hand-written
-`[watch]` rules therefore exist in practice only on Windows.
-source: reference
-
-FACT Mucka wrote the file atomically: `mucka.ini.tmp` beside it, then renamed over `mucka.ini`. A
-leftover `mucka.ini.tmp` is an unfinished write, not a settings file.
+`[watch]` rules therefore exist in practice only on Windows. Android is `scope: later`
+(`INTERNAL.md`, Platforms), and so is importing there.
 source: reference
 
 The director's own file location is recorded as EVIDENCE in `persistence.md`, Finding the file.
 
 ## Encoding and lines
 
-| Property | Read | Write |
-|----------|------|-------|
-| Encoding | UTF-8. A leading byte-order mark (UTF-8, UTF-16 or UTF-32) is honoured and dropped | UTF-8, no byte-order mark |
-| Line endings | CRLF, LF and lone CR each end a line | the platform newline: CRLF on Windows, LF on Android |
-| Final newline | optional | always written |
-| Blank lines | ignored | preserved where they were |
-| Whitespace | trimmed from both ends of every line, every section name, every key and every value | none added |
+| Property | Read |
+|----------|------|
+| Encoding | UTF-8. A leading byte-order mark (UTF-8, UTF-16 or UTF-32) is honoured and dropped |
+| Line endings | CRLF, LF and lone CR each end a line |
+| Final newline | optional |
+| Blank lines | ignored |
+| Whitespace | trimmed from both ends of every line, every section name, every key and every value |
 
 source: reference
 
@@ -114,14 +110,14 @@ source: reference
 
 ### Value types
 
-| Type | Read | Written by Mucka |
-|------|------|------------------|
-| bool | `yes`, `true`, `on`, `1` mean true. `no`, `false`, `off`, `0` mean false. Any case. Anything else, or empty, means absent | `yes` / `no` |
-| int | a 32-bit decimal integer, culture-invariant. An optional leading sign is allowed. No thousands separators, no hex, no decimal point. Anything else means absent | invariant decimal |
-| real | culture-invariant decimal with an optional fraction and exponent (`884`, `884.5`) | invariant, rounded to an integer |
-| string | the trimmed value, verbatim | verbatim |
-| hex colour | 6 hex digits, with an optional leading `#`. Anything else means absent | 6 lowercase hex digits, no `#` |
-| face | a comma-separated list of `italic`, `bold`, `dim`, or the single word `none`. Any case, spaces around items allowed. One unknown word makes the whole value absent | items in `italic,bold,dim` order, or `none` |
+| Type | Read |
+|------|------|
+| bool | `yes`, `true`, `on`, `1` mean true. `no`, `false`, `off`, `0` mean false. Any case. Anything else, or empty, means absent |
+| int | a 32-bit decimal integer, culture-invariant. An optional leading sign is allowed. No thousands separators, no hex, no decimal point. Anything else means absent |
+| real | culture-invariant decimal with an optional fraction and exponent (`884`, `884.5`) |
+| string | the trimmed value, verbatim |
+| hex colour | 6 hex digits, with an optional leading `#`. Anything else means absent |
+| face | a comma-separated list of `italic`, `bold`, `dim`, or the single word `none`. Any case, spaces around items allowed. One unknown word makes the whole value absent |
 
 source: reference
 
@@ -132,22 +128,17 @@ source: reference
 
 ## Sections
 
-| Section | Holds | Written by |
-|---------|-------|------------|
-| `[settings]` | global settings, and the always-global display keys | Mucka |
-| `[settings:Name]` | one profile's own copy of the settings-scope keys | Mucka, when "Save to profile only" was ticked on the settings page |
-| `[fkeys]` | global F-key macros `F1`-`F36` | Mucka |
-| `[fkeys:Name]` | one profile's own F-key macros | Mucka, when "Save to profile only" was ticked on the F-key page |
-| `[profiles]` | profile names in most-recently-used order | Mucka |
-| `[profile:Name]` | one profile's connection identity | Mucka |
-| `[watch]` | watchword trigger slots | the user, by hand. Mucka never wrote it, but preserved it |
-| `[watch slotname]` | answer table for one slot | the user, by hand |
+| Section | Holds |
+|---------|-------|
+| `[settings]` | global settings, and the always-global display keys |
+| `[settings:Name]` | one profile's own copy of the settings-scope keys. Present only when "Save to profile only" was ticked on the settings page |
+| `[fkeys]` | global F-key macros `F1`-`F36` |
+| `[fkeys:Name]` | one profile's own F-key macros. Present only when "Save to profile only" was ticked on the F-key page |
+| `[profiles]` | profile names in most-recently-used order |
+| `[profile:Name]` | one profile's connection identity |
+| `[watch]` | watchword trigger slots, written by the user by hand |
+| `[watch slotname]` | answer table for one slot, written by the user by hand |
 
-source: reference
-
-FACT Mucka rewrote only the key lines it owned. Comments, blank lines, key order, unknown keys and
-unknown sections, including the whole `[watch]` family, survived each save byte for byte (apart
-from line endings).
 source: reference
 
 ### `[profiles]`
@@ -166,7 +157,6 @@ source: reference
 | Listed name with no `[profile:Name]` section | dropped |
 | `[profile:Name]` section not listed | appended after the listed profiles, in file order |
 | No profiles at all | Mucka showed two built-ins: `MUD2 UK` (`mud2.co.uk`, port 23), then `MUD2.COM` (`www.mud2.com`, port 27723) |
-| Writing | Mucka rewrote the keys as `1`..`N`, removed numeric keys outside that range, and removed `[profile:...]` sections for deleted profiles. Their `[settings:Name]` and `[fkeys:Name]` sections were left in place |
 
 source: reference
 
@@ -185,18 +175,18 @@ source: reference
 
 | Key | Type | Default | Meaning | Scope |
 |-----|------|---------|---------|-------|
-| `host` | string | `mud2.co.uk` | server host name. Empty means the default | launch |
-| `port` | int | `23` | TCP port | launch |
-| `account` | string | empty | MUD2 account ID. Auto-login answers the account and password prompts only when `telnetlogin` is on and both the account ID and a password are known | launch |
-| `rememberpassword` | bool | `no` | the password is kept in the OS secure store. The password itself is NEVER in the ini | launch |
-| `telnetlogin` | bool | `yes` | answer the host's telnet `login:` prompt automatically | launch |
-| `loginname` | string | `mud` | the name sent to `login:`. Empty means `mud` | launch |
-| `columns` | int | `0` | terminal width advertised to the server. `0` means fit the window. Clamped to 0-160 when used. See the precedence note below | launch |
+| `host` | string | `mud2.co.uk` | server host name. Empty means the default | now |
+| `port` | int | `23` | TCP port | now |
+| `account` | string | empty | MUD2 account ID. Auto-login answers the account and password prompts only when `telnetlogin` is on and both the account ID and a password are known | now |
+| `rememberpassword` | bool | `no` | in Mucka, the password was kept in the OS secure store; the password itself is NEVER in the ini. In MuckaII the profile stores its password in plaintext in the profile settings (`persistence.md`, Settings storage); there is nothing to import but this flag | now |
+| `telnetlogin` | bool | `yes` | answer the host's telnet `login:` prompt automatically | now |
+| `loginname` | string | `mud` | the name sent to `login:`. Empty means `mud` | now |
+| `columns` | int | `0` | terminal width advertised to the server. `0` means fit the window. Clamped to 0-160 when used. See the precedence note below | now |
 | `antiidle` | int | `0` | seconds of no input before a blank keep-alive line is sent. `0` means off. Clamped to 0-3600 | later |
 | `keepscreenon` | bool | `no` on desktop, `yes` on Android | keep the display awake while connected | later |
-| `defaulthotkeys` | bool | `yes` | at session start, fill empty F-key slots F1-F5 with the built-in macros (`input.md`, Default macros). The built-ins are never written to the ini | launch |
-| `guidedlogin` | bool | `no` | drive the MUD shell's option menu and persona choice automatically after login (MuckaII: managed persona selection) | launch |
-| `guidedloginpersona` | string | empty | persona to pick under guided login. Empty means ask | launch |
+| `defaulthotkeys` | bool | `yes` | at session start, fill empty F-key slots F1-F5 with the built-in macros (`input.md`, Default macros). The built-ins are never written to the ini | now |
+| `guidedlogin` | bool | `no` | drive the MUD shell's option menu and persona choice automatically after login (MuckaII: managed persona selection) | now |
+| `guidedloginpersona` | string | empty | persona to pick under guided login. Empty means ask | now |
 
 source: reference
 
@@ -207,24 +197,23 @@ source: reference
 
 ### `[settings]` and `[settings:Name]`: settings-scope keys
 
-FACT These keys follow the per-profile override (see "How the sections combine"). Mucka wrote them
-together, as one block, to whichever of the two sections the profile used.
+FACT These keys follow the per-profile override (see "How the sections combine").
 source: reference
 
 | Key | Type | Default | Meaning | Scope |
 |-----|------|---------|---------|-------|
-| `fontsize` | int | `0` | terminal font size in pixels. `0` means use `defaultfontsize`. Mucka's editor offered 9-24 | launch |
-| `columns` | int | `0` | as `[profile:Name] columns`. Written with the same value | launch |
-| `volume` | int | `75` | master sound volume, percent. Clamped to 0-100 | launch |
-| `statupdate` | int | `10` | seconds between FES stat-update heartbeats. `0` means off. Clamped to 0-30 | launch |
-| `mutebeep` | bool | `no` | permanently silence the terminal bell | launch |
+| `fontsize` | int | `0` | terminal font size in pixels. `0` means use `defaultfontsize`. Mucka's editor offered 9-24 | now |
+| `columns` | int | `0` | as `[profile:Name] columns`; which copy wins is "How the sections combine" | now |
+| `volume` | int | `75` | master sound volume, percent. Clamped to 0-100 | now |
+| `statupdate` | int | `10` | seconds between FES stat-update heartbeats. `0` means off. Clamped to 0-30 | now |
+| `mutebeep` | bool | `no` | permanently silence the terminal bell | now |
 | `logttr` | bool | `no` | debug builds only: note each reset-timer reading in the session transcript | later |
-| `sounds` | bool | `yes` | master switch for all sound effects, bell included | launch |
-| `soundgroup.<group>` | `off` | (absent: on) | that sound group is off. Only a false value counts; `on` is the same as absent | launch |
-| `sound.<code>` | `off` | (absent: on) | that one sound is off. Only a false value counts | launch |
-| `sounddefault.<group>` | sound code | (absent: none) | the sound to play for a code in that group that has no sound of its own | launch |
-| `soundgroupvol.<group>` | int 0-100 | (absent: master volume) | the group's volume. Out-of-range values are clamped | launch |
-| `soundvol.<code>` | int 0-100 | (absent: group volume) | the sound's volume. Out-of-range values are clamped | launch |
+| `sounds` | bool | `yes` | master switch for all sound effects, bell included | now |
+| `soundgroup.<group>` | `off` | (absent: on) | that sound group is off. Only a false value counts; `on` is the same as absent | now |
+| `sound.<code>` | `off` | (absent: on) | that one sound is off. Only a false value counts | now |
+| `sounddefault.<group>` | sound code | (absent: none) | the sound to play for a code in that group that has no sound of its own | now |
+| `soundgroupvol.<group>` | int 0-100 | (absent: master volume) | the group's volume. Out-of-range values are clamped | now |
+| `soundvol.<code>` | int 0-100 | (absent: group volume) | the sound's volume. Out-of-range values are clamped | now |
 
 source: reference
 
@@ -234,7 +223,6 @@ source: reference
 | `<code>` | a sound code such as `0703` or `070001` |
 | Matching | longest prefix first: `soundgroupvol.` before `soundgroup.`, `soundvol.` before `sound.`. The key `sounds` belongs to none of the families |
 | Absence | a section with no sound keys at all means every sound is on at the master volume, with no fallbacks |
-| Writing | Mucka removed every `sound.`/`soundgroup.`/`sounddefault.`/`soundvol.`/`soundgroupvol.` key from the section and rewrote only the overrides |
 
 source: reference
 
@@ -254,9 +242,9 @@ source: reference
 
 | Key | Type | Default | Meaning | Scope |
 |-----|------|---------|---------|-------|
-| `defaultfontsize` | int | `0` | the fallback font size when `fontsize` is 0. `0` means 15 px. Mucka's editor offered 9-24 | launch |
+| `defaultfontsize` | int | `0` | the fallback font size when `fontsize` is 0. `0` means 15 px. Mucka's editor offered 9-24 | now |
 | `defaultcolumns` | int | `0` | stored and edited in Mucka's Display tab, clamped to 0-160. Nothing else read it (`ui.md` section 7 lists it among the settings dialog rows) | later |
-| `dreamwordsizeoffset` | int | `0` | dreamword text size relative to the terminal font. Clamped to -2..4 | launch |
+| `dreamwordsizeoffset` | int | `0` | dreamword text size relative to the terminal font. Clamped to -2..4 | now |
 | `showonline` | bool | `yes` | Online section of the side panel expanded. Also subscribes to FEW updates | later |
 | `showinventory` | bool | `yes` | Inventory section expanded. Inventory or items-here expanded also subscribes to FEI updates | later |
 | `showitemshere` | bool | `yes` | Items-here section expanded | later |
@@ -266,16 +254,16 @@ source: reference
 | `onlineforgetwindow` | int | `5` | minutes a player stays in "Recent" after leaving Online. `0` means forget at once. Editor range 0-10 | later |
 | `floatonline` | bool | `no` | the Online list starts floating rather than pinned | later |
 | `floatcompass` | bool | `no` | the compass starts floating rather than pinned | later |
-| `chattheme` | word | `lamplight` | the chat colour theme: `lamplight`, `dusk`, `rose`, `tidewater`, `bland`, in any case. Unknown means `lamplight` | launch |
-| `emotecolor` | hex colour | theme | colour of the speaker of every chat line, and of act/emote text | launch |
-| `saycolor` | hex colour | theme | colour of said words | launch |
-| `shoutcolor` | hex colour | theme | colour of shouted words | launch |
-| `tellcolor` | hex colour | theme | colour of told words, both directions | launch |
-| `emoteown`, `emoteother` | face | `none`, `none` | face of the speaker part, on the player's own / another's message | launch |
-| `sayown`, `sayother` | face | `italic`, `none` | face of said words | launch |
-| `shoutown`, `shoutother` | face | `italic`, `none` | face of shouted words | launch |
-| `tellown`, `tellother` | face | `italic`, `none` | face of told words | launch |
-| `showcombatrail` | bool | `no` | Combat Rail shown. Written the moment it is toggled | later |
+| `chattheme` | word | `lamplight` | the chat colour theme: `lamplight`, `dusk`, `rose`, `tidewater`, `bland`, in any case. Unknown means `lamplight` | now |
+| `emotecolor` | hex colour | theme | colour of the speaker of every chat line, and of act/emote text | now |
+| `saycolor` | hex colour | theme | colour of said words | now |
+| `shoutcolor` | hex colour | theme | colour of shouted words | now |
+| `tellcolor` | hex colour | theme | colour of told words, both directions | now |
+| `emoteown`, `emoteother` | face | `none`, `none` | face of the speaker part, on the player's own / another's message | now |
+| `sayown`, `sayother` | face | `italic`, `none` | face of said words | now |
+| `shoutown`, `shoutother` | face | `italic`, `none` | face of shouted words | now |
+| `tellown`, `tellother` | face | `italic`, `none` | face of told words | now |
+| `showcombatrail` | bool | `no` | Combat Rail shown | later |
 | `showcombatstats` | bool | `yes` | Combat Rail draws its stat rows | later |
 | `scorepanelwidth` | real | `760` | score-graph panel width. Floor 660 | later |
 | `scorepanelheight` | real | `400` | score-graph panel height. Floor 320 | later |
@@ -284,7 +272,7 @@ source: reference
 
 FACT A stored colour is used as it stands, even when it differs from the theme. The theme is the
 base the colour editor shows and resets to. An absent or malformed colour key takes the selected
-theme's colour. The theme colours are `ui.md` 2.4; Mucka wrote them as lowercase hex with no `#`.
+theme's colour. The theme colours are `ui.md` 2.4.
 source: reference
 
 ### `[fkeys]` and `[fkeys:Name]`
@@ -301,7 +289,7 @@ source: reference
 |------|--------|
 | Key form | `F` or `f` followed by a decimal 1-36. Any other key in the section is ignored |
 | Order | free. The director's file has `F18` before `F11` |
-| Empty slot | the key is absent. Mucka removed the line when a slot was cleared and never wrote `F7=` |
+| Empty slot | the key is absent |
 | Section present but empty | means "saved, every slot empty". This differs from the section being absent (see "How the sections combine") |
 | Value | sent to the server as ONE line, verbatim, after alias and watchword expansion. Commas are not split by the client: `e,,n,e` reaches the server as typed. Behaviour of `,` and empty items is the server's |
 | Value starting with `$` | not sent. The rest names a watchword slot, and that slot's queued answer is spoken |
@@ -314,8 +302,7 @@ source: reference
 
 ### `[watch]` and `[watch slotname]`
 
-FACT This family is read by a separate parser with its own rules, NOT the line grammar above. Mucka
-never wrote any of it.
+FACT This family is read by a separate parser with its own rules, NOT the line grammar above.
 source: reference
 
 DECISION The importer copies the `[watch]` family verbatim: every raw line from each `[watch]` or
@@ -345,7 +332,7 @@ Nothing in the generic sections reads it.
 source: reference
 
 FACT Watchword behaviour is `scope: later` (`later/watchwords.md`). Importing the `[watch]` text
-verbatim is `scope: launch`.
+verbatim is `scope: now`.
 source: director
 
 ## How the sections combine
@@ -373,7 +360,7 @@ source: director
 | Value | Precedence, strongest first |
 |-------|-----------------------------|
 | font size | `fontsize` (from the settings section used) if above 0; else `[settings] defaultfontsize` if above 0; else 15 px |
-| terminal columns | `columns` from the settings section used, if present; else `[profile:P] columns`. Mucka wrote the same value to both on save |
+| terminal columns | `columns` from the settings section used, if present; else `[profile:P] columns` |
 
 source: reference
 
@@ -401,8 +388,8 @@ default: the proposal: drop them silently.
 | `sendbutton` | `[settings]` | Read by nothing |
 | `onlinefloating` | `[settings]` | Read by nothing. Replaced by `floatonline` |
 | `fewrefresh` | `[profile:Name]` | Read by nothing |
-| `menamecolor`, `mespeechcolor`, `speakercolor`, `speakerown`, `speakerother` | any section | Read by nothing. Mucka deleted them from every section on each save |
-| `showcombatrail`, `showcombatstats` | `[profile:Name]`, `[settings:Name]` | Read by nothing (global `[settings]` only). Mucka deleted these copies |
+| `menamecolor`, `mespeechcolor`, `speakercolor`, `speakerown`, `speakerother` | any section | Read by nothing |
+| `showcombatrail`, `showcombatstats` | `[profile:Name]`, `[settings:Name]` | Read by nothing (global `[settings]` only) |
 | any always-global key inside `[settings:Name]` or `[profile:Name]` | per-profile sections | Read by nothing |
 
 source: reference

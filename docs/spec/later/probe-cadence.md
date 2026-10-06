@@ -1,7 +1,7 @@
 # Later: probe cadence for later features
 
 FACT `scope: later`. These rows of the probe cadence (`connection.md` 5.2) serve the side panel, the
-combat rail and reset-time sampling. The launch rows stay in `connection.md`.
+combat rail and reset-time sampling. The now-scope rows stay in `connection.md`.
 source: director
 
 | Probe | When | Default | Scope | Source |

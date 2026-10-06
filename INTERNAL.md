@@ -1,17 +1,28 @@
 # MuckaII
 
-FACT A MUD2-only client: a limited terminal emulator for the scroll, plus a command box that
-nothing ever gets in the way of.
+FACT MuckaII is a MUD2-only client: a limited terminal emulator for the scroll (ANSI SGR colour and
+clear screen, no cursor addressing), plus a command box that owns the keyboard (`CLAUDE.md`,
+Invariants #0 and #1).
 
-FACT Audience: the director and five or so people they know (`CLAUDE.md`, "no others"). Launch
-means a GitHub release for them. Developers: LLM agents only. The director (Oliver "kfsone" Smith)
-sets direction and does the acceptance testing.
+FACT Audience: the director and five or so people they know (`CLAUDE.md`, "no others"). MuckaII is
+an open source project, not a product. Developers: LLM agents only. The director (Oliver "kfsone" Smith) sets direction and does the
+acceptance testing.
+source: director
+
+FACT Mucka is the previous client. It reaches this project only through `docs/spec/` (`CLAUDE.md`,
+The reference firewall).
+
+What any feature may do is `docs/spec/fair-play.md`, which outranks every feature (`CLAUDE.md`, Fair
+play).
 
 ## Stack
 
-DECISION C++ with CMake: C++20 at minimum, or the highest standard the Windows, Linux and Android
-toolchains all support (`docs/build.md` pins it). The director reads and spot-checks the code,
-which makes the director a second reviewer. Rejected:
+DECISION Latency budget, a target: 30-50 ms from bytes arriving to the frame showing them, and from
+FES arriving to the status bar repainted. The spike measures it (`docs/spec/architecture.md`,
+Delivery); it is never asserted.
+
+DECISION C++20 with CMake (`docs/build.md`). Rejected: C++23 (no stable MSVC `/std:c++23`; NDK
+libc++ gaps). The director spot-checks the code; write for a 40-year C++ reader. Rejected languages:
 - Rust: with the director reading the code, C++ is the better choice.
 - Go: no Slint binding; thin mobile GUIs.
 - Python: the GIL hurts the latency budget; Android packaging is hard.
@@ -21,61 +32,74 @@ libFuzzer on the mud decoder seeded from `docs/evidence/captures/`, a fixed clan
 raw owning `new`/`delete` and C-style casts, and warnings as errors. Each gate's job and preset is
 in `docs/build.md` (Presets, CI).
 
-DECISION The GUI is Slint on every target, through its C++ API. Slint drives the Android soft
-keyboard through a real Android input view; fades and float positions are its built-in property
-animations. The input spike must confirm this choice. MuckaII contains no Rust; Slint's own build
-needs one (`docs/build.md`). Rejected:
+DECISION The GUI is Slint, through its C++ API, on Windows only for now. Fades and float positions
+are Slint's built-in property animations. Slint can also drive the Android soft keyboard through a
+real Android input view, which keeps the later Android GUI open (Platforms). MuckaII contains no
+Rust; Slint's own build needs one (`docs/build.md`). Rejected:
 - Tauri and any JavaScript frontend: web views are weak at streaming text, and every line would
   cross a JS-to-native IPC hop.
 - Flutter: adds Dart.
 - egui: Rust, and its Android soft keyboard is unresolved upstream.
 
+DECISION The spike is the first build of the GUI input path on Windows. It confirms the Slint
+choice and passes when, on the target, Invariants #0 and #1 hold (`CLAUDE.md`) and the latency
+budget above is met, measured as `docs/spec/architecture.md` Delivery states.
+
 DECISION One library per layer, all in one process, no IPC; layers, threads and channels are in
 `docs/spec/architecture.md`. Frontends (GUI, TUI, bot) subscribe to the session layer's event
 stream in-process. The first frontend is a TUI on FTXUI: it proves the layering with no GUI risk.
 
-DECISION The bot frontend exists for tests and for the director's possible future AI experiments.
-Those would run only against a private MUD2 server, with Bartle's permission. No such server exists
-yet. A bot never connects to the public game. It is not a player feature. Keep the architecture
-able to host one (a frontend over the same core), but build no bot features until that server
-exists.
+DECISION `muckaiiTui` is a separate artifact for Windows, Linux and macOS. The GUI is Windows only
+for now.
 source: director
 
-open: Is the bot built into release artifacts?
-default: No. Test and developer presets only.
+DECISION `muckaiiBot` is a test frontend over the same core, built only in test and developer
+presets. It never connects to the public game. Behaviour beyond the test harness waits for a
+private server with Bartle's permission.
+source: director
 
 DECISION Sound uses miniaudio; the engine and playback rules are `docs/spec/architecture.md` (Audio)
 and `docs/spec/sounds.toml`.
 
-DECISION Latency is measured, not asserted: 30-50 ms from bytes arriving to the frame showing them,
-and from FES arriving to the status bar repainted (`docs/spec/architecture.md`, Delivery).
-
 ## Platforms
 
-DECISION Platform priority:
-- Windows 11: primary; where the director plays.
-- Android: second, one user. One release keystore, held in CI secrets.
-- Linux and macOS: a distant third. Their release builds are not launch items.
+DECISION Platforms now:
 
-The code is written for the director and one Android user.
+| Platform | Artifacts | Tested by |
+|----------|-----------|-----------|
+| Windows 11 | the GUI (Slint) and the TUI | the director, who plays there |
+| Linux | the TUI | the director, under WSL on the director's machine |
+| macOS | the TUI | the director, when it becomes relevant |
+
+No other platform or setup gets compatibility work (`CLAUDE.md`, "no others").
+source: director
+
+DECISION Android is `scope: later`: the GUI on Android. The `android` worktree's spike continues on
+its own; its build notes are in `docs/build.md`.
+source: director
 
 DECISION The core libraries get a Linux CI job because UBSan and libFuzzer need clang on Linux. It
-is gate infrastructure, not a product target.
+is gate infrastructure.
 
 DECISION iOS is deferred. The stack must not rule it out; no iOS work or CI until the director asks.
 
 ## Scope
 
-DECISION The launch scope is:
+DECISION Now is the first usable Windows build. This is the single scope list; a spec's `scope:`
+tag follows it. Now:
 
-- the profile page, pre-game, game and post-game flow (`docs/spec/flow.md`)
+- the profile list, the profile page and per-profile advanced settings, editable without logging
+  in (`docs/spec/flow.md`, Profile)
+- global settings, with Apply / Save / Save as default (`docs/spec/flow.md`, Settings)
+- the pre-game, game and post-game flow, and disconnecting back to Profile (`docs/spec/flow.md`)
 - managed persona selection, and creating a persona in an open slot
 - detecting the end of the game (the return to the Option menu)
 - sleep tracking, so the status bar does not go stale (`docs/spec/session.md`)
-- the raw console (`$con`) on every platform, an early feature (`docs/spec/input.md`)
+- the raw console (`$con`), in the GUI and the TUI (`docs/spec/input.md`)
 - terminal and scrollback
 - command box and history
 - profiles and auto-login
+- command-line arguments (`docs/spec/connection.md` 6)
 - F-keys (all three layers) and aliases, including the `^1`-`^3` slots
 - Ctrl+D and Ctrl+Shift+D dreamword, Ctrl+F and Ctrl+Shift+F flee, Ctrl+R reply to last tell
 - chat colouring (say/shout/tell/emote, own vs others)
@@ -86,24 +110,24 @@ DECISION The launch scope is:
 - the tombstone screen
 - command understanding and probe injection (`docs/spec/session.md`)
 
-Everything else is triaged after launch and re-justified against `docs/spec/fair-play.md` before it
-is built: combat panel, side panel, floating widgets, compass, watchwords, anti-idle keepalive,
-keep-screen-on, persona deletion, wire-log retention policy, the score graph (until it exists the
-tombstone's name link is inert), `$LASTSAW` and `$FETCH`, output reformatters.
+DECISION Everything under `docs/spec/later/` is later, and so is anything a now-scope spec tags
+`scope: later` in place. A later item is re-justified against `docs/spec/fair-play.md` before it is
+built.
+
+RULE When the director rules an `docs/spec/OPEN.md` E item, this list changes in the same commit.
+enforced_by: none: judgement
 
 ## Data
 
-DECISION Runtime data lives in `~/.muckaii/`. On first run, settings are imported once from Mucka's
-`mucka.ini`, opened read-only: profiles in MRU order, settings, F-keys, and `[watch]` verbatim. On
-desktop the file is found automatically; everywhere, including Android where Mucka's ini is
-app-private, a file picker is offered. Passwords are not importable; the user enters each once, the
-first time that profile is used. Mucka's `mucka.db` is not imported.
+DECISION Runtime data lives in `~/.muckaii/` (`docs/spec/persistence.md`). On first run, settings
+are imported once from Mucka's `mucka.ini`, opened read-only: profiles in MRU order, settings,
+F-keys, and `[watch]` verbatim. The file is found automatically where it can be, and a file picker
+is offered. Passwords are not importable. Mucka's `mucka.db` is not imported. Acceptance: a user
+with an existing `mucka.ini` reaches a populated profile list and enters each password once.
 
 DECISION The wire log keeps every byte verbatim except the outbound password and account ID, each
 replaced with same-length placeholder bytes and annotated (`docs/spec/persistence.md`). Rejected:
 keeping them verbatim (Mucka's behaviour).
-
-Open protocol and telnet questions are settled by the evidence ranking in `CLAUDE.md`.
 
 ## Credentials and threat model
 
@@ -113,8 +137,10 @@ handling in MuckaII is sized to that: keep the password out of the wire log and 
 and do nothing more elaborate.
 source: director
 
-DECISION Passwords are expected through the command line or a stored profile, not typed. A typed
-password is visible as it is entered. The TUI never masks its input. A GUI uses the platform's
-native password field, with whatever masking and reveal control the OS or toolkit gives it. That
-behaviour is the platform's concern, not ours.
+DECISION A stored profile password is kept in plaintext in the profile settings
+(`docs/spec/persistence.md`, Settings storage). Rejected: an OS secure store.
+source: director
+
+DECISION Passwords are expected through the command line or a stored profile, not typed; a typed
+password is visible as it is entered. Password fields: `docs/spec/input.md`, Password entry.
 source: director

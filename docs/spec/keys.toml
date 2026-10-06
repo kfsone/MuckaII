@@ -9,27 +9,30 @@
 #   context  - "live": command box focused, terminal showing live output.
 #              "scrollback": terminal frozen on history (see input.md, Scrollback).
 #              "any": both.
-#   platform - "desktop": Windows, Linux, macOS (the reference ran only on Windows; Linux and
-#              macOS inherit the Windows bindings). "android": a hardware keyboard on Android.
+#   platform - "desktop": the Windows GUI, and the TUI on Windows, Linux and macOS (INTERNAL.md,
+#              Platforms). "android": a hardware keyboard on Android, which is scope later.
 #              "all": both.
-#   action   - what happens.
+#   action   - what MuckaII does: the built behaviour, taken from the DECISIONs and from the
+#              defaults of open items. Reference behaviour that differs is in the open item.
 #   sends    - exact text written to the socket, or "" when nothing is sent. Every sent line is
 #              terminated by CR LF (0x0D 0x0A), which is not shown. Text in <angle brackets> is a
 #              placeholder. Only F-key and ^n macro bodies pass through alias and watchword
 #              expansion (input.md, Expansion); flee, dreamword and wield texts do not.
-#   scope    - launch | later (INTERNAL.md).
+#   scope    - now | later (INTERNAL.md).
 #   note     - extra detail that is not a rule, or absent.
 #   open     - an unresolved question for the director.
 #   default  - what to build until the director rules on the open question. Every open has one.
+#              Where input.md already holds the open item (OPEN D1-D5), the entry has no open of
+#              its own; its note points there.
 #
 # RULE A chord is bound to at most one action per platform and context. A second binding of
 # the same chord is a startup error, not a silent override.
 # enforced_by: none: judgement
 # source: reference
 #
-# RULE A bound chord never also triggers the platform's default behaviour for that chord (for
+# RULE A bound chord performs only its bound action; the platform's default for that chord (for
 # example Ctrl+W closing a window or tab, Ctrl+R reloading, Ctrl+F opening find, Ctrl+D
-# bookmarking in a web view).
+# bookmarking in a web view) is suppressed.
 # enforced_by: none: judgement
 # source: reference
 #
@@ -53,32 +56,29 @@ context = "live"
 platform = "all"
 action = "Accept the line: empty the box, then hand the line to the input queue (input.md, Enter). An empty or whitespace-only line is still sent."
 sends = '<line with leading and trailing whitespace removed, after client-command handling and expansion>'
-scope = "launch"
+scope = "now"
 source = "reference"
-open = "Trimming the line conflicts with Invariant #1's literal acceptance condition (concatenated sent lines equal the typed stream). See input.md."
-default = "Measure at the two points of root CLAUDE.md Invariant #1; trimming stays as documented client processing (input.md, Invariant #1)."
+note = "Open D1 (where the acceptance condition is measured; whether trimming stays): input.md, Invariant #1 and its acceptance condition."
 
 [[key]]
 chord = "Up"
 context = "live"
 platform = "all"
-action = "Replace the box with the previous (older) history entry, caret at end. At the oldest entry, stays on the oldest. No-op when history is empty."
+action = "Show the previous (older) history entry, or the edited copy of it left since the last Enter, caret at end. Leaving the unsent draft stashes it. At the oldest entry the box is left untouched. No-op when history is empty (input.md, History)."
 sends = ""
-scope = "launch"
-source = "reference"
-open = "Reference clamps at the oldest entry; clio wraps around. See input.md, History."
-default = "Clamp at the oldest entry, as the reference does (input.md, History)."
+scope = "now"
+source = "reference; agent"
+note = "Open D2 (history size, duplicates, wrap or clamp): input.md, History."
 
 [[key]]
 chord = "Down"
 context = "live"
 platform = "all"
-action = "Replace the box with the next (newer) history entry, caret at end. Stepping past the newest entry empties the box. After any Enter the position is already past the newest, so the first Down with no recall in progress empties the box and destroys the typed draft."
+action = "During a recall: show the next (newer) history entry, or its edited copy, caret at end; stepping past the newest entry restores the stashed draft. With no recall in progress: no-op, and the draft stays (input.md, History)."
 sends = ""
-scope = "launch"
-source = "reference"
-open = "Down destroying a fresh draft loses the line on an accidental key press. Keep, or no-op when not recalling?"
-default = "No-op when no recall is in progress; the draft stays (input.md, History)."
+scope = "now"
+source = "reference; agent"
+note = "Open D3 (the reference's Down emptied the box and destroyed the draft): input.md, History."
 
 [[key]]
 chord = "Tab"
@@ -86,7 +86,7 @@ context = "live"
 platform = "all"
 action = "Never moves keyboard focus out of the command box."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "director (Invariant #0), reference"
 open = "What Tab does inside the box (nothing, or insert a tab) is unspecified."
 default = "Nothing: Tab is consumed, inserts no character and leaves focus in the box."
@@ -95,9 +95,9 @@ default = "Nothing: Tab is consumed, inserts no character and leaves focus in th
 chord = "Escape"
 context = "live"
 platform = "all"
-action = "If the About overlay is open, close it. Else if the score graph panel is open, close it. Else empty the command box."
+action = "If the About overlay is open, close it. Else if the score graph panel (scope later) is open, close it. Else empty the command box."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -106,7 +106,7 @@ context = "live"
 platform = "all"
 action = "Platform default text-box behaviour: caret to start of the box. Does not touch scrollback."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -115,7 +115,7 @@ context = "live"
 platform = "all"
 action = "Platform default text-box behaviour: caret to end of the box. Does not touch scrollback."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -124,7 +124,7 @@ context = "live"
 platform = "all"
 action = "Platform default text-box behaviour (copy the box's selected text)."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 open = "clio uses Ctrl-C to clear the input line, and 2x within 500 ms or 3x within 2 s on an empty line to exit. Keep platform copy?"
 default = "Platform copy, as the reference does. This is taste, and clearing or exiting on Ctrl+C would discard typed text."
@@ -139,7 +139,7 @@ context = "any"
 platform = "desktop"
 action = "Scroll one page toward older output (a page is the visible row count minus one). From live, enters scrollback."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -148,7 +148,7 @@ context = "any"
 platform = "desktop"
 action = "Scroll one page toward newer output. Reaching the bottom returns to live. No-op when already live."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -157,7 +157,7 @@ context = "scrollback"
 platform = "desktop"
 action = "Jump to the oldest retained line."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -166,7 +166,7 @@ context = "scrollback"
 platform = "desktop"
 action = "Return to live (bottom)."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -175,7 +175,7 @@ context = "scrollback"
 platform = "desktop"
 action = "Return to live (bottom). Focus goes back to the command box."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -184,19 +184,18 @@ context = "scrollback"
 platform = "desktop"
 action = "Copy the terminal selection to the clipboard. If something was copied, show the toast '* Copied to clipboard'."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
 chord = "<any other key>"
 context = "scrollback"
 platform = "desktop"
-action = "Swallowed. Typing does not reach the command box while in scrollback. Lone modifier keys pass through."
+action = "The first printable key returns to live and lands in the line buffer, as does every key after it; no key is discarded. Lone modifier keys pass through (input.md, Scrollback)."
 sends = ""
-scope = "launch"
-source = "reference"
-open = "Swallowing typed keys in scrollback loses keystrokes, which conflicts with Invariant #1. Should typing instead return to live and land in the box?"
-default = "The first printable key returns to live and lands in the line buffer; no key is ever discarded (input.md, Scrollback)."
+scope = "now"
+source = "reference; director (Invariant #1)"
+note = "Open D4 (the reference swallowed typed keys in scrollback): input.md, Scrollback."
 
 # ---------------------------------------------------------------------------
 # F-key macros: 36 slots, three layers of 12.
@@ -207,29 +206,28 @@ default = "The first printable key returns to live and lands in the line buffer;
 chord = "F1..F12"
 context = "any"
 platform = "all"
-action = "Send macro slot 1..12 (F<n> sends slot <n>). Empty or whitespace-only slot: nothing sent. See input.md, F-key macros."
+action = "Send macro slot 1..12 (F<n> sends slot <n>). Empty or whitespace-only slot: nothing sent. Returns to live first if in scrollback. See input.md, F-key macros."
 sends = '<macro text of slot n, trailing CR/LF stripped, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference, clio:man/clio.6 FUNCTION KEYS"
-open = "In scrollback on desktop the reference swallowed F-keys (input.md, Scrollback). Should F-keys work in scrollback?"
-default = "Yes: return to live, then send the macro (input.md, Scrollback)."
+note = "Open D5 (the reference swallowed F-keys in scrollback): input.md, Scrollback."
 
 [[key]]
 chord = "Shift+F1..Shift+F12"
 context = "any"
 platform = "all"
-action = "Send macro slot 13..24 (Shift+F<n> sends slot 12+<n>)."
+action = "Send macro slot 13..24 (Shift+F<n> sends slot 12+<n>). Returns to live first if in scrollback (as F1..F12)."
 sends = '<macro text of slot 12+n, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference, clio:man/clio.6 FUNCTION KEYS"
 
 [[key]]
 chord = "Ctrl+F1..Ctrl+F12"
 context = "any"
 platform = "all"
-action = "Send macro slot 25..36 (Ctrl+F<n> sends slot 24+<n>)."
+action = "Send macro slot 25..36 (Ctrl+F<n> sends slot 24+<n>). Returns to live first if in scrollback (as F1..F12)."
 sends = '<macro text of slot 24+n, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference, clio:man/clio.6 FUNCTION KEYS"
 
 [[key]]
@@ -238,18 +236,18 @@ context = "any"
 platform = "desktop"
 action = "Unbound."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
 chord = "Ctrl+Shift+F1..Ctrl+Shift+F12"
 context = "any"
 platform = "android"
-action = "Ctrl wins: sends macro slot 24+<n>, the same as Ctrl+F<n>."
-sends = '<macro text of slot 24+n, expanded>'
-scope = "launch"
+action = "Unbound, as on desktop."
+sends = ""
+scope = "later"
 source = "reference"
-open = "Desktop and Android disagree on Ctrl+Shift+F<n>. Pick one."
+open = "The reference let Ctrl win on Android: Ctrl+Shift+F<n> sent macro slot 24+<n>, the same as Ctrl+F<n>, while desktop left it unbound. Pick one."
 default = "Unbound on both, as on desktop, the primary platform."
 
 # ---------------------------------------------------------------------------
@@ -260,11 +258,11 @@ default = "Unbound on both, as on desktop, the primary platform."
 chord = "Ctrl+D"
 context = "any"
 platform = "all"
-action = "Speak the current dreamword. Returns to live first if in scrollback. No-op when no dreamword is held. The send is also written to the wire log as the annotation 'dreamword spoken: <dreamword>'."
+action = "Speak the current dreamword, in game mode only. No-op outside game mode or when no dreamword is held. Returns to live first if in scrollback. The send is also written to the wire log as the annotation 'dreamword spoken: <dreamword>'."
 sends = '"<dreamword>"'
-scope = "launch"
-source = "reference"
-open = "clio sends 'say \"<dreamword>\"' and only in game mode (clio:src/telnet.l CTRL-D); the reference sends '\"<dreamword>\"' (MUD2 quote shorthand for say) with no game-mode check."
+scope = "now"
+source = "reference; clio:src/telnet.l"
+open = "clio sends 'say \"<dreamword>\"' and only in game mode (clio:src/telnet.l CTRL-D); the reference sends '\"<dreamword>\"' (MUD2 quote shorthand for say) with no game-mode check. Which form, and which guard?"
 default = "Send the reference form '\"<dreamword>\"', and only in game mode, as Clio guards it; outside game mode it is a no-op."
 
 [[key]]
@@ -273,7 +271,7 @@ context = "any"
 platform = "desktop"
 action = "Speak the dreamword and chain a follow-up command. Follow-up = the command box's current text, trimmed; one leading comma is removed; empty means 'sleep'. If the text starts with ',,' nothing is sent and the toast '* cannot append input starting ,,' is shown (',,' repeats the last command in MUD2). The box is left untouched. No-op when no dreamword is held. Returns to live first if in scrollback. Wire-log annotation: 'dreamword spoken: <dreamword> ,<follow>'."
 sends = '"<dreamword>",<follow>'
-scope = "launch"
+scope = "now"
 source = "reference"
 open = "Reference defect: the follow-up came from a stale copy of the box, so it usually sent 'sleep' or the last recalled/prefilled text. The action above uses the box's current text. Confirm."
 default = "The box's current text: the line buffer at the moment the key is applied (root CLAUDE.md, Invariant #1)."
@@ -284,7 +282,7 @@ context = "any"
 platform = "android"
 action = "Same as Ctrl+D (Shift is ignored on Android)."
 sends = '"<dreamword>"'
-scope = "launch"
+scope = "later"
 source = "reference"
 open = "Android lacks the chained form. Intended?"
 default = "Keep the reference: on Android Ctrl+Shift+D is the same as Ctrl+D."
@@ -295,9 +293,8 @@ context = "any"
 platform = "desktop"
 action = "Flee. Returns to live first if in scrollback. Always sends, even out of combat."
 sends = 'flee'
-scope = "launch"
+scope = "now"
 source = "reference; director (scope)"
-note = "clio binds Ctrl-F to caret-right (clio:src/telnet.l)."
 
 [[key]]
 chord = "Ctrl+Shift+F"
@@ -305,7 +302,7 @@ context = "any"
 platform = "desktop"
 action = "Flee in the direction typed in the command box: the box text, trimmed. Empty box sends a bare 'flee'. The box is left untouched. Returns to live first if in scrollback."
 sends = 'flee <box text>'
-scope = "launch"
+scope = "now"
 source = "reference; director (scope)"
 open = "Same stale-copy defect as Ctrl+Shift+D: the reference usually sent a bare 'flee'. The action above uses the box's current text."
 default = "The box's current text: the line buffer at the moment the key is applied (root CLAUDE.md, Invariant #1)."
@@ -318,8 +315,7 @@ action = "Wield the combat rail's alternate weapon, sending only the item's fina
 sends = 'wield <noun>'
 scope = "later"
 source = "reference"
-open = "input.md (Scrollback) says the reference swallows Ctrl+W in scrollback; this entry says it returns to live first. Which?"
-default = "Return to live first, as this entry says (input.md, Scrollback)."
+note = "Open D5 (the reference swallowed Ctrl+W in scrollback): input.md, Scrollback."
 
 [[key]]
 chord = "Ctrl+R"
@@ -327,11 +323,9 @@ context = "any"
 platform = "desktop"
 action = "Reply to the last tell: replace the command box with the sender's name, a space and a double quote, caret at end. Sends nothing. With no tell received this connection, prints the system line '[reply] Nobody has sent you a tell yet.'. The sender is the last named teller ('Someone' and 'Someone powerful' never count); it resets on disconnect. Returns to live first if in scrollback."
 sends = ""
-scope = "launch"
+scope = "now"
 source = "reference; director (scope)"
-note = "The prefill (rather than sending MUD2's 're') shows who the reply goes to before it is sent."
-open = "input.md (Scrollback) says the reference swallows Ctrl+R in scrollback; this entry says it returns to live first. Which?"
-default = "Return to live first, as this entry says (input.md, Scrollback)."
+note = "The prefill (rather than sending MUD2's 're') shows who the reply goes to before it is sent. Open D5 (the reference swallowed Ctrl+R in scrollback): input.md, Scrollback."
 
 [[key]]
 chord = "Ctrl+1"
@@ -339,7 +333,7 @@ context = "any"
 platform = "desktop"
 action = "Send control-macro slot ^1 (input.md, Aliases), expanded. Undefined slot: nothing sent, no message. Returns to live first if in scrollback."
 sends = '<body of ^1, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -348,7 +342,7 @@ context = "any"
 platform = "desktop"
 action = "As Ctrl+1, for slot ^2."
 sends = '<body of ^2, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -357,7 +351,7 @@ context = "any"
 platform = "desktop"
 action = "As Ctrl+1, for slot ^3. There is no Ctrl+4 or higher."
 sends = '<body of ^3, expanded>'
-scope = "launch"
+scope = "now"
 source = "reference"
 
 [[key]]
@@ -374,61 +368,15 @@ source = "reference"
 # ---------------------------------------------------------------------------
 
 [[note]]
-text = "Android hardware keyboards get only: F1-F12 with Shift and Ctrl layers, Ctrl+D, Up, Down, Escape. Ctrl+1..3, Ctrl+F, Ctrl+W, Ctrl+R and PageUp/PageDown are desktop only. A phone soft keyboard has no Ctrl+digit; the ^1..^3 slots run by typing ^1 and Enter."
+text = "Android is scope later (INTERNAL.md, Platforms). When it is built, Android hardware keyboards get only: F1-F12 with Shift and Ctrl layers, Ctrl+D, Up, Down, Escape. Ctrl+1..3, Ctrl+F, Ctrl+W, Ctrl+R and PageUp/PageDown are desktop only. A phone soft keyboard has no Ctrl+digit; the ^1..^3 slots run by typing ^1 and Enter."
 source = "reference"
 
 [[note]]
-text = "macOS: whether every Ctrl chord above stays Ctrl or becomes Cmd is undecided."
+text = "macOS: only the TUI runs there for now; the GUI is Windows only (INTERNAL.md, Platforms). Whether the TUI's Ctrl chords stay Ctrl or become Cmd is undecided."
 source = "director"
-open = "Ctrl or Cmd on macOS?"
-default = "Ctrl, as on Windows and Linux. macOS is a distant third (INTERNAL.md, Platforms)."
+open = "Ctrl or Cmd for the TUI's chords on macOS?"
+default = "Ctrl, as on Windows and Linux. The director tests macOS when it becomes relevant."
 
 [[note]]
 text = "Mouse and touch, not keys: wheel and drag scrollback, right-click copy, clicking a name - see input.md, Scrollback and Prefills."
 source = "reference"
-
-# ---------------------------------------------------------------------------
-# FACT clio's bindings, for comparison. clio is a working human-written client and is the
-# first opinion on mechanics.
-# source: clio (per entry)
-# ---------------------------------------------------------------------------
-
-[[clio_key]]
-chord = "F1..F12 / Shift+F1..F12 / Ctrl+F1..F12"
-action = "Send ini key F1..F12 / F13..F24 / F25..F36 verbatim plus CR LF. Nothing sent if the key is unset or its text is empty or over 254 characters."
-source = "clio:src/fkey.c, clio:man/clio.6 FUNCTION KEYS"
-
-[[clio_key]]
-chord = "Ctrl+D"
-action = "In game mode with a dreamword held, send 'say \"<dreamword>\"'."
-source = "clio:src/telnet.l"
-
-[[clio_key]]
-chord = "Up / Ctrl+P, Down / Ctrl+N"
-action = "History previous / next (40 entries, wraps around, consecutive duplicates not stored)."
-source = "clio:src/telnet.l, clio:src/history.c"
-
-[[clio_key]]
-chord = "PageUp / PageDown"
-action = "Scroll back / forward through the scrollback buffer (default 300 lines)."
-source = "clio:man/clio.6 SCROLL BACK"
-
-[[clio_key]]
-chord = "Ctrl+A"
-action = "Return to the end of the scrollback buffer (live)."
-source = "clio:src/telnet.l, clio:man/clio.6 SCROLL BACK"
-
-[[clio_key]]
-chord = "Home / Ctrl+O, End / Ctrl+E, Left / Ctrl+B, Right / Ctrl+F"
-action = "Caret to start / end / left / right in the input line."
-source = "clio:src/telnet.l"
-
-[[clio_key]]
-chord = "Ctrl+C"
-action = "Clear the input line; on an empty line, 2x within 500 ms or 3x within 2 s exits."
-source = "clio:src/telnet.l"
-
-[[clio_key]]
-chord = "Ctrl+L, Ctrl+R"
-action = "Redraw the screen."
-source = "clio:src/telnet.l"

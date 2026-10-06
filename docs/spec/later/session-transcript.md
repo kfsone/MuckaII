@@ -1,7 +1,7 @@
 # Later: session transcript and recording chip
 
 FACT The transcript is a separate file, armed by hand: the lossy, human-readable record of the
-screen. The wire log (launch, always on, `persistence.md`) is the byte-exact record of the socket.
+screen. The wire log (`scope: now`, always on, `persistence.md`) is the byte-exact record of the socket.
 Where the two disagree, the transcript is wrong.
 source: reference
 
@@ -56,8 +56,8 @@ FACT The same toggle is in the menu as "Log Recording". A `-record` command-line
 first entering the game (`connection.md` 6).
 source: reference
 
-open: `INTERNAL.md` lists the wire log at launch, not a transcript. Is the transcript (and so this
-chip) launch or later?
+open: `INTERNAL.md` lists the wire log in the now scope, not a transcript. Is the transcript (and
+so this chip) now or later?
 default: later.
 
 FACT Related entries elsewhere: the chip's place in the status bar is `ui.md` 3.1 and 3.6; the

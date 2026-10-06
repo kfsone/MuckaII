@@ -1,4 +1,4 @@
-# input
+# Input: command box, history, macros, aliases, `$` commands, scrollback
 
 Key chords: `keys.toml`. Later features: `later/README.md`.
 
@@ -89,11 +89,13 @@ RULE Recalling a history entry puts its text in the box: the stored text, or the
 the user left behind with Up or Down since the last Enter (see History, DECISION). Escape always
 leaves the box empty.
 enforced_by: none: judgement
-source: reference; agent (edited copies, on a review finding)
+source: reference; agent
 
 ## History
 
-RULE Command history behaves as in the Reference column below. The clio column is for comparison.
+RULE Command history behaves as in the Reference column below, except where the Down `default:`
+and the DECISION after it override the "Down past the newest entry", "Unsent draft" and "Recalled
+line" rows (no key but Enter and Escape loses typed text). The clio column is for comparison.
 enforced_by: none: judgement
 source: reference, clio:src/history.c
 
@@ -126,8 +128,8 @@ loses the line. Keep, or make Down a no-op (or stash the draft) when not recalli
 default: Down with no recall in progress is a no-op, and the draft stays. Typed text is never
 discarded by one key (Invariant #1). Down during a recall behaves as in the table, except that Up
 stashes the unsent draft and Down past the newest entry restores it rather than emptying the box
-(the "Unsent draft" row's discard is a lost draft too). Built so in `client::LineEditor`.
-source: reference; agent (the stash, on a review finding: Up then Down lost the draft)
+(the "Unsent draft" row's discard is a lost draft too).
+source: reference; agent
 
 DECISION No key but Enter and Escape discards typed text. The draft and each history entry are
 places the box can show; Up and Down move between them, and an edit changes only the text of the
@@ -137,7 +139,7 @@ purpose) drop the draft and every edited copy. Up at the oldest entry leaves the
 History is trimmed of spaces and tabs. This replaces the reference's "Recalled line" and "Unsent
 draft" rows wherever they would lose text. Rejected: the reference's rule that recalling always
 shows the stored text (an edit, then Up, then Down, lost the edit).
-source: agent, on a review finding (an edited recall was lost on Up or Down)
+source: agent
 
 ## Password entry
 
@@ -148,7 +150,7 @@ does type one needs to see it at entry, because some passwords are hard to type 
 and on-screen keyboards. A typed password is still masked in the wire log and kept out of the
 recall list (`persistence.md`, Wire log). The TUI takes the password from `--password`, then
 `MUCKAII_PASSWORD`, then a visible prompt. Rejected: masking the box at a password prompt or
-before login (an earlier build did both).
+before login.
 source: director
 
 ## Escape
@@ -160,7 +162,7 @@ source: reference
 | Context | Effect |
 |---|---|
 | live, About overlay open | Close the overlay |
-| live, score graph panel open | Close the panel |
+| live, score graph panel open (`scope: later`) | Close the panel |
 | live, otherwise | Empty the box |
 | scrollback | Return to live |
 source: reference
@@ -362,20 +364,20 @@ source: reference
 
 | Command | Name match | Syntax | Effect and output | Scope |
 |---|---|---|---|---|
-| `$help` | exact lowercase | `$help` | Print the help block below | launch |
+| `$help` | exact lowercase | `$help` | Print the help block below | now |
 | `$?` | exact | `$?` | Reserved: `later/watchwords.md` | later |
 | `$<` | exact | `$<` | Reserved: `later/watchwords.md` | later |
-| `$con` | exact lowercase | `$con` | Open the raw protocol console: an in-window panel on every platform that shows the wire in both directions and sends raw material into the send stream (see below) | launch |
-| `$fkeys` | `fkeys` exact; `fkeys <layer>` any case | `$fkeys [shift\|ctrl]` | Logged. `[fkeys] F1-F12:` (or `Shift+F1-Shift+F12:`, `Ctrl+F1-Ctrl+F12:`), then `  <label><n> = <macro>` for each non-empty slot, where label is `F`, `Shift+F` or `Ctrl+F` and n is 1-12, or `  (none set)`. Unknown layer: `[fkeys] unknown layer '<x>' (use: shift \| ctrl)` (error) | launch |
-| `$f<n>` | `f` or `F` then an integer | `$f1` .. `$f36` (absolute slot) | Insert the note `// <macro>` above the live prompt (prompt redrawn below it), in bright green (palette 10); logged. Errors: `[fkey] <n> out of range (1-36)`, `[fkey] <n> is empty` | launch |
+| `$con` | exact lowercase | `$con` | Open the raw protocol console: an in-window panel on every platform that shows the wire in both directions and sends raw material into the send stream (see below) | now |
+| `$fkeys` | `fkeys` exact; `fkeys <layer>` any case | `$fkeys [shift\|ctrl]` | Logged. `[fkeys] F1-F12:` (or `Shift+F1-Shift+F12:`, `Ctrl+F1-Ctrl+F12:`), then `  <label><n> = <macro>` for each non-empty slot, where label is `F`, `Shift+F` or `Ctrl+F` and n is 1-12, or `  (none set)`. Unknown layer: `[fkeys] unknown layer '<x>' (use: shift \| ctrl)` (error) | now |
+| `$f<n>` | `f` or `F` then an integer | `$f1` .. `$f36` (absolute slot) | Insert the note `// <macro>` above the live prompt (prompt redrawn below it), in bright green (palette 10); logged. Errors: `[fkey] <n> out of range (1-36)`, `[fkey] <n> is empty` | now |
 | `$SID` | any case | `$SID` | Reserved: `later/diagnostic-commands.md` | later |
 | `$CHATTEST` | any case | `$CHATTEST [slow\|stop]` | Reserved: `later/diagnostic-commands.md` | later |
 | `$MARK` | any case | `$MARK ...` | Reserved: `later/diagnostic-commands.md` | later |
 | `$SCORE` | any case | `$SCORE [days] [name]` | Reserved: `later/score-graph.md` | later |
-| `$VER` | exact uppercase | `$VER` | Send the version string as a line: `MuckaII v<version>` (the `$VER` open item, Expansion; the reference sends `Mucka v<version>`) | launch |
+| `$VER` | exact uppercase | `$VER` | Send the version string as a line: `MuckaII v<version>` (Expansion, the `$VER` open item) | now |
 | `$map` | - | - | Reserved name with no command; falls to watchword speak | - |
-| `$<alias>` | any case | `$<alias>` | Send the alias body, expanded | launch |
-| `$<anything else>` | - | `$<slot>` | Watchword speak (`later/watchwords.md`). With no watchword slots loaded, nothing is sent and `[watchword] nothing queued for $<slot>` is printed | launch (the no-slot outcome); later (speak) |
+| `$<alias>` | any case | `$<alias>` | Send the alias body, expanded | now |
+| `$<anything else>` | - | `$<slot>` | Watchword speak (`later/watchwords.md`). With no watchword slots loaded, nothing is sent and `[watchword] nothing queued for $<slot>` is printed | now (the no-slot outcome); later (speak) |
 source: reference
 
 open: What does a `scope: later` command in the table do when it is typed before it is built?
@@ -384,36 +386,26 @@ watchword speak, so nothing is sent and `[watchword] nothing queued for $<name>`
 
 ### `$help` output
 
-RULE `$help` prints the block below, verbatim on desktop. The `$VER` line names the client and
-follows the `$VER` open item.
+RULE `$help` prints the block below, verbatim, the same on every platform. It lists only the
+`scope: now` commands. A `scope: later` command (`$?`, `$<`, `$SID`, `$CHATTEST`, `$MARK`,
+`$SCORE`) adds its line when it is built; until then its name stays reserved (Definition rules, and
+the open item under the `$` commands table). The `$VER` line names the client and follows the
+`$VER` open item.
 enforced_by: none: judgement
-source: reference
+source: reference, director
 
 ```
 [help] client commands:
   $help                 list these commands
-  $?                    list loaded watchword slots
-  $<                    scan recent output for watchword answers
   $con                  open the raw protocol console
   $fkeys [shift|ctrl]   list your function-key macros
   $f<n>                 annotate output with fkey n's text (1-36)
-  $SID                  print the current session id (server/run/persona/login)
-  $CHATTEST             play a scripted chat into the output (sends nothing)
-  $CHATTEST slow|stop   play it one line at a time, ~1.5s apart / stop that
-  $MARK [@id|"note"]    drop a landmark into the log
-  $MARK start|end ...   open/close a nested span (end takes no id)
-  $SCORE [days] [name]  graph a character's score (default: 3 days, you)
-  $VER                  expands to the current Mucka version
+  $VER                  expands to the current MuckaII version
   $name=command         define a command until you exit the gameworld
   $name                 run a command defined above
   ^1/^2/^3=command  bind Ctrl-1..Ctrl-3
   $$ / ^^               doubled sigil sends a literal $ or ^ (no interpolation)
 ```
-
-FACT In the reference on Android, the `$con` line reads `(Windows only)` and the slot line reads
-`^1/^2/^3=command  bind a slot; type ^1 to run it`. In MuckaII the `$con` line is the same on every
-platform, because the raw console exists everywhere (see "Raw console").
-source: reference, director
 
 ## Watchwords (scope: later)
 
@@ -422,28 +414,32 @@ source: director
 
 ## Scrollback
 
-RULE Scrollback is an explicit mode that behaves as follows.
+RULE Scrollback is an explicit mode that behaves as follows. The Typing and Hotkeys rows are the
+defaults of the two open items below them; the reference's behaviour is in those items.
 enforced_by: none: judgement
-source: reference
+source: reference; director (Invariant #1)
 
 | Aspect | Behaviour |
 |---|---|
 | Enter scrollback | PageUp; mouse wheel up (3 rows per whole notch; small touchpad deltas accumulate); a mouse drag past a small threshold, which also starts a text selection; on touch, a finger drag. A plain click never enters scrollback. |
 | While in scrollback | The view is frozen on the lines held at entry; new output is buffered but not painted. A banner covers the input row, `SCROLLBACK - Esc or click to return to live`, and the row's height does not change. |
-| Typing | Blocked: keys other than those in `keys.toml` (scrollback context) are swallowed. |
-| Hotkeys | Ctrl+D, Ctrl+Shift+D, Ctrl+F, Ctrl+Shift+F, Ctrl+1..3 return to live, then act. |
+| Typing | The first printable key returns to live and lands in the line buffer, as does every key after it. No key is discarded. |
+| Hotkeys | F-keys (all three layers), Ctrl+D, Ctrl+Shift+D, Ctrl+F, Ctrl+Shift+F, Ctrl+R, Ctrl+1..3, and the later Ctrl+W and Ctrl+` return to live, then act. |
 | Copy | Ctrl+C or a right-click copies the selection; toast `* Copied to clipboard`. A press starts a new selection. |
 | Leave scrollback | Scrolling back to the bottom, End, Escape, clicking the banner, any hotkey above, or a server clear-screen. Focus returns to the command box. |
 | Clicks in live view | A click that activates or refocuses the window only focuses the box; it does not insert a name or start a selection. A click on a player name inserts it (see Box prefills). |
 source: reference
 
 open: Whether F-keys, Ctrl+R, Ctrl+W and Ctrl+` act in scrollback. The reference's scrollback key
-filter does not list them and appears to swallow them.
-default: each returns to live, then acts, as `keys.toml` already says for Ctrl+R and Ctrl+W. No key
-is swallowed in scrollback.
+filter does not list them and appears to swallow them, though its key table had Ctrl+R and Ctrl+W
+return to live first.
+default: each returns to live, then acts, as the Hotkeys row says. No key is swallowed in
+scrollback.
 source: reference
 
-open: Scrollback swallows typed keys, which conflicts with Invariant #1. See `keys.toml`.
+open: The reference swallowed typed keys in scrollback (keys other than its scrollback chords never
+reached the box), which conflicts with Invariant #1. Return to live and land the keys in the box
+instead?
 default: the first printable key returns to live and lands in the line buffer, and so does every
 key after it. No key is ever discarded.
 source: reference
@@ -457,9 +453,10 @@ source: clio:man/clio.6 SCROLL BACK
 FACT Chat mode (chat-only view filter): `scope: later`, `later/chat-mode.md`.
 source: director
 
-## Mobile specifics
+## Mobile specifics (scope: later)
 
-RULE On Android the command box differs from desktop as follows.
+RULE Android is `scope: later` (`INTERNAL.md`, Platforms). When it is built, its command box
+differs from desktop as follows.
 enforced_by: none: judgement
 source: reference
 
@@ -468,16 +465,16 @@ source: reference
 | Ctrl+1..3 | Not available on a soft keyboard. Type `^1`, `^2` or `^3` and Enter to run a slot. |
 | Hardware keyboard | Only F1-F12 (with Shift and Ctrl layers), Ctrl+D, Up, Down and Escape are bound. Ctrl+Shift+D speaks the plain dreamword. |
 | F-keys | The on-screen F-key bar (plain layer) is the main way to send macros. |
-| `$con` | The reference prints `[command] $con is Windows only.` MuckaII opens the raw console, as on desktop (DECISION below) |
+| `$con` | Opens the raw console, as on desktop (DECISION below) |
 | Watchwords | `scope: later`: `later/watchwords.md` |
 | Scrollback | Finger drag; no PageUp. |
 source: reference
 
-DECISION MuckaII's raw console exists on every platform, Android included. Rejected: Mucka's
-Windows-only `$con`.
+DECISION MuckaII's raw console exists on every platform it builds: the Windows GUI and the TUI
+now, Android when it is built. Rejected: Mucka's Windows-only `$con`.
 source: director
 
-## Raw console (scope: launch)
+## Raw console (scope: now)
 
 FACT The raw console is how the director sees and uses the low-level wire. It is an early
 feature, because experiments such as the probe-block comma test (`session.md`) are run from it.

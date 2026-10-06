@@ -12,6 +12,6 @@ source: director
 | Condition | in game mode, connected, and no player-sent line for at least N s. Probes and telnet replies do not count as player sends. | reference |
 | Sent | an empty line: `0D 0A` | reference |
 
-FACT The keepalive's place in the send order is launch spec: it waits behind any queued line
+FACT The keepalive's place in the send order is now-scope spec: it waits behind any queued line
 (`input.md`, Ordering), and its wire-log origin is `keepalive` (`architecture.md`).
 source: agent

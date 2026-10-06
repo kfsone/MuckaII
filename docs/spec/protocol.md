@@ -32,15 +32,15 @@ RULE Statements below about "255" mean the telnet-decoded byte. Statements quoti
 enforced_by: none: judgement
 source: agent
 
-FACT An `FF` on the wire followed by anything other than `FF` is a telnet command. The reference
+FACT An `FF` on the wire followed by anything other than `FF` is a telnet command. The decoder
 accepts telnet commands between C1 codes and text at any point.
 source: reference
-scope: launch
+scope: now
 
-FACT If an `FF` followed by a non-`FF` byte occurs inside a C1 header, the reference treats both
+FACT If an `FF` followed by a non-`FF` byte occurs inside a C1 header, the decoder treats both
 bytes as more header and keeps reading.
 source: reference
-scope: launch
+scope: now
 
 ## Telnet subnegotiation
 
@@ -52,24 +52,24 @@ is a stray command (both ignored by the session). A subnegotiation that reaches 
 (`connection.md` 2.1) is abandoned at that ceiling and decoding resumes with the next byte as
 data, so one that never ends cannot swallow the stream. Rejected: swallowing until `FF F0` however
 long it takes (an unterminated subnegotiation would hide the rest of the session).
-source: RFC 854; RFC 855; agent, on a review finding
+source: RFC 854; RFC 855; agent
 
 ## C1 framing
 
 FACT A C1 code is a header of 1 to 4 numbers, each 0 to 99, sent as one byte per number with 155
 added (lead byte `0x9B + n`), and terminated by 255. On the wire: `<bytes> FF FF`.
 source: bartle:FE4 section 3
-scope: launch
+scope: now
 
 FACT A lone 255 that is not the end of a header closes the most recent open code. On the wire: a
 bare `FF FF`.
 source: bartle:FE4 section 3
-scope: launch
+scope: now
 
 FACT Codes nest. When an inner code closes, the enclosing code applies again. Every code except the
 catch and throw codes has a matching close, and some brackets hold no text at all.
 source: bartle:FE4 section 4
-scope: launch
+scope: now
 
 EVIDENCE Nesting seen on the wire, written `<code>` for a header and `</>` for a lone 255:
 
@@ -85,7 +85,7 @@ EVIDENCE Nesting seen on the wire, written `<code>` for a header and `</>` for a
 FACT A missing trailing number reads as 00. The codes are hierarchical, so `08` and `08 00` are the
 same code, as are `11` and `11 00`, and `07 02` and `07 02 00`.
 source: bartle:FECodes handleCode
-scope: launch
+scope: now
 
 EVIDENCE The wire sends both forms. `08 00`, `11 00` and `07 02 00` appear with the trailing zero;
 `01` and `12` appear as a single byte.
@@ -105,7 +105,7 @@ white on black.
 
 enforced_by: none: judgement
 source: clio:src/telnet.l
-scope: launch
+scope: now
 
 open: The reference colours an unlisted variant by its family (any `04 ...` is magenta, any `03 01 ...`
 cyan) where Clio's catch-all pushes white on black.
@@ -121,7 +121,7 @@ FACT The stack holds one frame per open code. The text style is the colour of th
 no frame open, text has the terminal's default style.
 source: bartle:FE4 section 3
 source: reference
-scope: launch
+scope: now
 
 | Operation | Trigger | Effect | Source |
 |-----------|---------|--------|--------|
@@ -137,14 +137,14 @@ scope: launch
 
 FACT Catches nest: each throw reinstates the stack saved by the most recent unmatched catch.
 source: clio:src/wstack.c
-scope: launch
+scope: now
 
 DECISION `00` (Initialise) is an ordinary bracketed code: it pushes a frame and has its own closing
 255, like every code except catch and throw. It does not reset the stack, so there is no base frame
 for a surplus pop to remove. Bartle states that only catch and throw lack a matching 255, and no
 capture holds a `00`, so nothing deprecates that. Rejected: Clio's and the reference's stack reset
 (Clio: the base frame is never popped; reference: it can be popped). `c1-codes.toml` code `00`
-records it as `stack = "push"`.
+records it as `stack = "push"` and points here.
 source: director (evidence ranking, CLAUDE.md); bartle:FE4 section 4
 
 EVIDENCE A frame can span a line end. `12` brackets "The water-snake1 looks fit.\r\0\r\n" and closes
@@ -160,7 +160,7 @@ source: capture:wyvern-poison-death.c1
 RULE A surplus close is not an error and changes nothing.
 enforced_by: none: judgement
 source: capture:wyvern-poison-death.c1
-scope: launch
+scope: now
 
 ### Colour indices
 
@@ -181,12 +181,12 @@ source: bartle:FE4 Codes and their meanings
 FACT `99 fg bg` pushes foreground `fg` on background `bg`; a missing number is 0, so bare `99` is
 black on black. `99 99` is the default colour, white on black.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now
 
 FACT Every other code pushes the fixed colour in its `fg` and `bg` columns in `c1-codes.toml`.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 ## Game mode
 
@@ -207,28 +207,29 @@ FACT Neither Clio nor the reference recognises a code for a quit to the option m
 from the menu prompt text, hence the text trigger.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 open: Does the server send any code when a player quits to the option menu? No capture covers a
 quit.
 default: no code is expected. Game mode ends on the exit triggers in the table above (the menu
 prompt text at column 0, `95 03`, or the connection closing).
 
-FACT Clio also accepts `Option: ` at the start of a line as the menu prompt.
+RULE The menu-prompt exit trigger also accepts `Option: ` at the start of a line.
+enforced_by: none: judgement
 source: clio:src/telnet.l
-scope: launch
+scope: now
 
 FACT Leaving game mode clears the context stack and every saved stack without running any
 end-of-bracket action, and discards a half-read prompt.
 source: reference
-scope: launch
+scope: now
 
 ## Prompt
 
 FACT The prompt is everything inside the outer `01` bracket, not just the `*`. Code `01 0n` brackets
 the core prompt characters; the brackets marking invisibility sit between the two.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now
 
 EVIDENCE The two prompt shapes on the wire:
 
@@ -241,15 +242,15 @@ EVIDENCE The prompt changes from `(*)` to `*` on the line after "You have sudden
 regained your visibleness!".
 source: capture:invisible-player-joins.c1
 
-FACT Clio's prompt pattern also allows, before the core, `01 04` bracketing `&` (snooping) and
+FACT The outer `01` bracket can also hold, before the core, `01 04` bracketing `&` (snooping) and
 `01 05` bracketing `>`, and any number of `(` or `[` before and `)` or `]` after.
 source: clio:src/telnet.l
-scope: launch
+scope: now
 
 RULE Never assume the prompt is `*`. The prompt is whatever the outer `01` bracket holds.
 enforced_by: none: judgement
 source: director
-scope: launch
+scope: now
 
 EVIDENCE No prompt is followed by a line end. The next output starts on the prompt's line: the
 echo of the typed command, or game text such as `I don't know to what "man" you're referring.`
@@ -266,17 +267,17 @@ prompt was shown. Otherwise the whole bracket is discarded. Lines inside an FE r
 the FES line, do not count as visible.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 FACT The prompt is shown as the live partial line (see "Line model") when its outer bracket closes.
 source: reference
-scope: launch
+scope: now
 
 FACT The reference captures a prompt bracket only if it was already in game mode when the outer `01`
 arrived. The prompt that enters game mode is decoded as ordinary text, is not flushed (game mode is
 now on), and joins the front of the next completed line.
 source: reference
-scope: launch
+scope: now
 
 open: The captures `invisible-player-joins.c1`, `wyvern-poison-death.c1` and
 `phone-login-at-20-columns.c1` begin mid-session with a prompt before any room name, so a decoder
@@ -286,20 +287,21 @@ shown as a prompt instead?
 default: yes. An outer `01` bracket whose core header enters game mode is captured and shown as a
 prompt. Priming keeps the golden diffs unchanged.
 
-FACT If a line end arrives while the outer `01` bracket is still open, the reference abandons the
+FACT If a line end arrives while the outer `01` bracket is still open, the decoder abandons the
 prompt capture and renders what it held as ordinary text on that line.
 source: reference
-scope: launch
+scope: now
 
 FACT When the outer `01` arrives while an earlier `01` is still open, the new bracket owns the
 prompt and the earlier one's capture is restarted.
 source: reference
-scope: launch
+scope: now
 
 DECISION `98 nn` is only the prefix of a line snooped through snoop `nn`, as Bartle defines it. It
 does not flush pending text as a partial line and does not re-arm the prompt gate. No capture holds
-a `98`, so nothing deprecates Bartle's definition. Rejected: the reference's flush on `98`, and
-Clio's prompt-gate re-arm. `c1-codes.toml` code `98` records the same ruling.
+a `98`, so nothing deprecates Bartle's definition. Rejected: the reference's flush on `98` ("show
+the line so far", said to precede the prompt), and Clio's prompt-gate re-arm. `c1-codes.toml` code
+`98` points here.
 source: director (evidence ranking, CLAUDE.md); bartle:FE4 code 98
 
 ## Echo
@@ -314,9 +316,7 @@ source: capture:phone-login-at-20-columns.c1
 
 FACT The echo is ordinary text to the decoder. The line model merges it onto the prompt's line.
 source: reference
-scope: launch
-
-Outbound terminator (`0D 0A` or CR CR LF): open in `connection.md` 1 (OPEN A1).
+scope: now
 
 ## Line model
 
@@ -324,12 +324,12 @@ FACT A line end is LF (0x0A). CR (0x0D) and NUL (0x00) are dropped, so `\r\0\r\n
 exactly one line.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 FACT The screen holds completed lines and at most one live partial line. The partial is a prompt, or
 pre-game text without a line end.
 source: reference
-scope: launch
+scope: now
 
 | Input | Effect | Source |
 |-------|--------|--------|
@@ -345,13 +345,13 @@ scrollback keeps the lines above it and shows a horizontal rule where the clear 
 committed with nothing above it or directly after another rule.
 source: director
 source: reference
-scope: launch
+scope: now
 
 FACT Before game mode, the reference emits whatever text has accumulated as a partial line at the end
 of every network read, so login prompts such as `Account ID:` appear without a line end. In game
 mode it does not; only the prompt bracket produces a partial.
 source: reference
-scope: launch
+scope: now
 
 open: Each pre-game flush starts the next partial empty, and a partial replaces the previous one, so a
 login prompt split across two reads would show only its second half. No capture covers it.
@@ -363,12 +363,12 @@ Prompt recognition matches over the byte stream, as Clio does (`connection.md` 3
 
 FACT In game mode, a completed line consisting only of `*` characters is not displayed.
 source: reference
-scope: launch
+scope: now
 
 FACT Before game mode, a completed line `[New terminal width is N]` is not displayed and confirms the
 width N.
 source: reference
-scope: launch
+scope: now
 
 ### Hard wrap
 
@@ -383,16 +383,16 @@ server: no word awareness, a row break every `columns` characters, styles kept a
 the server has already wrapped, this changes nothing. Column limits and the default width:
 `connection.md` 4.
 source: reference
-scope: launch
+scope: now
 
 FACT A tab expands to spaces up to the next multiple of 8 columns, counted across style runs, before
 wrapping.
 source: reference
-scope: launch
+scope: now
 
 FACT A soft wrap is a render artifact: copying text joins the rows of one logical line.
 source: reference
-scope: launch
+scope: now
 
 ## Control characters
 
@@ -406,7 +406,7 @@ scope: launch
 | 0x0D CR | Dropped | clio:src/telnet.l |
 | 0x1B ESC | Starts an escape; see below | bartle:FE4 section 2 |
 | other 0x01-0x1F, 0x7F | Stripped before rendering | reference |
-| 0x80-0x9A | Rendered as text by the reference | reference |
+| 0x80-0x9A | Rendered as text (`events.md`, run) | reference |
 | 0x9B-0xFE | C1 header byte | bartle:FE4 section 3 |
 
 FACT MUD2 sends 7-bit text, so bytes 0x80-0x9A should not occur.
@@ -439,12 +439,12 @@ source: bartle:FE4 section 2
 FACT Bartle says `ESC-C` and `ESC-K` at least should be handled, and that the server generates no
 other escapes.
 source: bartle:FE4 section 2
-scope: launch
+scope: now
 
 FACT If a byte 0x80 or above arrives while the width notice text is being swallowed, the swallowing
 stops and the byte is decoded normally.
 source: reference
-scope: launch
+scope: now
 
 FACT The escapes the server accepts from the client (`ESC - [` ... `ESC - ]` command interrupt,
 `ESC - <n> I`, `ESC - G`, `ESC - T`, `ESC - N`, and `ESC ^F` for client mode) are outbound and belong to
@@ -457,26 +457,28 @@ source: bartle:FE4 section 1
 FACT MUD2 sends only colour (SGR) and clear screen from ANSI; it never positions the cursor.
 source: director
 
-| Final | Parameters | Reference | Clio |
-|-------|-----------|-----------|------|
-| `m` | 0 or empty: reset | yes | yes |
-| `m` | 1 bold, 3 italic, 4 underline, 5 blink, 7 reverse | yes | 1 and 7 only |
-| `m` | 22 23 24 25 27: turn the above off | yes | no |
-| `m` | 30-37 foreground, 40-47 background | yes | yes |
-| `m` | 39 default foreground, 49 default background | yes | no |
-| `m` | 90-97 bright foreground, 100-107 bright background | yes | no |
-| `J`, `2J` | Clear screen | ignored | yes |
-| `K` | Erase to end of line | ignored | yes |
-| `H`, `f`, `r;cH` | Cursor position | ignored | yes |
+| Final | Parameters | MuckaII | Reference | Clio |
+|-------|-----------|---------|-----------|------|
+| `m` | 0 or empty: reset | reset | yes | yes |
+| `m` | 1 bold, 3 italic, 4 underline, 5 blink, 7 reverse | set the attribute (bold: the default below) | yes | 1 and 7 only |
+| `m` | 22 23 24 25 27: turn the above off | clear the attribute | yes | no |
+| `m` | 30-37 foreground, 40-47 background | set the colour as sent | yes | yes |
+| `m` | 39 default foreground, 49 default background | set the default colour | yes | no |
+| `m` | 90-97 bright foreground, 100-107 bright background | set the bright colour | yes | no |
+| `J`, `2J` | Clear screen | clear screen (see "Line model"; the default below) | ignored | yes |
+| `K` | Erase to end of line | event only; the write position is always the line end, so nothing is erased (as `ESC - K`) | ignored | yes |
+| `H`, `f`, `r;cH` | Cursor position | consumed and ignored: MUD2 never positions the cursor | ignored | yes |
 
 source: reference
 source: clio:src/telnet.l
-scope: launch
+scope: now
 
-FACT In the reference, an empty SGR parameter between semicolons reads as 0, and a CSI with any final
-byte other than `m` is discarded whole.
-source: reference
-scope: launch
+DECISION A CSI is consumed whole, its parameters included, and acts as the MuckaII column says. An
+empty SGR parameter between semicolons reads as 0. A CSI whose final byte is not in the table is
+discarded whole. Rejected: the reference's discarding of every final byte other than `m`, which
+would lose the clear screen that the `J` default below honours.
+source: reference; agent
+scope: now
 
 open: Clio turns bold plus 30-37 into the bright colours 8-15; the reference keeps bold as a separate
 attribute and leaves the colour as sent.
@@ -495,7 +497,7 @@ default: accept it as one SGR reset, as Clio does.
 
 FACT Inbound text is bytes 0x20-0x7E. The decoder never decodes inbound bytes lossily.
 source: director
-scope: launch
+scope: now
 
 Outbound: the 7-bit send rule is root `CLAUDE.md`, "Bytes, not strings"; each line ends CR LF
 (`connection.md` 1).
@@ -515,7 +517,7 @@ The number is displayed as usual and is also a reading. A reading taken from a c
 number found in prose, which a player's speech can imitate.
 source: bartle:FE4 Codes and their meanings
 source: reference
-scope: launch
+scope: now
 
 EVIDENCE Each 89 bracket holds a 99 colour frame and then the digits:
 `<89 00 00><99 02>116</></>`. The places observed:
@@ -531,11 +533,11 @@ EVIDENCE Each 89 bracket holds a 99 colour frame and then the digits:
 FACT A reading is the bracket's text with commas removed. If anything other than digits remains, the
 bracket gives no reading. A bracket nested inside an open 89 bracket does not start a new reading.
 source: reference
-scope: launch
+scope: now
 
 FACT Readings are reported at the line end of the line that carried them.
 source: reference
-scope: launch
+scope: now
 
 ### FES line (12 08 01)
 
@@ -543,7 +545,7 @@ FACT The reply to `FES` is one line of space-separated fields inside a `12 08 01
 displayed.
 source: bartle:FE4 FES (FE SCORE)
 source: reference
-scope: launch
+scope: now
 
 | # | Field | Form | Source |
 |---|-------|------|--------|
@@ -572,28 +574,28 @@ source: capture:invisible-player-joins.c1
 FACT The weather letters are `F` fair, `C` cloudy, `R` raining, `S` snowing, `O` overcast, `T` heavy
 rain or thunder, `B` blizzard.
 source: clio:FES.md
-scope: launch
+scope: now
 
 FACT The stamina colour is the 99 colour inside the stamina bracket.
 source: clio:src/telnet.l
-scope: launch
+scope: now
 
 FACT The line ends at the first line end once 15 fields have been read. A line end before 14 fields is
 a server wrap and reading continues. After exactly 14 fields, printable text next means the weather
 was wrapped onto the next line; anything else means the line had no weather field. The rest of the
 line ending (CR, NUL, LF) is absorbed.
 source: reference
-scope: launch
+scope: now
 
 FACT A FES line with fewer than 14 fields gives no reading.
 source: reference
-scope: launch
+scope: now
 
 ### Room
 
 FACT `02 01` brackets the room name, `02 02` the long description.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now
 
 EVIDENCE Every room name on the wire sits inside an ambient-sound bracket (`20 00` or `20 03`) at the
 start of a line, with the full stop after the name outside the `02 01` bracket. Objects (`03`) and
@@ -606,7 +608,7 @@ any printable text on the line. C1 codes do not advance the column. A second `02
 does not count again.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 EVIDENCE `It's too dark to see now.` arrives uncoded, followed by an empty FEX reply.
 source: capture:dark-two-rats.c1
@@ -616,7 +618,7 @@ source: capture:dark-two-rats.c1
 FACT Codes `03`, `04` and `05` bracket things in a list or in the room; the third number says how they
 appear (here, arriving, departing, visible, invisible, on the WHO list). See `c1-codes.toml`.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now
 
 EVIDENCE `04 0x 0y` brackets a whole sentence ("A slimy, slithering water-snake surfaces in front of
 you. "), not a name, and can start mid-line and wrap.
@@ -656,19 +658,19 @@ scope: later
 FACT FE reply text is not displayed, and its line ends do not count as visible lines for the prompt
 gate.
 source: reference
-scope: launch
+scope: now
 
 FACT No FE command produces output while the player is asleep.
 source: bartle:FE4 FEX (FE EXITS)
 
 ### Speech (09)
 
-FACT `09` is the speaker of a message. The reference expects an outer `09` (or `09 00`) frame holding
+FACT `09` is the speaker of a message. The decoder expects an outer `09` (or `09 00`) frame holding
 the whole message, with the quoted words in an inner `09 01` shout, `09 02` say or `09 03` tell
 frame, and an act or emote in an inner `09 04` to `09 10` frame.
 source: bartle:FE4 Codes and their meanings
 source: reference
-scope: launch
+scope: now
 
 EVIDENCE No capture contains a 09 code.
 source: capture:blind-vs-water-snake.c1
@@ -677,7 +679,7 @@ source: capture:blind-vs-water-snake.c1
 
 FACT Each completed line has one kind, derived from codes alone, never from its words.
 source: reference
-scope: launch
+scope: now
 
 | Kind | Derived from | Source |
 |------|--------------|--------|
@@ -689,19 +691,19 @@ scope: launch
 
 FACT When more than one applies, `chat` wins; otherwise the last code seen on the line decides.
 source: reference
-scope: launch
+scope: now
 
 FACT A `chat` line whose `09` frame was already open when the line began continues the previous chat
 line (the server wrapped one message).
 source: reference
-scope: launch
+scope: now
 
 ### Fight ends and kills
 
 FACT `08 10`, `08 11` and `08 12` state that a fight ended and why: withdraw, flee, other. They never
 say which opponent.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now
 
 EVIDENCE `08 11` brackets `You have fled by going north.`; `08 12` brackets `You can fight the wyvern
 no longer.` after the uncoded line `The wyvern drops dead, poisoned...`; `08 08` brackets `You have
@@ -717,11 +719,11 @@ source: capture:wyvern-poison-death.c1
 
 ### Persona wipe (08 13)
 
-FACT `08 13` says the persona is not being saved. The reference zeroes the stamina, score, strength,
+FACT `08 13` says the persona is not being saved. The decoder zeroes the stamina, score, strength,
 dexterity and magic readings and reports the wipe.
 source: bartle:FE4 Codes and their meanings
 source: reference
-scope: launch
+scope: now
 
 ### Client-mode data (95)
 
@@ -737,30 +739,30 @@ source: bartle:FE4 section 1
 | 4 | Account ID | bartle:FE4 section 1 |
 | 5 | Privilege: 0 guest, 1 normal, 2 wiz, 3 arch-wiz, 4 master, -1 unknown | bartle:FE4 section 1 |
 
-scope: launch
+scope: now
 
 FACT `95 02` brackets two lines, the new account ID and the new privilege level. `95 03` brackets the
 account ID on logout and ends game mode.
 source: bartle:FE4 Codes and their meanings
 source: reference
-scope: launch
+scope: now
 
-FACT The reference collects the 95 lines without displaying them and pushes no colour; the lone 255
+FACT The decoder collects the 95 lines without displaying them and pushes no colour; the lone 255
 after the last line closes the bracket.
 source: reference
-scope: launch
+scope: now
 
 ### Dream word (15)
 
-FACT After a `15 00 00` header, Clio and the reference read 1 to 14 lower-case letters as the dream
+FACT After a `15 00 00` header, the decoder reads 1 to 14 lower-case letters as the dream
 word; the letters are also displayed. `15 00 01` means the word was said and is used up.
 source: clio:src/telnet.l
 source: reference
-scope: launch
+scope: now
 
 ### Snoops (94, 96, 97, 98)
 
 FACT `94` brackets the name of a player whose snooping has begun, `96` marks snooping ended and is
 closed at once, `97` brackets snooped material, `98 nn` brackets the prefix of a snooped line.
 source: bartle:FE4 Codes and their meanings
-scope: launch
+scope: now

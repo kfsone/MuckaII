@@ -39,7 +39,7 @@ source: agent
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
 | C1 | connection.md 2.1 Replies (DO SGA) | Reply WONT (Clio) or WILL (reference) to DO SGA? | Clio vs reference | director | no | WONT (Clio) |
-| C2 | connection.md 2.3 NAWS size and resend | NAWS: real column count resent on resize (reference), or fixed 80 x 21 (Clio)? Bartle is silent on NAWS and no capture holds an IAC byte, so nothing separates NAWS from `/T`. | Clio vs reference | director (a capture with a resize and its `tx` informs) | no | reference: effective columns x 21, resent on change, matching the `/T` width 3.2 chose |
+| C2 | connection.md 2.3 NAWS size and resend | NAWS: real column count resent on resize (reference), or fixed 80 x 21 (Clio)? Bartle is silent on NAWS and no capture holds an IAC byte, so nothing separates NAWS from `/T`. | Clio vs reference | director (a capture with a resize and its `tx` informs) | no | reference: effective columns x 21, sent from the start of the connection, resent on change, matching the `/T` width 3.2 chose |
 | C3 | connection.md 3.1 Prompts and replies | Login prompt matching: anchored, one-shot, ordered (Clio) or case-insensitive substrings (reference)? | Clio vs reference | director (capture informs) | no | Clio |
 | C5 | connection.md 4.1 On resize | Should a resize at the Option menu also send `/T`? | reference (NAWS only) | director | no | no, NAWS only |
 | C7 | protocol.md Parameters | Unlisted code variant: colour by family (reference) or white on black (Clio)? | Clio vs reference | director | no | white on black (Clio, and the RULE above it) |
@@ -54,31 +54,33 @@ source: agent
 
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
-| D1 | input.md Invariant #1 and its acceptance condition; keys.toml Enter | Where is the acceptance condition measured, and should line trimming go? | Invariant #1 vs reference trimming and local commands | director | no | the two points of root `CLAUDE.md` Invariant #1; trimming stays |
-| D2 | input.md History; keys.toml Up | History size (200 or 40), consecutive-duplicate suppression, wrap or clamp at the ends | reference vs Clio | director | no | 200 entries, duplicates stored, clamp at both ends |
-| D3 | input.md History; keys.toml Down | Down with no recall in progress destroys the draft. Keep, no-op, or stash? | reference | director | no | no-op; the draft stays. Up stashes the draft and Down past the newest entry restores it |
-| D4 | input.md Scrollback; keys.toml `<any other key>` | Scrollback swallows typed keys, against Invariant #1. Return to live and land the keys in the box instead? | reference vs Invariant #1 | director | no | first printable key returns to live and lands in the line buffer; no key discarded |
-| D5 | input.md Scrollback; keys.toml F1..F12, Ctrl+W, Ctrl+R | Do F-keys, Ctrl+R, Ctrl+W and Ctrl+` act in scrollback? keys.toml says Ctrl+R and Ctrl+W return to live first; input.md says the reference swallows them. | keys.toml vs input.md (both reference) | director | no | return to live, then act |
+| D1 | input.md Invariant #1 and its acceptance condition (keys.toml Enter points to it) | Where is the acceptance condition measured, and should line trimming go? | Invariant #1 vs reference trimming and local commands | director | no | the two points of root `CLAUDE.md` Invariant #1; trimming stays |
+| D2 | input.md History (keys.toml Up points to it) | History size (200 or 40), consecutive-duplicate suppression, wrap or clamp at the ends | reference vs Clio | director | no | 200 entries, duplicates stored, clamp at both ends |
+| D3 | input.md History (keys.toml Down points to it) | Down with no recall in progress destroys the draft. Keep, no-op, or stash? | reference | director | no | no-op; the draft stays. Up stashes the draft and Down past the newest entry restores it |
+| D4 | input.md Scrollback (keys.toml `<any other key>` points to it) | Scrollback swallows typed keys, against Invariant #1. Return to live and land the keys in the box instead? | reference vs Invariant #1 | director | no | first printable key returns to live and lands in the line buffer; no key discarded |
+| D5 | input.md Scrollback (keys.toml F1..F12, Ctrl+W, Ctrl+R point to it) | Do F-keys, Ctrl+R, Ctrl+W and Ctrl+` act in scrollback? The reference key table returns to live first for Ctrl+R and Ctrl+W; its scrollback filter swallows them. | reference key table vs reference scrollback filter | director | no | return to live, then act |
 | D6 | input.md Box prefills (ui.md 2.5 Tell lines points to it) | Clicking a name: prepend to typed text when the caret is at the start, or insert only into an empty box? | input.md vs ui.md (both reference) | director | no | one rule: prepend when the caret is at the start |
 | D7 | input.md Expansion of outgoing text; ui.md 5. Window title; later/session-transcript.md Transcript | Product string: `$VER` text, window title, transcript header/footer and `session-rec.` prefix | reference says "Mucka" | director | no | `MuckaII v<version>`; title `muckaii`; "Recording by MuckaII"; keep `session-rec.` |
 | D8 | input.md Positional arguments | Adopt the positional `$1`-`$9` alias arguments the reference defines but rarely reaches? | reference definition vs reference behaviour | director | no | yes: `$name rest` runs `name` with `rest` as arguments |
 | D9 | keys.toml Tab | What Tab does inside the box | unspecified | director | no | nothing; focus stays |
 | D10 | keys.toml Ctrl+C | Platform copy (reference) or clear line / exit (Clio)? | Clio vs reference | director | no | platform copy |
-| D11 | keys.toml Ctrl+Shift+F1..Ctrl+Shift+F12 | Unbound on desktop, Ctrl layer on Android. Pick one. | reference desktop vs reference Android | director | no | unbound on both |
+| D11 | keys.toml Ctrl+Shift+F1..Ctrl+Shift+F12 (Android, scope later) | Unbound on desktop; the reference's Android Ctrl layer. Pick one. | reference desktop vs reference Android | director | no | unbound on both |
 | D12 | keys.toml Ctrl+D | Send `say "<word>"` in game mode only (Clio) or `"<word>"` anywhere (reference)? | Clio vs reference | director | no | `"<word>"`, in game mode only |
 | D13 | keys.toml Ctrl+Shift+D, Ctrl+Shift+F | Follow-up text from the box's current text (as specified), not the reference's stale copy. Confirm. | reference defect | director | no | the box's current text |
-| D14 | keys.toml Ctrl+Shift+D (android) | Android lacks the chained dreamword form. Intended? | reference desktop vs Android | director | no | keep: same as Ctrl+D |
-| D15 | keys.toml note (macOS) | Ctrl or Cmd for the chords on macOS? | none | director | no | Ctrl |
+| D14 | keys.toml Ctrl+Shift+D (Android, scope later) | Android lacks the chained dreamword form. Intended? | reference desktop vs Android | director | no | keep: same as Ctrl+D |
+| D15 | keys.toml note (macOS) | Ctrl or Cmd for the TUI's chords on macOS? (only the TUI runs there; the director tests it when it becomes relevant) | none | director | no | Ctrl |
 
-## E. Launch scope (director)
+## E. Now scope (director)
+
+A ruling on an E item also changes the scope list (`INTERNAL.md`, Scope).
 
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
-| E1 | later/session-transcript.md Recording chip | Session transcript and `rec` chip: launch or later? | INTERNAL.md (wire log only) vs reference | director | no | later |
-| E4 | later/chat-mode.md | Chat-only view filter: launch or later? | INTERNAL.md list | director | no | later |
-| E5 | later/diagnostic-commands.md | `$SID`, `$MARK`, `$CHATTEST`: launch or later? | wire log (launch) vs diagnostics | director | no | later |
-| E8 | ui.md 3.4 Effect icons | Combat status icon: launch or later (depends on combat tracking)? | ui.md vs section 8 | director | no | later; no combat slot at launch |
-| E9 | connection.md 1.2 Session-drop classification | Drop headline overlay and automatic relogin after a Reset drop: launch now that persona selection is? | INTERNAL.md list (persona selection and creation only) | director | no | both later |
+| E1 | later/session-transcript.md Recording chip | Session transcript and `rec` chip: now or later? | INTERNAL.md Scope (wire log only) vs reference | director | no | later |
+| E4 | later/chat-mode.md | Chat-only view filter: now or later? | INTERNAL.md Scope | director | no | later |
+| E5 | later/diagnostic-commands.md | `$SID`, `$MARK`, `$CHATTEST`: now or later? | wire log (now) vs diagnostics | director | no | later |
+| E8 | ui.md 3.4 Effect icons | Combat status icon: now or later (depends on combat tracking)? | ui.md vs section 8 | director | no | later; no combat slot now |
+| E9 | connection.md 1.2 Session-drop classification | Drop headline overlay and automatic relogin after a Reset drop: now, since persona selection is? | INTERNAL.md Scope (persona selection and creation only) | director | no | both later |
 | E10 | fair-play.md (end) | Watchwords answer triggers in incoming text, so they are conditional. Charter review before they are built | fair-play.md Automation vs the reference feature | director | no | not built; `[watch]` still imported verbatim |
 | E11 | input.md `$` commands | What does a `scope: later` `$` command do when typed before it is built? | none | director | no | as `$map`: reserved, falls to watchword speak, nothing sent |
 
@@ -118,10 +120,9 @@ source: agent
 
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
-| H1 | architecture.md Delivery | Slint's after-rendering notifier fires after rendering, before presentation | none | director (spike step 3 measures) | no | measure to the notifier plus one refresh interval |
-| H3 | session.md Command understanding (layer split) | Which layer finds command boundaries and recognises sleep commands? | neither; candidate design in session.md | director, after the proof of concept | no | no probe injection until ruled |
+| H1 | architecture.md Delivery | Slint's after-rendering notifier fires after rendering, before presentation | none | director (the spike's latency test measures) | no | measure to the notifier plus one refresh interval |
 
-FACT 71 items: 13 capture (A1-A13), 58 director choices (C 11, D 15, E 7, F 18, G 5, H 2). Group B
+FACT 69 items: 13 capture (A1-A13), 56 director choices (C 11, D 15, E 7, F 17, G 5, H 1). Group B
 (Bartle semantics) is ruled and applied in `c1-codes.toml`. A fresh login plus a short play session
 settles the server side of A1-A7; A2, A3 and A6 then still need a director ruling. Mining the wire
 corpus settles A12 and A13.

@@ -4,11 +4,11 @@ FACT MUD2's client support is scrappy. The client has to poll the server for mun
 such as health, the answers come back poorly presented, and every poll spends a command slot.
 source: director
 
-## Sleep (scope: launch)
+## Sleep (scope: now)
 
 FACT While the persona is asleep, the probes FES, FEW, FEI, FEX and their kin get no response. If
 the client does not track sleep, the status bar goes stale without anyone noticing, and the status
-bar is in launch scope.
+bar is `scope: now`.
 source: director
 
 RULE The session layer tracks a sleep state:
@@ -42,7 +42,7 @@ RULE Mining the wire corpus for patterns follows these limits:
 source: director
 enforced_by: none: judgement
 
-## Command understanding and probe injection (scope: launch)
+## Command understanding and probe injection (scope: now)
 
 Nothing gameplay-affecting happens automatically after arrival, and injected commands are
 read-only probes only: `fair-play.md`, Automation. The setup batch is part of arrival:
@@ -62,31 +62,48 @@ move by a fraction of a second, which is well within human cognition. The client
 the tick length.
 source: director
 
-RULE The layers split the work on an outbound line as follows:
-
-| Layer | Does |
-|-------|------|
-| client | parses and expands the player's input (client `$` and `^` commands, aliases, F-key and `^n` macros) and hands each finished line to the session layer. It never writes to the socket and never inserts a probe |
-| session | owns the single ordered outbound queue. It finds the command boundaries in each line it is handed, recognises significant commands (sleep in its variants: `sleep`, `zz`, `zzz`, `zz in bed`, ...), inserts probe blocks at those boundaries, and passes the result to the one socket writer |
-
-The session layer knows which commands take a message argument, because those soak up commas
-without quotes, so a comma inside one is not a boundary. Rather than sending probes as separate
-lines, it embeds them in commands the player sends.
-source: director
-enforced_by: none: judgement
-
 FACT MUD2 separates commands with `,` and with `.`.
 source: director
 
-open: Which layer finds command boundaries and recognises sleep commands (OPEN H3)? This is
-deferred until the proof of concept plays. The candidate design, from two independent agent
-brainstorms: the `mud` layer gets a pure, policy-free parse of an outbound line into commands and
-separators, and an unsure parse gives no mid-line slot. The outbound line is carried as segments
-(typed, separator, probe). A probe can sit only at the start of a line or after a separator, and
-stripping the probe segments gives back the client's output. Session raises probe "wants" with a
-placement and a deadline, resolved when a line is written. Probes are an optional subsystem
-(`architecture.md`, Composition).
-default: build no probe injection until this is ruled.
+## Outbound path
+
+DECISION A line goes out through these stages, in this order:
+
+| Stage | Owner | Triggered by | May do |
+|-------|-------|--------------|--------|
+| 1. Expansion | optional modules attached by the builder (variables, macros, interpolation, aliases with named positional arguments) | the player | rewrite the line freely. `$hunt thief north axe` becomes `g cc,go north,drop cc,kill thief with axe`. The output is what the player sent: the Invariant #1 baseline |
+| 2. Parse | `mud` | every line | split the line into commands and separators per MUD2's own grammar: separators `,` and `.`, verbs that take a message (these absorb separators), and sleep variants. A pure parse that holds no policy. Where the parse is unsure, the line gets no mid-line slot |
+| 3. Intercepts | modules registered with the builder, run in registration order; probe injection is one | the client, automatically | insert marked segments at line-start or separator slots only. An intercept never alters a command the player sent |
+| 4. Queue and write | `session`, then `transport`'s single writer | every line | send the segments in order. The wire log marks each inserted segment |
+
+source: director
+
+DECISION The prepared line is carried as segments: typed, separator, and inserted. Removing the
+inserted segments gives back, byte for byte, the line that expansion produced. That is how
+Invariant #1 is checked.
+source: director
+
+DECISION A raw send (the raw console, or a consumer's explicit raw call) skips expansion, parsing
+and intercepts. It goes straight to the queue and is marked `raw` in the wire log. Raw sends are
+the exception; consumers normally hand over a line to be prepared.
+source: director
+
+DECISION `mud` holds MUD2's command grammar and nothing else. Variables, macros, interpolation and
+aliases are never part of `mud`. They are added on top as optional modules, so a bare consumer
+(an analysis tool, a bot) gets plain MUD2 parsing.
+source: director
+
+RULE Macros whose expansion ends in an attack (like `$hunt`) last for the session only:
+`fair-play.md`, Automation.
+source: director
+enforced_by: none: judgement
+
+DECISION Probe injection is an intercept. It works from session state (sleep, wakes, unanswered
+probes): it raises a probe "want" with a placement (before a sleep command, or at the next
+separator) and a deadline. The want is resolved when a line is written. Wants for the same field
+merge. A want whose deadline passes with no line to carry it goes out as its own line, and a stale
+want expires.
+source: agent; director
 
 RULE Injection sites around sleep:
 

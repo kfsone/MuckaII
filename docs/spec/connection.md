@@ -1,4 +1,4 @@
-# connection.md
+# Connection: transport, telnet, login, width, probes
 
 FACT Byte values are hex. `ESC` is `1B`. `CRLF` is `0D 0A`. `$-` (the director's and Bartle's
 notation) is the two bytes `ESC -` (`1B 2D`), written with no spaces: `$-[FES$-]` is exactly
@@ -18,41 +18,37 @@ source: director
 
 | Item | Value | Scope | Source |
 |------|-------|-------|--------|
-| Default profile "MUD2 UK" | host `mud2.co.uk`, port 23 | launch | reference |
-| Default profile "MUD2.COM" | host `www.mud2.com`, port 27723 | launch | reference |
-| New-profile default | host `mud2.co.uk`, port 23 | launch | reference |
-| Port when none given | 23 | launch | clio:src/main.c (CLIOPORT fallback); reference |
-| Connect timeout | 15 s overall, name resolution included, then the connect page shows the error text | launch | reference; agent (overall) |
-| Nagle | off: each write goes out immediately | launch | reference |
-| Outbound line terminator | `0D 0A` | launch | clio:src/telnet.l autologin rules; reference |
-| Outbound order | one ordered writer; every typed line, macro, probe and telnet reply goes through it | launch | reference; root CLAUDE.md Invariant #1 |
+| Default profile "MUD2 UK" | host `mud2.co.uk`, port 23 | now | reference |
+| Default profile "MUD2.COM" | host `www.mud2.com`, port 27723 | now | reference |
+| New-profile default | host `mud2.co.uk`, port 23 | now | reference |
+| Port when none given | 23 | now | clio:src/main.c (CLIOPORT fallback); reference |
+| Connect timeout | 15 s overall, name resolution included, then the connect page shows the error text | now | reference; agent (overall) |
+| Nagle | off: each write goes out immediately | now | reference |
+| Outbound line terminator | `0D 0A` | now | clio:src/telnet.l autologin rules; reference |
+| Outbound order | one ordered writer; every typed line, macro, probe and telnet reply goes through it | now | reference; root CLAUDE.md Invariant #1 |
 
 open: Outbound terminator. A reference wire-log pair (`persistence.md`) shows `wave\r\r\n` (CR CR
 LF) sent and echoed, against `0D 0A` above and the `\r\n` echo in the captures (`protocol.md`, Echo).
 Which does the server receive?
 default: `0D 0A`, as the table above, Clio and the captures' echo give it.
 
-FACT Clio refuses to start without a host (argument or `CLIOHOST`) and takes its port from the
-second argument or `CLIOPORT`, else 23.
-source: clio:src/main.c
-
 DECISION The connect never blocks the core thread. On Windows name resolution is
 `GetAddrInfoExW`, asynchronous: its completion routine wakes the core, and a quit or the deadline
 cancels it with `GetAddrInfoExCancel` and waits for the routine, so nothing outlives the connect.
-On POSIX `getaddrinfo` cannot be cancelled (`getaddrinfo_a` is glibc only, absent from Android's
-bionic), so it runs on a short-lived detached thread that holds only its own result and the wake
-socket, and an abandoned lookup finishes harmlessly after the connect has returned. The connect
+On POSIX `getaddrinfo` cannot be cancelled (`getaddrinfo_a` is glibc only, absent from macOS's
+libc and Android's bionic), so it runs on a short-lived detached thread that holds only its own
+result and the wake socket, and an abandoned lookup finishes harmlessly after the connect has returned. The connect
 itself is non-blocking and polled together with the wake socket. A quit while connecting therefore
 returns at once. Rejected: a blocking connect with a per-address timeout (a quit waited for it, up
 to 15 s per address); a detached thread on Windows, where cancellation exists.
-source: agent, on review findings (Ctrl+C during connect hung; a thread outlived its connect)
+source: agent
 
 RULE The 15 s connect timeout bounds resolution and every address tried, together. Each address
 gets an equal share of what is left when its attempt starts, split over the addresses not yet
 tried, itself included (`transport::getAttemptBudget`); the last gets all that is left. An address
 that never answers therefore cannot spend the budget of the addresses after it.
 enforced_by: none: judgement
-source: agent, on a review finding
+source: agent
 
 RULE A data byte 255 in an outbound line is sent doubled (`FF FF`), as telnet requires
 (`protocol.md`, Telnet residue in the stream). The 7-bit filter means a typed line never holds one;
@@ -65,26 +61,24 @@ closes, within a bounded wait of 2 s. Any typed line not written by then, or lef
 connection closes or never opens, is reported once in the terminal (`N typed lines were not sent:
 <why>`) and in the wire log; no typed line is lost silently.
 enforced_by: none: judgement
-source: agent, on review findings (Ctrl+C dropped queued sends; lines after a drop vanished)
+source: agent
 
 ### 1.1 Disconnect detection
 
 | Event | What the user sees | Scope | Source |
 |-------|--------------------|-------|--------|
-| Server closes the socket (read of 0 bytes) or the socket errors | An alert titled "Disconnected" with the text "The server closed the connection.", then the profile/connect page. In command-line direct-connect mode (section 6), the app closes instead. | launch | reference |
-| Local disconnect (user quits, page closes, a new connect replaces the old one) | No alert. The session state is cleared the same way. | launch | reference |
-| Any disconnect | The probe timer stops, the anti-idle timer stops, telnet one-shot guards and login state re-arm for the next connection. The advertised window size is kept. | launch | reference |
-| Reconnect | There is no automatic transport reconnect. The user connects again from the profile page. | launch | reference |
-
-FACT Clio prints "Connection closed by <host>" in the main window when the socket closes.
-source: clio:src/main.c
+| Server closes the socket (read of 0 bytes) or the socket errors | An alert titled "Disconnected" with the text "The server closed the connection.", then the profile/connect page. In command-line direct-connect mode (section 6), the app closes instead. | now | reference |
+| Local disconnect (user quits, page closes, a new connect replaces the old one) | No alert. The session state is cleared the same way. | now | reference |
+| Any disconnect | The probe timer stops, the anti-idle timer stops, telnet one-shot guards and login state re-arm for the next connection. The advertised window size is kept. | now | reference |
+| Reconnect | There is no automatic transport reconnect. The user connects again from the profile page. | now | reference |
 
 ### 1.2 Session-drop classification (game mode exited, connection still up)
 
-FACT The reference recognises no dedicated code for a drop out of the game back to the Option menu.
-It reads the landmarks below from the in-game text. It collapses whitespace (including the NUL padding the
+RULE MuckaII expects no dedicated code for a drop out of the game back to the Option menu. It reads
+the landmarks below from the in-game text. It collapses whitespace (including the NUL padding the
 server adds to wrapped rows) and joins up to 3 wrapped rows, so the landmark matches at any width
 down to 20 columns. The first landmark seen wins.
+enforced_by: none: judgement
 source: reference
 
 | Order | Reason | Signal | Match rule | Source |
@@ -95,22 +89,16 @@ source: reference
 | 4 | Died | end-of-game summary with no farewell | line starts `Overall, you ` and ends ` points this game.`. The verb (scored/lost) is not matched. | reference |
 | 5 | Unknown | none of the above | idle boot, kick, anything else | reference |
 
-FACT The reference also has a fallback for Reset. It counts a drop as a Reset when it lands near
-the projected reset instant. If the server's C06 C04 "auto reset initiated" announcement was seen,
-the drop must land within a tight window of that announcement's instant. A seen "Cheerio!" outranks
-the timing test.
-source: reference
-
 FACT Drop headline overlay and automatic relogin after a Reset drop: `scope: later`,
 `later/drop-overlay.md`.
 source: director
 
-RULE MuckaII classifies drops at launch, because a Reset clears the dreamword (section 5.4).
+RULE Drop classification is `scope: now`, because a Reset clears the dreamword (section 5.4).
 enforced_by: none: judgement
 source: reference
 
-open: Are the drop headline overlay and the automatic relogin after a Reset drop launch, now that
-managed persona selection (3.4) is? The Tombstone (`flow.md`) is the launch screen for a death.
+open: Are the drop headline overlay and the automatic relogin after a Reset drop `scope: now`, as
+managed persona selection (3.4) is? The Tombstone (`flow.md`) is the now-scope screen for a death.
 default: both `scope: later`.
 
 ## 2. Telnet options
@@ -121,23 +109,23 @@ source: clio:src/telnet.l
 
 ### 2.1 Replies
 
-| Received | Clio reply | Reference reply | Agree? |
-|----------|------------|-----------------|--------|
-| `FF FD 01` DO ECHO | `FF FC 01` | `FF FC 01` | yes |
-| `FF FD 03` DO SGA | `FF FC 03` (default case: WONT) | `FF FB 03` (WILL), every time | NO |
-| `FF FD 18` DO TTYPE | `FF FB 18`, first time only; repeats ignored | same | yes |
-| `FF FD 1F` DO NAWS | `FF FB 1F` then NAWS SB, first time only | same; the SB size differs (2.3) | partly |
-| `FF FD 27` DO NEW-ENVIRON | `FF FC 27` | `FF FB 27` if the login name is non-empty, else `FF FC 27`; first time only | NO |
-| `FF FD xx` any other | `FF FC xx` | `FF FC xx` | yes |
-| `FF FE xx` DONT any | nothing | nothing | yes |
-| `FF FB 01` WILL ECHO | nothing | nothing | yes |
-| `FF FB 03` WILL SGA | `FF FD 03`, first time only | `FF FD 03`, every time | NO |
-| `FF FB xx` WILL any other | `FF FE xx` | `FF FE xx` | yes |
-| `FF FC xx` WONT any | nothing | nothing | yes |
-| `FF F9` GA | ignored | ignored | yes |
-| `FF FA 18 01 FF F0` TTYPE SEND | TTYPE IS "ansi" (2.2), only if WILL TTYPE was sent | TTYPE IS "ansi", always | yes |
-| `FF FA 27 01 ... FF F0` NEW-ENVIRON SEND | (never reached; WONT sent) | NEW-ENVIRON IS USER (2.2) if the login name is non-empty | NO |
-| any other SB | ignored | ignored. An SB longer than 1024 bytes is abandoned. | yes |
+| Received | MuckaII sends | Basis |
+|----------|---------------|-------|
+| `FF FD 01` DO ECHO | `FF FC 01` | Clio and reference agree |
+| `FF FD 03` DO SGA | `FF FC 03` (WONT) | default below; the reference sends `FF FB 03` (WILL), every time |
+| `FF FD 18` DO TTYPE | `FF FB 18`, first time only; repeats ignored | Clio and reference agree |
+| `FF FD 1F` DO NAWS | `FF FB 1F` then the NAWS SB (2.3), first time only | Clio and reference agree; the SB size is 2.3's default |
+| `FF FD 27` DO NEW-ENVIRON | `FF FC 27` (WONT) | default below; the reference sends `FF FB 27` when the login name is non-empty, first time only |
+| `FF FD xx` any other | `FF FC xx` | Clio and reference agree |
+| `FF FE xx` DONT any | nothing | Clio and reference agree |
+| `FF FB 01` WILL ECHO | nothing | Clio and reference agree |
+| `FF FB 03` WILL SGA | `FF FD 03`, first time only | default below; the reference answers every time |
+| `FF FB xx` WILL any other | `FF FE xx` | Clio and reference agree |
+| `FF FC xx` WONT any | nothing | Clio and reference agree |
+| `FF F9` GA | nothing; ignored | Clio and reference agree |
+| `FF FA 18 01 FF F0` TTYPE SEND | TTYPE IS "ansi" (2.2) | Clio and reference agree (WILL TTYPE is always sent first) |
+| `FF FA 27 01 ... FF F0` NEW-ENVIRON SEND | nothing (WONT was sent) | default below; the reference sends NEW-ENVIRON IS USER (2.2) |
+| any other SB | nothing; ignored. An SB that reaches 1024 bytes is abandoned (`protocol.md`, Telnet subnegotiation) | Clio and reference agree; the ceiling is the reference's |
 source: clio:src/telnet.l {IAC}{DO}. {IAC}{WILL}. {IAC}{DONT}. {IAC}{WONT}. {IAC}{SB}{TERMINAL_TYPE}{SEND}{IAC}{SE}; reference
 
 EVIDENCE Clio's DO handler has no case for option 3. DO SGA falls to `default: twont`, so Clio
@@ -159,9 +147,9 @@ source: clio:src/telnet.l {IAC}{WILL}.
 open: WILL SGA. Is it answered once (Clio) or every time (reference)?
 default: once per connection, as Clio does.
 
-FACT A literal `FF FF` in the stream is owned by `protocol.md`: in client mode it is part of the C1
-terminator. The reference's telnet layer consumes IAC IAC and returns to normal text.
-source: reference
+FACT A literal `FF FF` in the stream is one data byte 255 after telnet decoding, and is owned by
+`protocol.md`: in client mode it is part of the C1 terminator.
+source: bartle:FE4 Codes and their meanings
 
 ### 2.2 Subnegotiation contents
 
@@ -172,8 +160,8 @@ source: reference
 | NEW-ENVIRON IS USER=<name> | `FF FA 27 00 00 55 53 45 52 01 <name, 7-bit bytes> FF F0` (IS=00, VAR=00, "USER", VALUE=01) |
 source: clio:src/tterm.c; clio:src/tnaws.c; reference
 
-FACT The reference does not escape bytes 00-03 inside the NEW-ENVIRON value. Login names are
-alphanumeric.
+FACT Login names are alphanumeric, so the NEW-ENVIRON value never holds a byte 00-03 and nothing in
+it is escaped.
 source: reference
 
 ### 2.3 NAWS size and resend
@@ -192,22 +180,22 @@ open: NAWS. Should it carry the real column count and resend on resize (referenc
 fixed 80 x 21 (Clio)? Bartle is silent on NAWS, and no capture holds an IAC byte, so nothing on the
 wire separates the effect of NAWS from that of `/T`. What NAWS changes on the server is unconfirmed
 (section 4.1).
-default: the reference's form: the effective column count x 21, resent when it changes, matching the
-`/T` width 3.2 chose. Clio's fixed 80 x 21 goes with its ESC-T entry, which 3.2 rejects.
-
-FACT The reference sends NAWS from the start of the connection with the same column count it later
-sends in `/T`.
-source: reference
+default: the reference's form: the effective column count x 21, sent from the start of the
+connection and resent when it changes, with the same column count as the `/T` width 3.2 chose.
+Clio's fixed 80 x 21 goes with its ESC-T entry, which 3.2 rejects.
 
 ## 3. Login
 
 ### 3.1 Prompts and replies (auto-login)
 
-FACT Auto-login runs only when the profile has the telnet-login switch on (ini key `telnetlogin`,
+RULE Auto-login runs only when the profile has the telnet-login switch on (ini key `telnetlogin`,
 default yes), an account ID, and a password. With the switch off, the account ID is put into the
 command box for the user to send by hand, and nothing is sent automatically. With an account ID but
-no stored password, a password dialog appears before connecting. It has a "remember" option.
-source: reference
+no stored password, a password dialog appears before connecting. It has a "remember" option, which
+stores the password in the profile settings in plaintext (`persistence.md`; `INTERNAL.md`,
+Credentials and threat model).
+enforced_by: none: judgement
+source: reference; director (plaintext storage)
 
 | Step | Prompt recognised | Clio match | Reference match | Sent | Once? |
 |------|-------------------|------------|-----------------|------|-------|
@@ -253,9 +241,9 @@ XDISPLOC (0x23), DO NEW-ENVIRON, DO LINEMODE (0x22), WILL SGA, DO ECHO, DO NAWS,
 (0x05), DO LFLOW (0x21). The shell `login:` prompt still appeared.
 source: director's live session, recorded in the MuckaII wire log on 2026-10-05
 
-FACT The reference handles a "(y/n)" question before the banner, e.g. "Skip the rest? (y/n)" on
-mud2.com, or a usurp-session question. Auto-login does not answer it; guided login
-answers `y`.
+RULE A "(y/n)" question before the banner, e.g. "Skip the rest? (y/n)" on mud2.com, or a
+usurp-session question, is not answered by auto-login; managed persona selection answers `y` (3.4).
+enforced_by: none: judgement
 source: reference
 
 ### 3.2 Client-mode entry
@@ -291,10 +279,10 @@ EVIDENCE After entry at 20 columns, the server wraps every game line at 20 colum
 rows end `0D 00 0D 0A`. Examples: "You're already" / "getting object" / "identification".
 source: capture:phone-login-at-20-columns.c1
 
-FACT The reference resends NAWS (2.3) and then sends client-mode entry, once per login, at the
-first Option prompt seen while not in game mode. Clio re-arms at every Option prompt while it is
-still in plain telnet mode. It can be switched off with `-n`.
-source: clio:src/telnet.l ^"Option: "; clio:src/main.c; reference
+RULE MuckaII resends NAWS (2.3) and then sends client-mode entry, once per login, at the first
+Option prompt seen while not in game mode.
+enforced_by: none: judgement
+source: reference
 
 | Server reply to entry | Handling | Source |
 |-----------------------|----------|--------|
@@ -305,14 +293,14 @@ source: clio:src/telnet.l ^"Option: "; clio:src/main.c; reference
 
 ### 3.3 Game mode entry and exit
 
-FACT The edges of game mode are `protocol.md`, Game mode. On entry the reference sends the first
-probe beat and the setup batch (5.3). Clio, on `C02 C01`, sends `$-[FES$-]` plus the optional
-`game-init-cmds` ini line.
-source: clio:src/telnet.l {C02}{C01}{C255}; reference
+RULE The edges of game mode are `protocol.md`, Game mode. On entry MuckaII sends the first probe
+beat (5.2) and the setup batch (5.3).
+enforced_by: none: judgement
+source: reference
 
 ### 3.4 Persona selection (guided login)
 
-DECISION Managed persona selection and creating a persona in an open slot are `scope: launch`
+DECISION Managed persona selection and creating a persona in an open slot are `scope: now`
 (`flow.md`, Pre-game). The landmarks below are what the client drives the shell by. Persona
 deletion is `scope: later`.
 source: director
@@ -333,23 +321,17 @@ source: director
 | reset rebuild | `the database is still initialising` / `has started initialising` / `has finished initialising` | wait |
 source: reference
 
-FACT Clio does not send FES while the shell prompts "Old Password:" and "New time-out period:", nor
-at the persona-picture prompt "1 - Old Man. 2 - Young Girl. 3 - Dwarf. Q to quit /BR.". It resumes
-at the next game prompt.
-source: clio:src/telnet.l ^"Old Password:"
-
 ## 4. Terminal width
 
 | Item | Value | Scope | Source |
 |------|-------|-------|--------|
-| Fewest columns ever told | 20 | launch | reference |
-| Most columns ever told | 160 | launch | reference |
-| Fits | the number of whole character cells that fit across the available space (window or device width) at the current font and font size. It is computed before connecting, from the profile's font, so it is never unknown | launch | director |
-| Max-columns setting | unset (the default until the user sets it) or a ceiling, 20..160 | launch | director |
-| Effective columns | unset: min(80, fits). Set: min(setting, fits). Then clamped 20..160. | launch | director |
-| Columns told at connect | computed from the connect page width and the profile font, before the game screen exists | launch | reference |
-| Rows told | 21 | launch | reference; clio:src/telnet.l {IAC}{DO}. |
-| Clio | 80 columns NAWS; ESC-T asks for 78 wide | - | clio:src/telnet.l |
+| Fewest columns ever told | 20 | now | reference |
+| Most columns ever told | 160 | now | reference |
+| Fits | the number of whole character cells that fit across the available space (window or device width) at the current font and font size. It is computed before connecting, from the profile's font, so it is never unknown | now | director |
+| Max-columns setting | unset (the default until the user sets it) or a ceiling, 20..160 | now | director |
+| Effective columns | unset: min(80, fits). Set: min(setting, fits). Then clamped 20..160. | now | director |
+| Columns told at connect | computed from the connect page width and the profile font, before the game screen exists | now | reference |
+| Rows told | 21 | now | reference; clio:src/telnet.l {IAC}{DO}. |
 
 ### 4.1 On resize
 
@@ -399,12 +381,11 @@ uses. Bartle does not forbid it. The raw console can test it.
 
 | Probe | When | Default | Scope | Source |
 |-------|------|---------|-------|--------|
-| Routine FES (Clio) | every 10 s in game mode; also once on each of many C1 codes (hits, weather, magic, dreamword use) | 10 s, fixed | - | clio:src/telnet.l main loop, {C07}{C255} etc. |
-| Routine beat (reference) | in game mode only. First beat at game entry is the full `FES,FEW,FEI`, then every N s. | N = 10 s. Setting: 0 = off; the dialog steps 5 to 30 in 5s; clamped 0..30. ini key `statupdate`. | launch (FES); later (FEW, FEI: side panels) | reference |
-| Reactive (stale-stats) | a C1 hint marks stats stale. A probe fires 200 ms later unless a text update or an FES arrives first. It is skipped if the routine beat is about to fire. | 200 ms delay | launch | reference |
-| Spacing | at least 500 ms between any two probes, routine or reactive | 500 ms | launch | reference |
-| Wake recovery | if an FES-carrying probe has gone unanswered for more than 5 s and any server bytes arrive, the beat fires at once (asleep, then woken). At most one per 2 s. | 5 s / 2 s | launch | reference |
-| Hold | probes can be suspended, for example while the director runs raw-console experiments. A held beat is delayed one full interval, never dropped. | - | launch | reference; director (the raw console is launch on every platform, `INTERNAL.md`) |
+| Routine beat | in game mode only. First beat at game entry is the full `FES,FEW,FEI`, then every N s. | N = 10 s. Setting: 0 = off; the dialog steps 5 to 30 in 5s; clamped 0..30. ini key `statupdate`. | now (FES); later (FEW, FEI: side panels) | reference |
+| Reactive (stale-stats) | a C1 hint marks stats stale. A probe fires 200 ms later unless a text update or an FES arrives first. It is skipped if the routine beat is about to fire. | 200 ms delay | now | reference |
+| Spacing | at least 500 ms between any two probes, routine or reactive | 500 ms | now | reference |
+| Wake recovery | if an FES-carrying probe has gone unanswered for more than 5 s and any server bytes arrive, the beat fires at once (asleep, then woken). At most one per 2 s. | 5 s / 2 s | now | reference |
+| Hold | probes can be suspended, for example while the director runs raw-console experiments. A held beat is delayed one full interval, never dropped. | - | now | reference; director (the raw console is `scope: now` in the Windows GUI and the TUI, `INTERNAL.md`) |
 | FEW and FEI in the beat, inventory (combat), room-entry FEX, reset-time sampling | - | - | later: `later/probe-cadence.md` | reference |
 
 DECISION No departed-player probe (`fair-play.md`, Other players). Rejected: the reference's
@@ -415,9 +396,12 @@ A probe block costs the player a command slot: `session.md`, Command understandi
 
 ### 5.3 Setup batch on game entry
 
-FACT At each game-mode entry the reference sends, in one write,
-`identify\r\nfightbrief\r\nauto fex\r\nscore\r\n` and then `1B 2D 5B 46 45 58 1B 2D 5D` (FEX). It
-hides the echo and the replies from the terminal. The `score` reply supplies the persona name.
+RULE The setup batch (DECISION below) goes out in one write,
+`identify\r\nfightbrief\r\nauto fex\r\nscore\r\n`, then `1B 2D 5B 46 45 58 1B 2D 5D` (FEX). MuckaII
+hides its echo and its replies from the terminal, including a high-ranking persona's refusal of
+`auto fex` ("At your level, you should be well past the stage of needing to use AUTO FEEXITS
+commands..."). The `score` reply supplies the persona name.
+enforced_by: none: judgement
 source: reference
 
 EVIDENCE The server echoes the batch as one record: `identify\r\nfightbrief\r\nauto fex\r\nscore\r\n`.
@@ -427,13 +411,9 @@ FEEXITS command performed every time you issue a movement command. To cancel it,
 FEEXITS.", then the score sheet starting `name:`.
 source: capture:phone-login-at-20-columns.c1
 
-FACT The reference expects a high-ranking persona's `auto fex` to be refused: "At your level, you
-should be well past the stage of needing to use AUTO FEEXITS commands...".
-source: reference
-
 DECISION MuckaII sends the setup batch automatically at each game-mode entry, as the reference does:
 `identify`, `fightbrief`, `auto fex`, `score`, then `$-[FEX$-]`. It is part of arrival in the tea
-room (`fair-play.md`, Automation); arrival is complete once it has been sent. `scope: launch`.
+room (`fair-play.md`, Automation); arrival is complete once it has been sent. `scope: now`.
 Rejected: sending only `score`, or asking the player first.
 source: director
 
@@ -441,13 +421,13 @@ source: director
 
 | Action | Sent | Scope | Source |
 |--------|------|-------|--------|
-| Speak dreamword | `"` word `"` `0D 0A` | launch | reference |
-| Speak then follow up | `"` word `",` follow `0D 0A`. With an empty command box the follow-up is `sleep`. One leading comma is stripped. Input starting `,,` is refused. | launch | reference |
-| Clio auto-sleep (`/!sleep`) | sends `sleep\r\n`. When a dreamword arrives while it is active, sends `say "<word>"\r\n`. | later | clio:src/telnet.l {C15}{C00}{C00}{C255}[a-z]{1,14} |
+| Speak dreamword | `"` word `"` `0D 0A` | now | reference |
+| Speak then follow up | `"` word `",` follow `0D 0A`. With an empty command box the follow-up is `sleep`. One leading comma is stripped. Input starting `,,` is refused. | now | reference |
 
-FACT The reference keeps the dreamword across a reconnect into the same world, keyed on host, port
-and the banner's `This reset is number N.`. Banner text is re-read on every login. A Reset drop
-(1.2) or a new reset number clears it.
+RULE MuckaII keeps the dreamword across a reconnect into the same world, keyed on host, port and the
+banner's `This reset is number N.`. Banner text is re-read on every login. A Reset drop (1.2) or a
+new reset number clears it.
+enforced_by: none: judgement
 source: reference
 
 ### 5.5 Anti-idle keepalive
@@ -465,17 +445,17 @@ source: reference
 
 | Flag | Value | Effect | Scope | Source |
 |------|-------|--------|-------|--------|
-| `-profile` | name | select the saved profile (case-insensitive). If there is no match, the first (most recent) profile is used without warning. | launch | reference |
-| `-host` | host | override the host | launch | reference |
-| `-port` | 1..65535 | override the port. Out of range or not a number: ignored without warning. | launch | reference |
-| `-user` | name | override the telnet login name | launch | reference |
-| `-account` | id | override the account ID | launch | reference |
-| `-password` | text | override the password | launch | reference |
+| `-profile` | name | select the saved profile (case-insensitive). If there is no match, the first (most recent) profile is used without warning. | now | reference |
+| `-host` | host | override the host | now | reference |
+| `-port` | 1..65535 | override the port. Out of range or not a number: ignored without warning. | now | reference |
+| `-user` | name | override the telnet login name | now | reference |
+| `-account` | id | override the account ID | now | reference |
+| `-password` | text | override the password | now | reference |
 | `-record` | (none) | arm the session transcript when the game is entered | later | reference |
 | `-logs` | path | Windows only: append trace output to the file | later | reference |
 
 FACT Any of `-profile -host -port -user -account -password` selects direct-connect mode. The app
-connects once at launch without the user pressing Connect, does not save the profile, settings or
+connects once at startup without the user pressing Connect, does not save the profile, settings or
 password, and closes when the server drops the connection.
 source: reference
 
@@ -486,12 +466,3 @@ source: reference
 open: `-password` and `-account` on the command line: keep, drop, or replace with a safer route?
 default: keep both flags, and say in the help text that their values are visible in process
 listings and shell history.
-
-| Clio flag | Effect | Source |
-|-----------|--------|--------|
-| host [port] | positional; env `CLIOHOST`, `CLIOPORT` | clio:src/main.c |
-| `-a` / `CLIOUSER` | MUD2 account ID | clio:src/main.c |
-| `-p` / `CLIOPASS` | MUD2 password | clio:src/main.c |
-| `-b` / `CLIOLUSER` | shell login name | clio:src/main.c |
-| `-c` / `CLIOLPASS` | shell password | clio:src/main.c |
-| `-n` | do not enter client mode automatically | clio:src/main.c |

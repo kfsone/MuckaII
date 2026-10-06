@@ -29,6 +29,15 @@ runs without them. This is composition when the stack is constructed, not a runt
 mechanism.
 source: director
 
+DECISION The builder attaches two kinds of outbound module (`session.md`, Outbound path):
+- **Expansion modules** (variables, macros, interpolation, aliases) run before the parse and may
+  rewrite the line, because the player invoked them.
+- **Intercepts** (probe injection) run on the parsed line, in registration order, and may only
+  insert marked segments at line-start or separator slots.
+
+A raw send bypasses both.
+source: director
+
 FACT The first consumer is a proof of concept: connect, log in, and reach the tea room. Designs are
 revisited against it, with Mucka as the behavioural prototype (`docs/spec/`).
 source: director
@@ -135,7 +144,8 @@ read; end time is the same clock read in Slint's after-rendering notifier. Measu
 latency test against a loopback fake server, not asserted.
 source: director (the 30-50 ms target, `INTERNAL.md`); agent (the measurement points)
 open: Slint's after-rendering notifier fires after the frame is rendered, before it is presented.
-default: measure to the notifier and add one refresh interval; spike step 3 checks this against a camera or present timestamp on one target.
+default: measure to the notifier and add one refresh interval; the spike's latency test (pass
+criteria: `INTERNAL.md`, Stack) checks this against a camera or present timestamp on Windows.
 
 ## Input: two orderings
 
@@ -162,37 +172,29 @@ DECISION Core alone decides whether a typed line is masked (`persistence.md`, Wi
 publishes its verdict (an atomic, updated before each event batch is delivered); `submitLine`
 returns the verdict at that moment and carries it with the line. The frontend keeps a line out of
 the recall list on that returned verdict, never on its own copy of the session's state; the command
-box itself never masks (`input.md`, Password entry). The wire log masks a line when its carried verdict or the session's state when it is sent says so, so a change between
-Enter and the send never unmasks it. Rejected: the frontend deciding from the events it has
+box itself never masks (`input.md`, Password entry). The wire log masks a line when its carried
+verdict or the session's state when it is sent says so, so a change between Enter and the send
+never unmasks it. Rejected: the frontend deciding from the events it has
 received (one batch behind core).
-source: agent, on a review finding
+source: agent
 
 DECISION The history recall list is owned by the frontend and appended at Enter on the UI thread.
 Rejected: history owned by core, where Up straight after Enter could miss the line just entered
 (`input.md` typing-path failure 4).
 source: agent
 
-RULE On core, `client` drains the FIFO in order, expands each line (aliases, macros, `$`
-commands), applies the 7-bit filter as its last step, and hands
-`Outbound{bytes, origin, boundaries, sleepAt}` to `session`'s queue. `boundaries` are byte
-offsets of command boundaries in the post-filter bytes (transliteration changes lengths);
-`sleepAt` marks the boundary before a sleep command. `session` never re-parses a line.
+RULE On core, the FIFO drains in order and each line passes through the stages in `session.md`,
+Outbound path. Expansion modules run first, then the 7-bit filter, then the `mud` parse into
+segments, then intercepts, then `session`'s queue. `transport`'s single writer writes the queue in
+order and never reorders.
 enforced_by: none: judgement
-source: agent
-
-Who finds boundaries and sleep commands is open (OPEN H3, deferred until the proof of concept).
-Until it is ruled, `boundaries` and `sleepAt` are not built, and no probe is injected.
-
-RULE `session` alone inserts marked probe blocks, only at offsets `client` reported
-(`session.md`). `transport`'s single writer writes the queue in order and never reorders.
-enforced_by: none: judgement
-source: agent
+source: director (stages); agent (the filter's place in the order)
 
 | `origin` | Produced by | 7-bit filter | Probe insertion | Wire log |
 |----------|-------------|--------------|-----------------|----------|
-| `typed` | Enter, Send button | yes | at reported boundaries | verbatim, except before login completes and at a recognised password or account prompt: masked, same length, followed by an annotation (`persistence.md`, Wire log) |
-| `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at reported boundaries | as `typed` |
-| `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at reported boundaries | as `typed` |
+| `typed` | Enter, Send button | yes | at line-start or separator slots | verbatim, except before login completes and at a recognised password or account prompt: masked, same length, followed by an annotation (`persistence.md`, Wire log) |
+| `macro` | F-keys, on-screen F-keys, `^n` slots | yes | at line-start or separator slots | as `typed` |
+| `hotkey` | Ctrl+D, Ctrl+F and kin | yes | at line-start or separator slots | as `typed` |
 | `raw` | raw console | no; no expansion | none | marked raw-console send; masked as `typed` |
 | `login` | `session` login drive | n/a | none | verbatim, except the account ID line: masked, same length, annotated (`persistence.md`) |
 | `password` | `session` login drive | n/a | none | masked, same length, annotated (`persistence.md`) |
@@ -207,7 +209,7 @@ before login completes, and at a recognised password or account prompt. `session
 classifies each origin with no default case, and `Session::queue`, which every send passes, applies
 the mask, so no path can skip it.
 enforced_by: none: judgement; clang's -Wswitch (Linux gate) fails an unclassified origin
-source: director (only the password needs masking); agent, on a review finding
+source: director; agent
 
 DECISION Masking is carried with each send, beside its `origin`: the login drive's account ID line
 is a `login` send masked as the account ID, so the `login` row is not verbatim for that one line,
@@ -224,13 +226,13 @@ source: agent
 
 ## Bot
 
-FACT `bot` is a frontend for tests and the director's AI experiments (`INTERNAL.md`, Stack). It
-sends through `core::submitLine` like any frontend.
+FACT `bot` (`muckaiiBot`) is a test frontend over the same core, built only in test and developer
+presets (`INTERNAL.md`, Stack). It sends through `core::submitLine` like any frontend.
 source: director
 
-RULE Release builds never point a bot at the public game.
+RULE A bot never connects to the public game.
 enforced_by: none: judgement
-source: agent
+source: director
 
 ## Audio
 

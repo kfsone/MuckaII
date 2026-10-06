@@ -1,7 +1,7 @@
 # docs/spec/later
 
-FACT Specs of features outside the launch scope (`INTERNAL.md`, Scope). None is built until the
-director triages it against `fair-play.md`. Launch specs keep a one-line pointer here.
+FACT Specs of features outside the now scope (`INTERNAL.md`, Scope). None is built until the
+director triages it against `fair-play.md`. Now-scope specs keep a one-line pointer here.
 source: director
 
 | File | Feature |
@@ -25,7 +25,7 @@ source: director
 
 source: director
 
-FACT Some later items stay as rows in launch data tables: `keys.toml` Ctrl+W and Ctrl+`,
+FACT Some later items stay as rows in now-scope data tables: `keys.toml` Ctrl+W and Ctrl+`,
 `sounds.toml` `metronome-book-ends` (named by `architecture.md`) and the percussion rows, the
 `scope = "later"` codes in `c1-codes.toml`, the later keys in `mucka-ini.md`, and the later FE reply
 facts in `protocol.md`.

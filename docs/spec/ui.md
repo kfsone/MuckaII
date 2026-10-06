@@ -15,15 +15,15 @@ FACT The in-game screen has five primary components:
 
 | Component | Scope | Contents |
 |-----------|-------|----------|
-| Stats bar | launch | Runs along the top. Holds the status fields (section 3) and the settings menu, shown as a hamburger button. |
+| Stats bar | now | Runs along the top. Holds the status fields (section 3) and the settings menu, shown as a hamburger button. |
 | Side panel | later | Optional, on the left: `later/side-panel.md` |
-| Terminal scroll | launch | The main component. Takes all the space the others leave. |
+| Terminal scroll | now | The main component. Takes all the space the others leave. |
 | Combat panel | later | Optional: `later/combat-panel.md` |
-| Input box | launch | The command input, along the bottom. |
+| Input box | now | The command input, along the bottom. |
 
 source: director
 
-## 1. Terminal look (scope: launch)
+## 1. Terminal look (scope: now)
 
 ### 1.1 Font and cell grid
 
@@ -102,9 +102,9 @@ open: The reference never draws reverse video. Should MuckaII swap fg/bg for `$-
 permits ignoring it; nobody has a capture of the server sending it.
 default: parse and track reverse, and do not draw it, as the reference does and Bartle permits.
 
-## 2. Chat colouring (scope: launch)
+## 2. Chat colouring (scope: now)
 
-DECISION Chat colouring, its themes, colours and faces, and their settings are `scope: launch`.
+DECISION Chat colouring, its themes, colours and faces, and their settings are `scope: now`.
 source: director
 
 ### 2.1 What counts as a chat part
@@ -116,8 +116,7 @@ source: director
 | Said words (say, whisper) | 09 02 | Say |
 | Told words, both directions | 09 03 | Tell |
 
-source: bartle:FE4 code 09; reference (which wordings use which subcode is the reference's
-reading of its captures)
+source: bartle:FE4 code 09; reference
 
 RULE A span inside a C09 message but styled by another code (a rainbow adjective in a name, say)
 is not a chat part and keeps its own colour.
@@ -194,7 +193,7 @@ enforced_by: none: judgement
 
 Whether this is one rule with `input.md`'s clicked-name prefill is open there (Box prefills, OPEN D6).
 
-## 3. Status bar (scope: launch)
+## 3. Status bar (scope: now)
 
 ### 3.1 Layout and chrome
 
@@ -333,9 +332,10 @@ source: reference
 | Order in the wide cluster: sta, str, dex, divider, glow, combat, divider, deaf, blind, dumb, crippled | reference |
 
 open: The wide cluster also has a combat icon (combat.svg, crossed blades) lit while a fight is
-believed open. It depends on combat tracking, which belongs to the later combat rail. Launch or
+believed open. It depends on combat tracking, which belongs to the later combat rail. Now or
 later? Listed as later (section 8, `later/README.md`) pending this.
-default: `scope: later` (`later/combat-panel.md`). At launch the wide cluster has no combat slot.
+default: `scope: later` (`later/combat-panel.md`). In the now scope the wide cluster has no combat
+slot.
 
 ### 3.5 Recording chip
 
@@ -354,7 +354,7 @@ Effective columns, and re-sending the width when they change: `connection.md` 4 
 | < 76 | Compact, two rows: a label row (`Sta Mag Str Dex Score Wth Rst`, 11 pt, #58A6FF) over a value row. Score at one point below the values, delta one point smaller again. No `Score:` label, no magnifier. Rec chip becomes `(R)` right-aligned in the spare space | reference |
 | < 50 | Values 12 pt (13 pt otherwise); `/max` 2 pt below the value. `/max` hidden for any stat whose max is 100 or more | reference |
 
-## 4. Dreamword (scope: launch)
+## 4. Dreamword (scope: now)
 
 ### 4.1 Capture
 
@@ -393,11 +393,11 @@ flushes nothing out of order (Invariant #1). Ctrl+Shift+D (speak, then the typed
 source: director
 enforced_by: none: judgement
 
-## 5. Window title (scope: launch)
+## 5. Window title (scope: now)
 
 | State | Title | source |
 |-------|-------|--------|
-| App start | `mucka <version>`, or the profile name when launched for a profile | reference |
+| App start | `mucka <version>`, or the profile name when started for a profile | reference |
 | Connected, at the option menu | `<profile> mucka <version>` | reference |
 | Character identified | `<character>@<profile> mucka <version>` | reference |
 
@@ -409,42 +409,40 @@ default: `muckaii`, in the reference's lower-case form: `<character>@<profile> m
 DECISION Keep screen on is `scope: later`: `later/keep-screen-on.md`.
 source: director
 
-## 7. Settings for launch UI features
+## 7. Settings for now-scope UI features
 
 | Setting | Where | Range | Default | `mucka.ini` key | source |
 |---------|-------|-------|---------|-----------------|--------|
 | Font size | Settings | 9-24 px | 15 (stored 0 = default) | `fontsize` | reference |
-| Max columns | Settings | auto, or 20-160 | auto | `columns` | reference |
 | Volume (master) | Settings / Sounds | 0-100 | 75 | `volume` | reference |
 | Stat update interval (FES heartbeat) | Settings | off, or 5-30 s in steps of 5 | 10 s | `statupdate` | reference |
 | Mute beep this session | Settings | on/off | off | not stored | reference |
 | Mute beep permanently | Settings | on/off | off | `mutebeep` | reference |
-| Save settings to this profile only | Settings | on/off | off | `[settings:<profile>]` section exists. In Mucka that section replaced `[settings]` wholesale; MuckaII writes the edited keys to the profile layer and lets the rest fall through (`persistence.md`, Settings storage) | reference, director |
+| Save settings to this profile only | Settings | on/off | off | none of its own: MuckaII writes the edited keys to the profile layer and the rest fall through (`persistence.md`, Settings storage). Imported from the existence of `[settings:<profile>]` (`mucka-ini.md`) | reference, director |
 | Default font size (all profiles) | Display | 9-24 | 15 | `defaultfontsize` | reference |
-| Max columns | Display (global layer; a profile may override) | unset, or 20 - 160 | unset: min(80, fits) (`connection.md` 4) | how Mucka's `columns` keys import: `mucka-ini.md` | director |
+| Max columns | Display (global layer; a profile may override) | unset, or 20-160 | unset: min(80, fits) (`connection.md` 4) | `columns`; how its two forms import: `mucka-ini.md` | director |
 | Dreamword size offset | Display | -2 to +4 | 0 | `dreamwordsizeoffset` | reference |
 | Chat theme, colours, faces | Display | see 2.4 | Lamplight, faces 2.3 | see 2.4 | reference |
 | Sounds: master, groups, rows, volumes, fallbacks, bell | Sounds | see `sounds.toml` | all on | see `sounds.toml` | reference |
 | Keep screen on (`scope: later`: `later/keep-screen-on.md`) | Connect page, per profile | on/off | per platform | `keepscreenon` | reference |
 
-FACT Mucka's settings dialog has the tabs Settings, Display, Hotkeys, Sounds and Friends. Apply
-previews changes live (e.g. chat colours restyle the pane); Save writes `mucka.ini`; Cancel
-reverts.
-source: reference
-
 DECISION MuckaII's settings are reorganised (`flow.md`, Settings) and have no Friends tab
 (`fair-play.md`, Other players). Rejected: Mucka's tab layout.
 source: director
 
-FACT The menu (U+2630) holds: Settings, About, Log Recording, Score, Orientation (Portrait /
-Landscape / System), Side Panel, Onlines, Compass, Combat, Stats, Damage floats. Only Settings,
-About, Log Recording and Orientation serve launch features.
-source: reference
+DECISION The settings dialog has the buttons Apply, Save and Save as default, acting as `flow.md`
+(Settings) states, plus Cancel, which closes the dialog without applying the edits.
+source: director
+
+DECISION In the now scope the menu (U+2630) holds Settings and About. Every other entry the
+reference's menu had (Log Recording, Score, Orientation, Side Panel, Onlines, Compass, Combat,
+Stats, Damage floats) belongs to a later feature (section 8; Orientation with Android).
+source: director; agent
 
 ## 8. Later (scope: later)
 
 FACT Later UI features (combat rail, metronome, edge and status icon; side panel and floating
 widgets; radar compass; score graph; recording chip; drop overlay; keep screen on; watchwords; chat
-mode) are indexed in `later/README.md`. Managed persona selection and the raw console are launch
-(`flow.md`, Pre-game; `input.md`, Raw console); the Friends tab is rejected (`fair-play.md`).
+mode) are indexed in `later/README.md`. Managed persona selection and the raw console are
+`scope: now` (`flow.md`, Pre-game; `input.md`, Raw console); the Friends tab is rejected (`fair-play.md`).
 source: director

@@ -4,25 +4,27 @@ FACT The client is always in exactly one of these states:
 
 | State | Entered when | Left when | Shows | Scope |
 |-------|--------------|-----------|-------|-------|
-| Profile | the app starts; the user disconnects | a profile is connected (to Pre-game) | the profile list, global settings, the score graph | launch (the score graph is later) |
-| Pre-game | the connection is made; the game ends without a death; the Tombstone is dismissed | game mode is entered (to Game); disconnect (to Profile) | the game layout with its widgets disabled, plus the persona dialog when managed selection is on | launch |
-| Game | game mode is entered after the persona arrives in the tea room | the server returns to the Option menu (to Pre-game, or to Tombstone after a death) | the full game layout (`ui.md` section 0) | launch |
-| Tombstone | the game ended by death | the user dismisses it (to Pre-game) | how the persona died, and the last lines of the scroll | launch |
+| Profile | the app starts; the user disconnects | a profile is connected (to Pre-game) | the profile list, global settings, the score graph | now (the score graph is later) |
+| Pre-game | the connection is made; the game ends without a death; the Tombstone is dismissed | game mode is entered (to Game); disconnect (to Profile) | the game layout with its widgets disabled, plus the persona dialog when managed selection is on | now |
+| Game | game mode is entered after the persona arrives in the tea room | the server returns to the Option menu (to Pre-game, or to Tombstone after a death) | the full game layout (`ui.md` section 0) | now |
+| Tombstone | the game ended by death | the user dismisses it (to Pre-game) | how the persona died, and the last lines of the scroll | now |
 
 source: director
 
 | Feature | Scope |
 |---------|-------|
-| Profile list, profile page, per-profile advanced settings | `scope: launch` |
-| Global settings, Apply / Save / Save as default | `scope: launch` |
+| Profile list, profile page, per-profile advanced settings | `scope: now` |
+| Global settings, Apply / Save / Save as default | `scope: now` |
 | Score graph, and every way into it (Profile state, the Tombstone's name link) | `scope: later`: `later/score-graph.md` |
-| Managed persona selection, and creating a persona in an open slot | `scope: launch` |
+| Managed persona selection, and creating a persona in an open slot | `scope: now` |
 | Persona deletion | `scope: later`: `later/persona-deletion.md` |
-| Detecting the return to the Option menu | `scope: launch` |
-| Tombstone screen | `scope: launch` |
+| Detecting the return to the Option menu | `scope: now` |
+| Tombstone screen | `scope: now` |
 | Telling the player that a setting's default changed | `scope: later`: `later/setting-default-change.md` |
 
 source: director
+
+The scope list itself is `INTERNAL.md`, Scope; these tags mark where each item lives and follow it.
 
 ## Profile
 
@@ -37,8 +39,8 @@ be changed without logging in.
 source: director
 enforced_by: none: judgement
 
-RULE The Profile state also gives access to the global settings and to the score graph
-(`scope: later`; until it exists there is no way into it).
+RULE The Profile state also gives access to the global settings. Its way into the score graph is
+`scope: later` (`later/score-graph.md`).
 source: director
 enforced_by: none: judgement
 
@@ -64,7 +66,7 @@ the tea room.
 source: director
 enforced_by: none: judgement
 
-RULE Launch requires the ability to *create* a persona in an open slot. Persona deletion is
+RULE The now scope includes the ability to *create* a persona in an open slot. Persona deletion is
 `scope: later` (`later/persona-deletion.md`).
 source: director
 enforced_by: none: judgement
@@ -88,7 +90,7 @@ RULE Game mode ends when the client detects a return to the Option menu.
 source: director
 enforced_by: none: judgement
 
-How the server signals that return is launch-critical and open: `protocol.md` "Game mode" (OPEN A5).
+How the server signals that return is `scope: now` and open: `protocol.md` "Game mode" (OPEN A5).
 
 ## Tombstone
 
@@ -149,9 +151,10 @@ DECISION The buttons act on the layers in `persistence.md` "Settings storage":
 | Save (opened from a profile) | the edited keys to that profile's layer |
 | Save (opened from global settings) | the edited keys to the global layer |
 | Save as default | the edited values to the global layer, so every profile that does not set those keys itself takes them. Profile-layer values are left alone |
+| Cancel | nothing. The dialog closes without applying the edits |
 
 source: director
 
-RULE A saved setting shows when it is set to its default value.
+RULE The settings UI marks a setting whose value equals its built-in default.
 source: director
 enforced_by: none: judgement
