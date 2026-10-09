@@ -6,13 +6,14 @@
 #   script mode           (cmake -DmuckaiiRoot=<repo> -P MuckaiiLayers.cmake, run by ctest as
 #                         repoLayerIncludes): every #include "muckaii/<layer>/..." in src/.
 
-set(muckaiiLayers transport mud persistence session client audio core tui)
+set(muckaiiLayers base transport mud persistence session client audio core tui)
 
 # The "Depends on" column of the architecture table. Direct dependencies only; a layer may also
 # include headers of what those depend on, because session re-emits mud events and so on.
-set(muckaiiDependsTransport "")
-set(muckaiiDependsMud "")
-set(muckaiiDependsPersistence "")
+set(muckaiiDependsBase "")
+set(muckaiiDependsTransport base)
+set(muckaiiDependsMud base)
+set(muckaiiDependsPersistence base)
 set(muckaiiDependsSession transport mud persistence)
 set(muckaiiDependsClient session)
 set(muckaiiDependsAudio mud)

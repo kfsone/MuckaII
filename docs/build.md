@@ -152,7 +152,9 @@ from every inherited `CMAKE_<CXX|C>_FLAGS*`; `CMakeLists.txt` relies on `CMP0141
 `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>` (`/Zi`),
 and `CMP0184 NEW` with an empty `CMAKE_MSVC_RUNTIME_CHECKS`, both before `project()`; both policies
 are NEW by the 4.3 minimum. Option `MUCKAII_ASAN` (default ON, MSVC) adds `/fsanitize=address` to C and C++
-Debug compiles and `/INCREMENTAL:NO` to Debug links. The presets are thin selectors: generator,
+Debug compiles and `/INCREMENTAL:NO` to Debug links. `/MP` is added to every C and C++ compile
+(files within a project in parallel) and the Windows build presets set `jobs` to 0 (projects in
+parallel, MSBuild `/m`); the Visual Studio generator does neither by default. The presets are thin selectors: generator,
 x64 toolset, binary dir, `MUCKAII_ASAN`. Rejected: presets that replace `CMAKE_CXX_FLAGS` (invisible
 to a plain configure and the IDE); `/wd4xxx`-style suppression of D9025.
 source: agent
@@ -221,6 +223,7 @@ source: agent
 
 | Library | Test target | Extra |
 |---------|-------------|-------|
+| `muckaiiBase` (header-only) | `muckaiiBaseTests` | |
 | `muckaiiTransport` | `muckaiiTransportTests` | `muckaiiTransportLoopback` (the 127.0.0.1 listener the fake servers accept on, test support) |
 | `muckaiiMud` | `muckaiiMudTests` | `muckaiiMudGolden` (golden serialiser), `muckaiiMudFuzz` (seeded from `docs/evidence/captures/`) |
 | `muckaiiPersistence` | `muckaiiPersistenceTests` | |
@@ -234,6 +237,7 @@ source: agent
 | `muckaii` | `gui` (Slint) |
 | `muckaiiTui` | `tui` (FTXUI) |
 | `muckaiiBot` | `bot` |
+| `muckaiiWireCheck` | `src/tools` (not a layer): read-only audit and capture export of the wire log in `muckaii.db`; tests in `muckaiiWireAuditTests` |
 
 Targets, functions and variables that MuckaII defines in CMake are camelCase (`docs/style.md`,
 Names). A library's output file is named after its target (`muckaiiMud.lib`).

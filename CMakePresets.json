@@ -60,12 +60,14 @@
     {
       "name": "windows-msvc-debug",
       "configurePreset": "windows-msvc-debug",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "jobs": 0
     },
     {
       "name": "windows-msvc-release",
       "configurePreset": "windows-msvc-release",
-      "configuration": "Release"
+      "configuration": "Release",
+      "jobs": 0
     },
     {
       "name": "linux-clang-asan-ubsan",

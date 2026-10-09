@@ -6,7 +6,7 @@ function(muckaiiTargetDefaults target)
         target_compile_options(${target} PRIVATE /W4 /WX /permissive- /Zc:__cplusplus /EHs-c-)
         target_compile_definitions(${target} PRIVATE _HAS_EXCEPTIONS=0)
     else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -fno-exceptions)
+        target_compile_options(${target} PRIVATE -Wall -Wpedantic -Wextra -Werror -fno-exceptions)
     endif()
 endfunction()
 

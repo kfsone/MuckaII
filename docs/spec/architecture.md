@@ -10,9 +10,10 @@ source: agent
 
 | Library | Owns | Depends on |
 |---------|------|------------|
-| `transport` | TCP connect/read/write, telnet negotiation (`connection.md`), the single socket writer | OS sockets |
-| `mud` | bytes in, `events.md` events out; the event types | nothing |
-| `persistence` | wire log records and the background writer; the settings file format | sqlite3 |
+| `base` | header-only shared vocabulary: the `types::Opt*` and `Bytes` aliases and the wire byte constants (`wire::kEsc`, the Telnet commands, the printable bounds) | nothing |
+| `transport` | TCP connect/read/write, telnet negotiation (`connection.md`), the single socket writer | `base`, OS sockets |
+| `mud` | bytes in, `events.md` events out; the event types | `base` |
+| `persistence` | wire log records and the background writer; the settings file format | `base`, sqlite3 |
 | `session` | login, probes, stats, sleep, dreamword, flow state, the ONE ordered outbound queue, probe-block insertion | `transport`, `mud`, `persistence` |
 | `client` | aliases, F-key macros, history type, key->command mapping, command-boundary parsing, the 7-bit filter | `session` |
 | `audio` | output device, mixer over preloaded PCM, the code/text -> sound mapping (`sounds.toml`) | `mud`, miniaudio |

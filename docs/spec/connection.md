@@ -115,7 +115,7 @@ source: clio:src/telnet.l
 | `FF FD 03` DO SGA | `FF FC 03` (WONT) | default below; the reference sends `FF FB 03` (WILL), every time |
 | `FF FD 18` DO TTYPE | `FF FB 18`, first time only; repeats ignored | Clio and reference agree |
 | `FF FD 1F` DO NAWS | `FF FB 1F` then the NAWS SB (2.3), first time only | Clio and reference agree; the SB size is 2.3's default |
-| `FF FD 27` DO NEW-ENVIRON | `FF FC 27` (WONT) | default below; the reference sends `FF FB 27` when the login name is non-empty, first time only |
+| `FF FD 27` DO NEW-ENVIRON | `FF FB 27` (WILL) when the login name is non-empty and sendable, first time only, else `FF FC 27` (WONT) | DECISION below; the reference's basis |
 | `FF FD xx` any other | `FF FC xx` | Clio and reference agree |
 | `FF FE xx` DONT any | nothing | Clio and reference agree |
 | `FF FB 01` WILL ECHO | nothing | Clio and reference agree |
@@ -124,7 +124,7 @@ source: clio:src/telnet.l
 | `FF FC xx` WONT any | nothing | Clio and reference agree |
 | `FF F9` GA | nothing; ignored | Clio and reference agree |
 | `FF FA 18 01 FF F0` TTYPE SEND | TTYPE IS "ansi" (2.2) | Clio and reference agree (WILL TTYPE is always sent first) |
-| `FF FA 27 01 ... FF F0` NEW-ENVIRON SEND | nothing (WONT was sent) | default below; the reference sends NEW-ENVIRON IS USER (2.2) |
+| `FF FA 27 01 ... FF F0` NEW-ENVIRON SEND | NEW-ENVIRON IS USER (2.2) when WILL was sent, else nothing | DECISION below |
 | any other SB | nothing; ignored. An SB that reaches 1024 bytes is abandoned (`protocol.md`, Telnet subnegotiation) | Clio and reference agree; the ceiling is the reference's |
 source: clio:src/telnet.l {IAC}{DO}. {IAC}{WILL}. {IAC}{DONT}. {IAC}{WONT}. {IAC}{SB}{TERMINAL_TYPE}{SEND}{IAC}{SE}; reference
 
@@ -136,11 +136,16 @@ default: `FF FC 03` (WONT), as Clio does.
 
 EVIDENCE Clio refuses NEW-ENVIRON (it lists 39 with the other refused options).
 source: clio:src/telnet.l {IAC}{DO}.
-open: NEW-ENVIRON. The reference's login name defaults to `mud`, so in practice it always sends
-WILL and then advertises USER. If the server accepts USER from NEW-ENVIRON, the shell `login:`
-prompt may never be shown. No capture shows which happens on either server.
-default: `FF FC 27` (WONT), as Clio does. The shell `login:` prompt is then answered by auto-login
-step 1 (3.1).
+
+DECISION NEW-ENVIRON: MuckaII sends the reference's form, `FF FB 27` (WILL) and then advertises
+USER, whenever the profile's login name is non-empty and sendable (the same printable-7-bit check
+auto-login applies to the account ID and password); otherwise Clio's `FF FC 27` (WONT). The shell
+`login:` prompt is still answered by auto-login step 1 (3.1) regardless: a server that does not
+honour NEW-ENVIRON still gets logged in, and a server that does sees the prompt answered a second
+time harmlessly if it still asks. No capture shows whether either MUD2 host currently honours
+NEW-ENVIRON; that remains unconfirmed. Rejected: Clio's unconditional WONT (OPEN A2's prior
+default).
+source: director (this conversation, login name and `mudx`/NEW-ENVIRON)
 
 EVIDENCE Clio guards DO SGA with a one-shot flag. The reference answers every WILL SGA.
 source: clio:src/telnet.l {IAC}{WILL}.
@@ -187,6 +192,22 @@ Clio's fixed 80 x 21 goes with its ESC-T entry, which 3.2 rejects.
 ## 3. Login
 
 ### 3.1 Prompts and replies (auto-login)
+
+FACT MUD2 is not directly internet-accessible. A connection goes to a Linux host that offers a
+small login shell; that shell alone talks to the MUD2 server, over named pipes. The host offers
+four passwordless Linux accounts with that shell as their login shell: `mud`, `mudx`, `mudguest`,
+`mudguestx`. `mudx` and `mudguestx` enter the shell's own "client mode" automatically, which means
+the shell does not first translate MUD2's C1 codes into ANSI for a human terminal and then hand
+them to MuckaII: MuckaII receives the C1 codes directly, saving the escape sequence MuckaII would
+otherwise send to ask for them and so one round trip (`flow.md`, Profile fields).
+source: director
+
+RULE The profile's login name (`mud`, `mudx`, `mudguest`, or `mudguestx`) is the one send in reply
+to the shell `login: ` prompt (the table below) and, when it is sendable, the one advertised over
+NEW-ENVIRON (2.1 DECISION). `mud` is the default: it behaves exactly as every capture and the
+director's live session (3.1 EVIDENCE below) already show.
+enforced_by: none: judgement
+source: director
 
 RULE Auto-login runs only when the profile has the telnet-login switch on (ini key `telnetlogin`,
 default yes), an account ID, and a password. With the switch off, the account ID is put into the
@@ -328,8 +349,8 @@ source: reference
 | Fewest columns ever told | 20 | now | reference |
 | Most columns ever told | 160 | now | reference |
 | Fits | the number of whole character cells that fit across the available space (window or device width) at the current font and font size. It is computed before connecting, from the profile's font, so it is never unknown | now | director |
-| Max-columns setting | unset (the default until the user sets it) or a ceiling, 20..160 | now | director |
-| Effective columns | unset: min(80, fits). Set: min(setting, fits). Then clamped 20..160. | now | director |
+| Max-columns setting | unset (the default until the user sets it), 20..160, or 0 (DECISION below) | now | director |
+| Effective columns | unset: min(80, fits). Set to 0: min(160, fits) (no ceiling but the usual maximum). Set to 20..160: min(setting, fits). Then clamped 20..160. | now | director |
 | Columns told at connect | computed from the connect page width and the profile font, before the game screen exists | now | reference |
 | Rows told | 21 | now | reference; clio:src/telnet.l {IAC}{DO}. |
 
@@ -348,6 +369,28 @@ open: Resize outside game mode. After client-mode entry but at the Option menu, 
 only. Changing max-columns, though, sends `/T` even at the shell. Should a shell-time resize also
 send `/T`?
 default: no. A shell-time resize sends NAWS only, as the reference does.
+
+### 4.2 Client-side wrap (Terminal Width 0)
+
+DECISION A Terminal Width of 0 (`flow.md`, Profile fields) means "do not wrap at the server at
+all; MuckaII wraps the scroll for display itself" (`tui::Scroll::render`, which already wraps every
+line for the local screen width regardless of what the server sent). Client-mode entry (3.2) still
+carries a real `/T{cols}` (the effective columns, with no ceiling: 4.1's table), since ESC-N's
+grammar needs a width; right after it, once per login, MuckaII sends the line `/F+` at the Option
+prompt, exactly as any other option command (3.1's table) is sent. A resize while this is in effect
+never resends `/T`: only NAWS goes, so server-side wrapping is never turned back on.
+source: director (this conversation)
+
+FACT `/F+` is not in Bartle's documents, Clio, or any capture; it is the director's description of
+a command MUD2 accepts at the Option menu. No capture confirms its wire bytes, its exact effect, or
+whether the server echoes or acknowledges it the way `/T` does (3.2's confirmation row).
+source: director
+
+open: Does the server acknowledge `/F+` the way it acknowledges `/T` (3.2's `[New terminal width is
+N]` line, or an `ESC-`i`W` reply)? Is there a corresponding `/F-` to turn server-side wrap back on,
+needed if the profile's Terminal Width is later changed away from 0 without a fresh login?
+default: no acknowledgement is parsed; `/F+` is sent and not confirmed. Changing Terminal Width away
+from 0 takes effect on the next login, not live.
 
 ## 5. Probes, keepalive and timers
 
@@ -442,6 +485,11 @@ FACT A flag is `-name` (any number of leading `-`, case-insensitive) followed by
 missing value, an unknown flag, or a value that is itself a known flag shows the error on the
 connect page, and nothing connects. Words that are not flags are ignored.
 source: reference
+
+FACT `-user`, `-account` and `-password` each take printable 7-bit text only (root CLAUDE.md,
+"Bytes, not strings"): any other byte would end or corrupt the line it is sent in, and refuses the
+flag the same way an unknown flag does.
+source: director
 
 | Flag | Value | Effect | Scope | Source |
 |------|-------|--------|-------|--------|

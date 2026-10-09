@@ -44,6 +44,30 @@ RULE The Profile state also gives access to the global settings. Its way into th
 source: director
 enforced_by: none: judgement
 
+RULE Launched with no direct-connect flag (connection.md 6), the client opens straight to the
+Profile state. A disconnect (`ConnectionState::kClosed`) returns to it from any other state, except
+in direct-connect mode (connection.md 6 FACT), which closes the app instead.
+source: director
+enforced_by: none: judgement
+
+### Profile fields (now scope)
+
+FACT A profile's editable fields:
+
+| Field | Meaning | Editable | Default |
+|-------|---------|----------|---------|
+| Name | the profile's own name in the list; renamed in place | yes | new-profile default (connection.md 1) |
+| Host | host and port | yes | new-profile default (connection.md 1) |
+| Login | the telnet login name sent at the shell `login: ` prompt and, when sendable, over NEW-ENVIRON: one of `mud`, `mudx`, `mudguest`, `mudguestx` (connection.md 3.1) | yes | `mud` |
+| Account | the MUD2 account ID | yes, optional | empty: typed in-session at the Account ID prompt instead of sent automatically |
+| Password | the MUD2 password, stored in plaintext (`INTERNAL.md`, Credentials and threat model) | yes, optional | empty: typed in-session at the Password prompt instead |
+| Persona | the persona name, pinning managed persona selection to it | yes, optional | empty: managed persona selection discovers or prompts (Pre-game) |
+| Terminal Width | the `-max-columns` ceiling (connection.md 4), or 0 for client-side wrap (connection.md 4 DECISION) | yes, optional | unset: 80 |
+
+Settings that belong to a GUI only (font size, sound) are not part of this list; they are out of
+scope until a GUI frontend exists.
+source: director
+
 ## Pre-game
 
 RULE Pre-game shows the game layout with its widgets disabled, so the player sees the game's banner,

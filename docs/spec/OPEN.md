@@ -21,7 +21,6 @@ source: agent
 | id | file (anchor) | question | sources in conflict | who decides | capture settles | default |
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
 | A1 | connection.md 1. Transport (`wave` pair: persistence.md Wire log) | Outbound line terminator: CR LF, or CR CR LF as in a reference wire-log pair `wave\r\r\n`? | reference wire log vs captures (echo ends `\r\n`) and every spec | capture | yes | `0D 0A` |
-| A2 | connection.md 2.1 Replies (NEW-ENVIRON) | Does the server accept USER from NEW-ENVIRON and skip the shell `login:` prompt? Then: WILL or WONT? | Clio (WONT) vs reference (WILL + USER) | capture, then director | yes | WONT (Clio); auto-login answers `login:` |
 | A3 | connection.md 2.1 Replies (WILL SGA) | Does the server send WILL SGA more than once? Answer once (Clio) or every time (reference)? | Clio vs reference | capture, then director | yes | once per connection (Clio) |
 | A4 | protocol.md Line model | A login prompt split across two reads shows only its second half in the reference. Do real login prompts arrive split? | reference behaviour; no capture | capture | yes | append consecutive partials; match prompts over the byte stream |
 | A5 | protocol.md Game mode (flow.md Game points to it) | Does the server send any code on a quit to the Option menu? | Clio and reference use text only; no capture of a quit | capture | yes | no code; the text trigger and `95 03` end game mode |
@@ -33,6 +32,7 @@ source: agent
 | A11 | protocol.md CSI (ESC [) | Which clear-screen form does MUD2 send; is `ESC [ J` / `ESC [ 2 J` honoured? | Clio (honours) vs reference (ignores) | capture | no | honour both (Clio) |
 | A12 | session.md Sleep | The exact received text for each way into and out of sleep, mined from the wire corpus | not yet mined | capture (wire corpus) | no | asleep on the player's sleep command or a probe unanswered 5 s; awake on a non-sleep line; drugged not told apart |
 | A13 | flow.md Tombstone | The text of each temporary death, and the permadeath code `08 13`, confirmed against the wire corpus | not yet mined | capture (wire corpus) | no | `08 13` = permadeath; Died landmark without it = temporary |
+| A14 | connection.md 4.2 Client-side wrap | Does the server acknowledge `/F+` as it does `/T`? Is there a `/F-` to turn server wrap back on live? | director's description only; no capture | capture, then director | yes | no acknowledgement parsed; Terminal Width changes away from 0 take effect next login |
 
 ## C. Protocol and telnet choices (director)
 
@@ -122,8 +122,8 @@ A ruling on an E item also changes the scope list (`INTERNAL.md`, Scope).
 |----|---------------|----------|---------------------|-------------|-----------------|---------|
 | H1 | architecture.md Delivery | Slint's after-rendering notifier fires after rendering, before presentation | none | director (the spike's latency test measures) | no | measure to the notifier plus one refresh interval |
 
-FACT 69 items: 13 capture (A1-A13), 56 director choices (C 11, D 15, E 7, F 17, G 5, H 1). Group B
-(Bartle semantics) is ruled and applied in `c1-codes.toml`. A fresh login plus a short play session
-settles the server side of A1-A7; A2, A3 and A6 then still need a director ruling. Mining the wire
-corpus settles A12 and A13.
+FACT 69 items: 13 capture (A1, A3-A14), 56 director choices (C 11, D 15, E 7, F 17, G 5, H 1). Group
+B (Bartle semantics) is ruled and applied in `c1-codes.toml`. A fresh login plus a short play
+session settles the server side of A1, A3-A7, A14; A3, A6 and A14 then still need a director
+ruling. Mining the wire corpus settles A12 and A13.
 source: agent (counted from the rows above)

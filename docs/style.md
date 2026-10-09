@@ -65,6 +65,15 @@ RULE Pointer and reference sigils hug the type: `const char* name`, `Creature& c
 source: director
 enforced_by: .clang-format (PointerAlignment: Left, ReferenceAlignment: Left)
 
+RULE A type that is returned, stored, passed on, or named by two functions has a name. The shared
+vocabulary lives in `src/base` (`muckaii::types`): `Bytes` and the `Opt*` aliases (`OptInt`,
+`OptString`, `OptBytes`, ...), in the pattern of the `<cstdint>` names. A structured type (a vector
+of optionals, an optional vector) gets a `using` or a struct beside its owner. A one-use type inside
+a function, or one that only mirrors an external API, stays inline. A constant used by more than
+one file lives in the lowest layer that owns it (`muckaii::wire` for wire bytes); a file of one or
+two constants needs a reason a header of that layer does not give.
+enforced_by: none: judgement
+
 ## Names
 
 RULE Functions, methods, variables and parameters are camelCase. Types, aliases, template
@@ -126,6 +135,50 @@ enforced_by: .clang-tidy cppcoreguidelines-owning-memory, cppcoreguidelines-no-m
 RULE Design in the Go manner: small interfaces, composition over inheritance, plain structs, explicit
 error values, early returns. Check the failure case first and return; keep the success path at the
 left margin.
+source: director
+enforced_by: none: judgement
+
+## Docstrings
+
+RULE Every class, struct, enum, function and method definition carries a Go-style docstring: a
+`//` comment directly above it, a full sentence that begins with the name it documents
+(`// submitLine queues one line for the socket writer.`). It states intent and contract
+(ownership, preconditions, failure results), not a restatement of the code. This overrides any
+default of commenting sparingly; the comment rules in `CLAUDE.md` (observations, no changelog)
+still apply to the text. A function declared in a header carries its docstring at the declaration;
+one defined only in a `.cpp` (anonymous namespace, private method) carries it at the definition.
+source: director
+enforced_by: none: judgement
+
+## Review
+
+FACT A reviewer applies this list to every change. A hit is a rejection, not a suggestion.
+source: director
+
+| Id | Reject |
+|----|--------|
+| REJ1 | fluff comments: a comment that restates the code or the name beneath it |
+| REJ2 | magic numbers: a literal with meaning that is not a named `k` constant |
+| REJ3 | magic strings, especially escape codes: a literal with meaning that is not a named constant; compose them from named parts |
+| REJ4 | command-line golf: dense code where a helper function or a plain statement would read better |
+| REJ5 | a multi-line or convoluted ternary. `x = isOk ? a : b;` is fine; `x = (isA \|\| isB) ? callOne(kDotUk) : callTwo(kDotCom);` is the ceiling |
+| REJ6 | egregious anonymous types, such as `std::optional<std::vector<std::optional<std::string>>>`: give the type a name |
+| REJ7 | more than one significant lambda in a function: they cannot be tested alone and they obscure the enclosing function. Name them as functions |
+| REJ8 | tabs in indentation |
+| REJ9 | excessive indentation: a line indented 30 or more spaces means the layout or alignment needs rethinking |
+| REJ10 | a constant scoped narrower than its uses: a `k` constant private to one file that another file repeats or needs. Constants shared across files live in the owning layer's header |
+| REJ11 | a named constant with no stated meaning (`kChromeRows`): its docstring says what it counts or measures |
+
+FACT A reviewer favours these.
+source: director
+
+| Id | Favour |
+|----|--------|
+| RF1 | simple, concise statement of intent |
+| RF2 | Go-esque modelling that reads top-down, high-level first |
+| RF3 | small named functions that each do one thing and are easy to reason about and test |
+
+RULE Reviewers enforce the two tables above and the Docstrings rule.
 source: director
 enforced_by: none: judgement
 

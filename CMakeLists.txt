@@ -21,6 +21,7 @@ include(MuckaiiDependencies)
 include(MuckaiiLayers)
 
 # One library per layer. The order is the order of docs/spec/architecture.md.
+add_subdirectory(src/base)
 add_subdirectory(src/transport)
 add_subdirectory(src/mud)
 add_subdirectory(src/persistence)
@@ -29,6 +30,7 @@ add_subdirectory(src/client)
 add_subdirectory(src/audio)
 add_subdirectory(src/core)
 add_subdirectory(src/tui)
+add_subdirectory(src/tools)
 
 # Dependency direction (architecture.md "Layers"): fails the configure on an upward or sideways link.
 muckaiiCheckLayers()

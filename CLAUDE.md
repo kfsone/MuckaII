@@ -196,6 +196,11 @@ enforced_by: none: judgement
 
 ## Comments and docs
 
+RULE Every C++ class and function definition has a Go-style docstring, and every review applies the
+REJ/RF tables (`docs/style.md`, Docstrings and Review). Those override any default of sparse
+comments or terse code.
+enforced_by: none: judgement
+
 RULE A comment records what was observed, or a rule the director set. No dates, no changelog, no
 theories about the server, no prose forbidding future work. Git holds the history.
 enforced_by: none: judgement

@@ -31,6 +31,9 @@ foreach(lang CXX C)
     endforeach()
 endforeach()
 
+# The Visual Studio generator compiles one file at a time per project unless asked.
+add_compile_options("$<$<COMPILE_LANGUAGE:CXX,C>:/MP>")
+
 if(MUCKAII_ASAN)
     add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CXX,C>>:/fsanitize=address>")
     # ASan and incremental linking do not mix.
