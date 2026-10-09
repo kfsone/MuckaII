@@ -1,4 +1,4 @@
-muckaiiLibrary(persistence SOURCES sha256.cpp wireLog.cpp)
+muckaiiLibrary(persistence SOURCES sha256.cpp wireLog.cpp profileStore.cpp wireReader.cpp DEPENDS base)
 target_link_libraries(muckaiiPersistence PRIVATE sqliteAmalgamation)
-muckaiiTests(persistence SOURCES persistenceTests.cpp)
+muckaiiTests(persistence SOURCES persistenceTests.cpp profileStoreTests.cpp wireReaderTests.cpp)
 target_link_libraries(muckaiiPersistenceTests PRIVATE sqliteAmalgamation)

@@ -87,3 +87,6 @@ FACT `SHA256SUMS` holds the SHA-256 of every capture, one `<hex> *<name>` line e
 if a capture's hash differs, a listed capture is missing, or a `.c1` here is not listed.
 `.gitattributes` marks `*.c1` binary, so git applies no line-end conversion.
 source: director
+
+FACT `muckaiiWireCheck --export FILE --run N [--from SEQ] [--to SEQ]` writes a slice of the wire log in `muckaii.db` as a capture (rx and an records only; `--with-sent` adds tx). It refuses to overwrite a file. Check the file for account IDs and passwords and mask them before adding it, then list it in `SHA256SUMS`.
+source: director
