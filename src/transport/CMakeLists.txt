@@ -1,4 +1,4 @@
-muckaiiLibrary(transport SOURCES socket.cpp telnet.cpp)
+muckaiiLibrary(transport SOURCES socket.cpp telnet.cpp DEPENDS base)
 if(WIN32)
     target_link_libraries(muckaiiTransport PUBLIC ws2_32)
 endif()

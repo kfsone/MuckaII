@@ -4,14 +4,21 @@ namespace muckaii::persistence
 {
 namespace
 {
-constexpr std::size_t  kBlockSize { 64 };
-constexpr std::size_t  kLengthOffset { 56 };
-constexpr std::size_t  kRounds { 64 };
-constexpr std::size_t  kScheduleWords { 16 };
-constexpr unsigned     kByteBits { 8 };
+// kBlockSize is the SHA-256 compression block length in bytes.
+constexpr std::size_t kBlockSize { 64 };
+// kLengthOffset marks the final block bytes reserved for the message bit length.
+constexpr std::size_t kLengthOffset { 56 };
+// kRounds is the number of compression rounds per message block.
+constexpr std::size_t kRounds { 64 };
+// kScheduleWords is the number of words encoded directly in each block.
+constexpr std::size_t kScheduleWords { 16 };
+// kByteBits is the number of bits in a byte.
+constexpr unsigned kByteBits { 8 };
+// kPadByte begins the SHA-256 message padding.
 constexpr std::uint8_t kPadByte { 0x80 };
 static_assert(kScheduleWords * 4 == kBlockSize);
 
+// kRoundConstants are the fixed SHA-256 round constants from FIPS 180-4.
 constexpr std::array<std::uint32_t, kRounds> kRoundConstants {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -23,15 +30,18 @@ constexpr std::array<std::uint32_t, kRounds> kRoundConstants {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 };
 
+// kInitialState is the standard SHA-256 initial chaining value.
 constexpr std::array<std::uint32_t, 8> kInitialState {
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 };
 
+// rotateRight performs the 32-bit rotation used by SHA-256.
 constexpr std::uint32_t rotateRight(std::uint32_t value, unsigned bits) noexcept
 {
     return (value >> bits) | (value << (32U - bits));
 }
 
+// compress folds one padded message block into the SHA-256 chaining state.
 void compress(std::array<std::uint32_t, 8>& state, const std::array<std::uint8_t, kBlockSize>& block) noexcept
 {
     std::array<std::uint32_t, kRounds> schedule {};
@@ -76,6 +86,7 @@ void compress(std::array<std::uint32_t, 8>& state, const std::array<std::uint8_t
 }
 } // namespace
 
+// sha256 pads data, compresses each block, and returns the resulting digest.
 Sha256Digest sha256(std::span<const std::byte> data) noexcept
 {
     std::array<std::uint32_t, 8>         state { kInitialState };

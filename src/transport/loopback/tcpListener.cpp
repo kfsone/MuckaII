@@ -28,16 +28,19 @@ namespace
 using NativeSocket = SOCKET;
 using PollFd       = WSAPOLLFD;
 
+// closeNative releases a platform socket.
 void closeNative(NativeSocket socket) noexcept
 {
     closesocket(socket);
 }
 
+// pollNative waits for readiness on one platform socket.
 int pollNative(PollFd* fd, int timeoutMs) noexcept
 {
     return WSAPoll(fd, 1, timeoutMs);
 }
 
+// isValid reports whether a native socket handle is usable.
 bool isValid(NativeSocket socket) noexcept
 {
     constexpr NativeSocket kInvalidNative { ~NativeSocket { 0 } };
@@ -63,15 +66,19 @@ bool isValid(NativeSocket socket) noexcept
 }
 #endif
 
+// toNative converts a public handle to the platform socket type.
 NativeSocket toNative(SocketHandle handle) noexcept
 {
     return static_cast<NativeSocket>(handle);
 }
 
+// toTimeoutMs clamps a listener wait to the platform poll range.
 int toTimeoutMs(std::chrono::milliseconds timeout) noexcept
 {
-    constexpr long long kMaxTimeout { 0x7FFFFFFF };
-    return static_cast<int>(std::clamp(timeout.count(), 0LL, kMaxTimeout));
+    using Rep = std::chrono::milliseconds::rep;
+    // kMaxTimeout is the largest positive timeout accepted by the platform poll API.
+    constexpr Rep kMaxTimeout { 0x7FFFFFFF };
+    return static_cast<int>(std::clamp(timeout.count(), Rep { 0 }, kMaxTimeout));
 }
 } // namespace
 
@@ -97,6 +104,7 @@ TcpListener& TcpListener::operator=(TcpListener&& other) noexcept
     return *this;
 }
 
+// close releases the listening socket and clears its handle.
 void TcpListener::close() noexcept
 {
     if (mHandle == kInvalidSocket)
@@ -105,6 +113,7 @@ void TcpListener::close() noexcept
     mHandle = kInvalidSocket;
 }
 
+// listen binds a TCP listener to an ephemeral loopback port.
 std::optional<TcpListener> TcpListener::listen(int backlog)
 {
     const NativeSocket socket { ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP) };
@@ -126,6 +135,7 @@ std::optional<TcpListener> TcpListener::listen(int backlog)
     return listener;
 }
 
+// accept waits for a client and returns its non-blocking connection.
 std::optional<TcpConnection> TcpListener::accept(std::chrono::milliseconds timeout) const noexcept
 {
     PollFd fd {};

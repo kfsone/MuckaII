@@ -5,6 +5,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -36,6 +37,16 @@ namespace muckaii::transport
 {
 namespace
 {
+// kConnectionRefused is the stable message for a refused connection.
+constexpr std::string_view kConnectionRefused { "connection refused" };
+// kConnectionTimedOut is the stable message for a connection timeout.
+constexpr std::string_view kConnectionTimedOut { "connection timed out" };
+// kHostUnreachable is the stable message for an unreachable host.
+constexpr std::string_view kHostUnreachable { "host unreachable" };
+// kSocketErrorPrefix starts a formatted platform socket error.
+constexpr std::string_view kSocketErrorPrefix { "socket error " };
+// kResolutionErrorPrefix starts a host resolution failure reason.
+constexpr std::string_view kResolutionErrorPrefix { "cannot resolve " };
 #ifdef _WIN32
 using NativeSocket = SOCKET;
 using PollFd       = WSAPOLLFD;
@@ -43,32 +54,38 @@ constexpr int kWouldBlock { WSAEWOULDBLOCK };
 constexpr int kInProgress { WSAEWOULDBLOCK };
 constexpr int kTimedOut { WSAETIMEDOUT };
 
+// getLastError returns the latest platform socket error.
 int getLastError() noexcept
 {
     return WSAGetLastError();
 }
 
+// closeNative releases a platform socket.
 void closeNative(NativeSocket socket) noexcept
 {
     closesocket(socket);
 }
 
+// setNonBlocking enables non-blocking mode for a native socket.
 bool setNonBlocking(NativeSocket socket) noexcept
 {
     u_long isNonBlocking { 1 };
     return ioctlsocket(socket, FIONBIO, &isNonBlocking) == 0;
 }
 
+// pollNative waits for readiness on the requested native sockets.
 int pollNative(PollFd* fds, std::size_t count, int timeoutMs) noexcept
 {
     return WSAPoll(fds, static_cast<ULONG>(count), timeoutMs);
 }
 
+// sendNative writes bytes through the platform socket API.
 int sendNative(NativeSocket socket, const std::byte* data, std::size_t size) noexcept
 {
     return send(socket, reinterpret_cast<const char*>(data), static_cast<int>(size), 0);
 }
 
+// recvNative reads bytes through the platform socket API.
 int recvNative(NativeSocket socket, std::byte* data, std::size_t size) noexcept
 {
     return recv(socket, reinterpret_cast<char*>(data), static_cast<int>(size), 0);
@@ -80,48 +97,57 @@ constexpr int kWouldBlock { EWOULDBLOCK };
 constexpr int kInProgress { EINPROGRESS };
 constexpr int kTimedOut { ETIMEDOUT };
 
+// getLastError returns the latest platform socket error.
 int getLastError() noexcept
 {
     return errno;
 }
 
+// closeNative releases a platform socket.
 void closeNative(NativeSocket socket) noexcept
 {
     ::close(socket);
 }
 
+// setNonBlocking enables non-blocking mode for a native socket.
 bool setNonBlocking(NativeSocket socket) noexcept
 {
     const int flags { fcntl(socket, F_GETFL, 0) };
     return flags >= 0 && fcntl(socket, F_SETFL, flags | O_NONBLOCK) == 0;
 }
 
+// pollNative waits for readiness on the requested native sockets.
 int pollNative(PollFd* fds, std::size_t count, int timeoutMs) noexcept
 {
     return ::poll(fds, static_cast<nfds_t>(count), timeoutMs);
 }
 
+// sendNative writes bytes through the platform socket API.
 int sendNative(NativeSocket socket, const std::byte* data, std::size_t size) noexcept
 {
     return static_cast<int>(::send(socket, data, size, MSG_NOSIGNAL));
 }
 
+// recvNative reads bytes through the platform socket API.
 int recvNative(NativeSocket socket, std::byte* data, std::size_t size) noexcept
 {
     return static_cast<int>(::recv(socket, data, size, 0));
 }
 #endif
 
+// toNative converts a public handle to its platform socket type.
 NativeSocket toNative(SocketHandle handle) noexcept
 {
     return static_cast<NativeSocket>(handle);
 }
 
+// toHandle converts a platform socket to the public handle type.
 SocketHandle toHandle(NativeSocket socket) noexcept
 {
     return static_cast<SocketHandle>(socket);
 }
 
+// isValid reports whether a native socket handle is usable.
 bool isValid(NativeSocket socket) noexcept
 {
 #ifdef _WIN32
@@ -133,6 +159,7 @@ bool isValid(NativeSocket socket) noexcept
 #endif
 }
 
+// setNoDelay disables Nagle buffering on a native TCP socket.
 void setNoDelay(NativeSocket socket) noexcept
 {
     int isNoDelay { 1 };
@@ -140,41 +167,46 @@ void setNoDelay(NativeSocket socket) noexcept
         socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&isNoDelay), sizeof(isNoDelay));
 }
 
+// toTimeoutMs converts a duration to the platform poll timeout range.
 int toTimeoutMs(std::chrono::milliseconds timeout) noexcept
 {
-    constexpr long long kMaxTimeout { 0x7FFFFFFF };
+    using Rep = std::chrono::milliseconds::rep;
+    // kMaxTimeout is the largest positive timeout accepted by the platform poll API.
+    constexpr Rep kMaxTimeout { 0x7FFFFFFF };
     if (timeout.count() < 0)
         return -1;
     return static_cast<int>(std::min(timeout.count(), kMaxTimeout));
 }
 
+// describeError formats a platform socket error for connection results.
 std::string describeError(int code)
 {
     switch (code)
     {
 #ifdef _WIN32
         case WSAECONNREFUSED:
-            return "connection refused";
+            return std::string { kConnectionRefused };
         case WSAETIMEDOUT:
-            return "connection timed out";
+            return std::string { kConnectionTimedOut };
         case WSAEHOSTUNREACH:
         case WSAENETUNREACH:
-            return "host unreachable";
+            return std::string { kHostUnreachable };
 #else
         case ECONNREFUSED:
-            return "connection refused";
+            return std::string { kConnectionRefused };
         case ETIMEDOUT:
-            return "connection timed out";
+            return std::string { kConnectionTimedOut };
         case EHOSTUNREACH:
         case ENETUNREACH:
-            return "host unreachable";
+            return std::string { kHostUnreachable };
 #endif
         default:
-            return "socket error " + std::to_string(code);
+            return std::string { kSocketErrorPrefix } + std::to_string(code);
     }
 }
 
 // The error a finished non-blocking connect left on its socket; 0 when it connected.
+// getConnectError returns the completed socket connection error.
 int getConnectError(NativeSocket socket) noexcept
 {
     int       error {};
@@ -185,6 +217,7 @@ int getConnectError(NativeSocket socket) noexcept
 }
 
 // One resolved address, copied out of the resolver's list.
+// Address owns one resolved address and the parameters needed to connect to it.
 struct Address
 {
     sockaddr_storage mStorage {};
@@ -194,6 +227,7 @@ struct Address
     int              mProtocol {};
 };
 
+// AttemptStatus distinguishes connection success, failure, timeout, and cancellation.
 enum class AttemptStatus : std::uint8_t
 {
     kConnected, // for a resolution: the addresses are in
@@ -202,6 +236,7 @@ enum class AttemptStatus : std::uint8_t
     kCancelled,
 };
 
+// getRemaining returns the non-negative time left before a deadline.
 std::chrono::milliseconds getRemaining(std::chrono::steady_clock::time_point deadline) noexcept
 {
     const auto left { deadline - std::chrono::steady_clock::now() };
@@ -209,6 +244,7 @@ std::chrono::milliseconds getRemaining(std::chrono::steady_clock::time_point dea
                     std::chrono::milliseconds { 0 });
 }
 
+// appendAddress copies a resolver entry into the owned address list.
 template <typename Entry> void appendAddress(std::vector<Address>& addresses, const Entry& entry)
 {
     if (entry.ai_addrlen > sizeof(sockaddr_storage))
@@ -224,6 +260,7 @@ template <typename Entry> void appendAddress(std::vector<Address>& addresses, co
 
 // Waits on the wake socket alone until it fires or `left` passes, draining it. False when poll()
 // itself failed.
+// waitForWake polls only the wake socket and drains its signal when ready.
 bool waitForWake(const WakeSocket& wake, std::chrono::milliseconds left) noexcept
 {
     const TcpConnection none;
@@ -236,6 +273,7 @@ bool waitForWake(const WakeSocket& wake, std::chrono::milliseconds left) noexcep
 #ifdef _WIN32
 // Windows: GetAddrInfoExW, asynchronous and cancellable. Its completion routine runs on a system
 // thread and wakes the reactor; a cancel is waited out, so nothing outlives the connect.
+// WindowsLookup keeps asynchronous resolver state alive through completion.
 struct WindowsLookup
 {
     OVERLAPPED        mOverlapped {}; // first, so the routine's OVERLAPPED* is this lookup's address
@@ -247,6 +285,7 @@ struct WindowsLookup
 };
 static_assert(std::is_standard_layout_v<WindowsLookup>);
 
+// onLookupDone records resolver completion and wakes the waiting connection.
 void CALLBACK onLookupDone(DWORD error, DWORD /*bytes*/, LPWSAOVERLAPPED overlapped)
 {
     auto* const lookup { reinterpret_cast<WindowsLookup*>(overlapped) };
@@ -256,6 +295,22 @@ void CALLBACK onLookupDone(DWORD error, DWORD /*bytes*/, LPWSAOVERLAPPED overlap
     SetEvent(lookup->mDone);
 }
 
+// startLookup begins asynchronous address resolution for the supplied host and port.
+INT startLookup(const std::wstring& host, const std::wstring& port, ADDRINFOEXW& hints, WindowsLookup& lookup)
+{
+    return GetAddrInfoExW(host.c_str(),
+                          port.c_str(),
+                          NS_ALL,
+                          nullptr,
+                          &hints,
+                          &lookup.mResult,
+                          nullptr,
+                          &lookup.mOverlapped,
+                          onLookupDone,
+                          &lookup.mCancel);
+}
+
+// toWide converts a UTF-8 host or port string for the Windows resolver.
 std::wstring toWide(const std::string& utf8)
 {
     if (utf8.empty())
@@ -267,6 +322,7 @@ std::wstring toWide(const std::string& utf8)
     return wide;
 }
 
+// resolve collects host addresses before the overall connect deadline.
 AttemptStatus resolve(const std::string&                       host,
                       std::uint16_t                            port,
                       std::chrono::steady_clock::time_point    deadline,
@@ -280,7 +336,7 @@ AttemptStatus resolve(const std::string&                       host,
     lookup.mWake = wake.get();
     if (lookup.mDone == nullptr)
     {
-        error = "cannot resolve " + host;
+        error = std::string { kResolutionErrorPrefix } + host;
         return AttemptStatus::kFailed;
     }
     ADDRINFOEXW hints {};
@@ -289,16 +345,7 @@ AttemptStatus resolve(const std::string&                       host,
     hints.ai_protocol = IPPROTO_TCP;
     const std::wstring wideHost { toWide(host) };
     const std::wstring widePort { toWide(std::to_string(port)) };
-    const INT          started { GetAddrInfoExW(wideHost.c_str(),
-                                                widePort.c_str(),
-                                                NS_ALL,
-                                                nullptr,
-                                                &hints,
-                                                &lookup.mResult,
-                                                nullptr,
-                                                &lookup.mOverlapped,
-                                                onLookupDone,
-                                                &lookup.mCancel) };
+    const INT          started { startLookup(wideHost, widePort, hints, lookup) };
     // Not pending: finished (or failed) at once, and the routine will not run.
     if (started != WSA_IO_PENDING)
         onLookupDone(static_cast<DWORD>(started), 0, &lookup.mOverlapped);
@@ -330,13 +377,14 @@ AttemptStatus resolve(const std::string&                       host,
     if (status == AttemptStatus::kConnected && addresses.empty())
         status = AttemptStatus::kFailed;
     if (status == AttemptStatus::kFailed)
-        error = "cannot resolve " + host;
+        error = std::string { kResolutionErrorPrefix } + host;
     return status;
 }
 #else
 // POSIX: getaddrinfo cannot be cancelled, and getaddrinfo_a is glibc only (not bionic), so it runs
 // on a short-lived detached thread. The thread holds its result, the wake socket and nothing else
 // by shared ownership, so an abandoned lookup finishes harmlessly after the connect has returned.
+// PosixLookup holds asynchronous resolver results until the connection thread reads them.
 struct PosixLookup
 {
     std::mutex           mMutex;
@@ -344,6 +392,7 @@ struct PosixLookup
     bool                 mIsDone {};
 };
 
+// resolve collects host addresses before the overall connect deadline.
 AttemptStatus resolve(const std::string&                       host,
                       std::uint16_t                            port,
                       std::chrono::steady_clock::time_point    deadline,
@@ -397,18 +446,20 @@ AttemptStatus resolve(const std::string&                       host,
     }
     if (addresses.empty())
     {
-        error = "cannot resolve " + host;
+        error = std::string { kResolutionErrorPrefix } + host;
         return AttemptStatus::kFailed;
     }
     return AttemptStatus::kConnected;
 }
 #endif
 
+// makeFailure returns a failed connection result with its reason.
 ConnectResult makeFailure(std::string error)
 {
     return ConnectResult { .mConnection = std::nullopt, .mError = std::move(error), .mIsCancelled = false };
 }
 
+// makeCancelled returns a connection result marked as cancelled.
 ConnectResult makeCancelled()
 {
     return ConnectResult { .mConnection = std::nullopt, .mError = {}, .mIsCancelled = true };
@@ -416,6 +467,7 @@ ConnectResult makeCancelled()
 
 // One non-blocking connect to one address, polled with the wake socket until it finishes, the
 // deadline passes or the caller cancels. `error` is set when it fails.
+// attempt opens and polls one non-blocking connection to a resolved address.
 AttemptStatus attempt(const Address&                        address,
                       std::chrono::steady_clock::time_point deadline,
                       const WakeSocket&                     wake,
@@ -581,18 +633,20 @@ ConnectResult connectTcp(const std::string&                       host,
 
     for (std::size_t i { 0 }; i < addresses.size(); ++i)
     {
+        const std::size_t addressesLeft { addresses.size() - i };
         // Each address gets its share of what is left (connection.md 1), so an address that never
         // answers cannot spend the budget of those after it.
-        const std::chrono::milliseconds budget { getAttemptBudget(getRemaining(deadline),
-                                                                  addresses.size() - i) };
+        const std::chrono::milliseconds budget { getAttemptBudget(getRemaining(deadline), addressesLeft) };
         const auto                      attemptDeadline { std::chrono::steady_clock::now() + budget };
         TcpConnection                   connection;
         switch (attempt(addresses[i], attemptDeadline, *wake, isCancelled, connection, error))
         {
             case AttemptStatus::kConnected:
-                return ConnectResult { .mConnection  = std::move(connection),
-                                       .mError       = {},
-                                       .mIsCancelled = false };
+            {
+                ConnectResult result;
+                result.mConnection = std::move(connection);
+                return result;
+            }
             case AttemptStatus::kCancelled:
                 return makeCancelled();
             case AttemptStatus::kTimedOut:

@@ -1,5 +1,8 @@
 #include "muckaii/mud/decoder.hpp"
 
+#include "muckaii/base/types.hpp"
+#include "muckaii/base/wire.hpp"
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -11,40 +14,69 @@ namespace muckaii::mud
 namespace
 {
 // Telnet (docs/spec/connection.md 2).
-constexpr std::uint8_t kIac { 0xFF };
-constexpr std::uint8_t kSe { 0xF0 };
-constexpr std::uint8_t kSb { 0xFA };
-constexpr std::uint8_t kWill { 0xFB };
-constexpr std::uint8_t kDont { 0xFE };
 // An SB longer than this is abandoned (docs/spec/connection.md 2.1).
 constexpr std::size_t kMaxSubnegotiation { 1024 };
 
 // The MUD2 stream (docs/spec/protocol.md).
+// kHeaderFirst and kHeaderLast delimit the bytes that can appear in a C1 header.
 constexpr std::uint8_t kHeaderFirst { 0x9B };
 constexpr std::uint8_t kHeaderLast { 0xFE };
-constexpr std::uint8_t kHeaderBase { 155 };
-constexpr std::uint8_t kClose { 0xFF };
-constexpr std::uint8_t kEsc { 0x1B };
-constexpr std::uint8_t kBel { 0x07 };
-constexpr std::uint8_t kTab { 0x09 };
-constexpr std::uint8_t kLf { 0x0A };
-constexpr std::uint8_t kCr { 0x0D };
-constexpr std::uint8_t kSpace { 0x20 };
-constexpr std::uint8_t kTilde { 0x7E };
-constexpr std::uint8_t kHighFirst { 0x80 };
-constexpr std::uint8_t kCsiParamFirst { 0x20 };
+// kHeaderBase converts a C1 header byte into its displayed numeric value.
+constexpr std::uint8_t kHeaderBase { kHeaderFirst };
+// CSI parameter and final-byte ranges follow the ANSI control-sequence grammar.
+constexpr std::uint8_t kCsiParamFirst { wire::kFirstPrintable };
 constexpr std::uint8_t kCsiParamLast { 0x3F };
 constexpr std::uint8_t kCsiFinalFirst { 0x40 };
-constexpr std::uint8_t kCsiFinalLast { 0x7E };
-constexpr std::size_t  kMaxCsi { 64 };
-constexpr int          kMaxEscapeNumber { 100000 };
-constexpr int          kDecimal { 10 };
+constexpr std::uint8_t kCsiFinalLast { wire::kLastPrintable };
+constexpr char         kAsciiZero { '0' };
+constexpr char         kAsciiNine { '9' };
+constexpr char         kAsciiUpperA { 'A' };
+constexpr char         kAsciiUpperZ { 'Z' };
+constexpr char         kAsciiLowerA { 'a' };
+constexpr char         kAsciiLowerZ { 'z' };
+// The ASCII range constants identify letters and decimal digits used during parsing.
+// Escape constants name the supported MUD2 ESC commands and ANSI CSI final bytes.
+constexpr char             kEscapeDash { '-' };
+constexpr char             kEscapeOpenBracket { '[' };
+constexpr char             kEscapeClearScreen { 'C' };
+constexpr char             kEscapeReverseOn { 'R' };
+constexpr char             kEscapeReverseOff { 'r' };
+constexpr char             kEscapeEraseEol { 'K' };
+constexpr char             kEscapeEndSession { 'Q' };
+constexpr char             kEscapeSetWidth { 'W' };
+constexpr char             kCsiSgrFinal { 'm' };
+constexpr char             kCsiClearScreenFinal { 'J' };
+constexpr std::string_view kCsiClearScreenParameter { "2" };
+// kNullByte is ignored inside an unfinished CSI sequence.
+constexpr std::uint8_t kNullByte { 0 };
+// Text parser markers identify tell quotes and comma-grouped readings.
+constexpr char             kTellQuote { '"' };
+constexpr char             kReadingGroupSeparator { ',' };
+constexpr std::string_view kWhitespaceSeparators { " \t" };
+constexpr std::string_view kYesFlag { "Y" };
+constexpr std::string_view kNoFlag { "N" };
+constexpr std::string_view kGenericSpellId { "11" };
+constexpr std::string_view kGenericSpellPhraseId { "11 00" };
+constexpr std::string_view kSpellPhraseIdOne { "11 01" };
+constexpr std::string_view kSpellPhraseIdTwo { "11 02" };
+constexpr std::string_view kSpellPhraseIdThree { "11 03" };
+constexpr std::string_view kResetSignalIdOne { "06 04" };
+constexpr std::string_view kResetSignalIdTwo { "06 06" };
+// kMaxCsi bounds the stored parameter bytes of one CSI sequence.
+constexpr std::size_t kMaxCsi { 64 };
+// A numeric parameter in an ESC sequence stops growing here, so a run of digits cannot overflow
+// int; no real sequence carries a number this large.
+constexpr int kMaxEscapeNumber { 100000 };
+// kDecimal is the radix used while accumulating an ESC width number.
+constexpr int kDecimal { 10 };
 
+// These colour constants define the base and snoop-frame palettes.
 constexpr std::uint8_t kWhite { 7 };
 constexpr std::uint8_t kBlack { 0 };
 constexpr std::uint8_t kSnoopOddBg { 4 };
 constexpr std::uint8_t kSnoopEvenBg { 5 };
 
+// The following strings are exact server text, code ids, or collected delimiters.
 constexpr std::string_view kOptionMenu { "Option (H for help)" };
 constexpr std::string_view kWidthNoticeHead { "[New terminal width is " };
 constexpr std::string_view kWidthNoticeTail { "]" };
@@ -55,7 +87,8 @@ constexpr std::string_view kInventorySplit { "========" };
 constexpr std::string_view kRoomBlind { "--" };
 constexpr std::string_view kRoomDark { "oo" };
 constexpr std::string_view kTellId { "09 03" };
-constexpr std::size_t      kMaxDreamword { 14 };
+// kMaxDreamword bounds the number of lowercase letters retained from one dreamword.
+constexpr std::size_t kMaxDreamword { 14 };
 
 // FES (docs/spec/protocol.md "FES line"): field positions.
 constexpr std::size_t kFesFieldsWithWeather { 15 };
@@ -78,12 +111,13 @@ constexpr std::size_t kFesWeather { 14 };
 static_assert(kFesWeather + 1 == kFesFieldsWithWeather);
 static_assert(kFesReset + 1 == kFesFields);
 
-// The 95 blocks (docs/spec/protocol.md "Client-mode data (95)").
+// The 95 blocks (docs/spec/protocol.md "Client-mode data (95)"); each constant is its expected line count.
 constexpr std::size_t kClientModeLines { 5 };
 constexpr std::size_t kAccountChangeLines { 2 };
-constexpr int         kUnknownPrivilege { -1 };
+// kUnknownPrivilege marks account data whose privilege field does not parse.
+constexpr int kUnknownPrivilege { -1 };
 
-// Sound-code families (docs/spec/events.md "Code events").
+// Sound-code family and parameter values from docs/spec/events.md "Code events".
 constexpr std::uint8_t kFamilyUnsolicited { 6 };
 constexpr std::uint8_t kFamilyHit { 7 };
 constexpr std::uint8_t kFamilyFight { 8 };
@@ -100,7 +134,7 @@ constexpr int          kWeatherThird { 3 };
 constexpr int          kWeatherFourth { 2 };
 constexpr int          kMaxEventSound { 6 };
 
-// SGR parameters (docs/spec/protocol.md "CSI").
+// SGR parameters (docs/spec/protocol.md "CSI"); each constant names one supported control value.
 constexpr int kSgrReset { 0 };
 constexpr int kSgrBold { 1 };
 constexpr int kSgrItalic { 3 };
@@ -116,26 +150,39 @@ constexpr int kSgrBrightFg { 90 };
 constexpr int kSgrBrightBg { 100 };
 constexpr int kSgrColours { 8 };
 
+// 38 and 48 select an extended foreground or background: "5;n" (256 colours) or "2;r;g;b" (RGB).
+constexpr int kSgrExtendedFg { 38 };
+constexpr int kSgrExtendedBg { 48 };
+constexpr int kSgrExtended256 { 5 };
+constexpr int kSgrExtended256Args { 2 };
+constexpr int kSgrExtendedRgb { 2 };
+constexpr int kSgrExtendedRgbArgs { 4 };
+
+// isPrintableAscii reports whether a byte belongs to the printable 7-bit range.
 bool isPrintableAscii(std::uint8_t byte) noexcept
 {
-    return byte >= kSpace && byte <= kTilde;
+    return byte >= wire::kFirstPrintable && byte <= wire::kLastPrintable;
 }
 
+// isDigit reports whether a byte is an ASCII decimal digit.
 bool isDigit(std::uint8_t byte) noexcept
 {
-    return byte >= '0' && byte <= '9';
+    return byte >= static_cast<std::uint8_t>(kAsciiZero) && byte <= static_cast<std::uint8_t>(kAsciiNine);
 }
 
+// isSpace reports whether a reply separator is a space or tab.
 bool isSpace(char c) noexcept
 {
-    return c == ' ' || c == '\t';
+    return c == ' ' || c == static_cast<char>(wire::kTab);
 }
 
+// toLower converts one ASCII uppercase letter to lowercase.
 char toLower(char c) noexcept
 {
-    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+    return (c >= kAsciiUpperA && c <= kAsciiUpperZ) ? static_cast<char>(c - kAsciiUpperA + kAsciiLowerA) : c;
 }
 
+// toLower converts every ASCII uppercase letter in text to lowercase.
 std::string toLower(std::string_view text)
 {
     std::string lower;
@@ -145,6 +192,7 @@ std::string toLower(std::string_view text)
     return lower;
 }
 
+// trim removes leading and trailing spaces and tabs from a view.
 std::string_view trim(std::string_view text) noexcept
 {
     while (! text.empty() && isSpace(text.front()))
@@ -154,7 +202,8 @@ std::string_view trim(std::string_view text) noexcept
     return text;
 }
 
-std::optional<int> parseInt(std::string_view text) noexcept
+// parseInt returns a value only when the entire view is a valid integer.
+types::OptInt parseInt(std::string_view text) noexcept
 {
     int        value {};
     const auto parsed { std::from_chars(text.data(), text.data() + text.size(), value) };
@@ -163,20 +212,23 @@ std::optional<int> parseInt(std::string_view text) noexcept
     return value;
 }
 
-std::optional<bool> parseFlag(std::string_view text) noexcept
+// parseFlag parses the protocol Y or N flag and rejects other values.
+types::OptBool parseFlag(std::string_view text) noexcept
 {
-    if (text == "Y")
+    if (text == kYesFlag)
         return true;
-    if (text == "N")
+    if (text == kNoFlag)
         return false;
     return std::nullopt;
 }
 
+// toColour returns a valid colour index or the supplied fallback.
 Colour toColour(std::uint8_t value, std::uint8_t fallback) noexcept
 {
     return value <= kMaxColourIndex ? value : fallback;
 }
 
+// appendRun appends a character to the last run when its style matches.
 void appendRun(std::vector<Run>& runs, char c, const Style& style)
 {
     if (runs.empty() || runs.back().mStyle != style)
@@ -184,17 +236,21 @@ void appendRun(std::vector<Run>& runs, char c, const Style& style)
     runs.back().mText.push_back(c);
 }
 
+// isAllStars reports whether nonempty text contains only asterisks.
 bool isAllStars(std::string_view text) noexcept
 {
-    return ! text.empty()
-           && std::ranges::all_of(text,
-                                  [](char c)
-                                  {
-                                      return c == '*';
-                                  });
+    if (text.empty())
+        return false;
+    for (const char c : text)
+    {
+        if (c != '*')
+            return false;
+    }
+    return true;
 }
 
-std::optional<int> parseWidthNotice(std::string_view text) noexcept
+// parseWidthNotice extracts the number from a complete width notice.
+types::OptInt parseWidthNotice(std::string_view text) noexcept
 {
     if (! text.starts_with(kWidthNoticeHead) || ! text.ends_with(kWidthNoticeTail))
         return std::nullopt;
@@ -205,20 +261,28 @@ std::optional<int> parseWidthNotice(std::string_view text) noexcept
 
 // The spell_phrase id. A matched "11" is written in its two-number form: "11" and "11 00" are the
 // same code (docs/spec/protocol.md "Parameters"), and the events.md schema enumerates "11 00".
-std::optional<std::string_view> findSpellId(const CodeInfo* code) noexcept
+// findSpellId returns the supported spell phrase id for a matched code.
+types::OptStringView findSpellId(const CodeInfo* code) noexcept
 {
     if (code == nullptr)
         return std::nullopt;
-    if (code->mId == "11")
-        return std::string_view { "11 00" };
-    if (code->mId == "11 01" || code->mId == "11 02" || code->mId == "11 03")
+    if (code->mId == kGenericSpellId)
+        return kGenericSpellPhraseId;
+    if (code->mId == kSpellPhraseIdOne || code->mId == kSpellPhraseIdTwo || code->mId == kSpellPhraseIdThree)
         return code->mId;
     return std::nullopt;
 }
 
-// The numbers sounds.toml's file-from-code rule needs, by the table in docs/spec/events.md
-// "Code events". nullopt for a silent header.
-std::optional<std::vector<int>> findSoundParams(const Header& header)
+// SoundParams are the numbers a sound code carries, in header order.
+using SoundParams = std::vector<int>;
+
+// OptSoundParams is SoundParams, or nothing for a silent header.
+using OptSoundParams = std::optional<SoundParams>;
+
+// findSoundParams returns the numbers sounds.toml's file-from-code rule needs, by the table in docs/spec/events.md
+// "Code events".
+// findSoundParams returns the sound parameters selected by the code family.
+OptSoundParams findSoundParams(const Header& header)
 {
     const std::size_t after { header.mCount - 1U };
     const int         first { header.mNumbers[1] };
@@ -285,9 +349,9 @@ void Decoder::endOfRead(std::vector<Event>& out)
     if (mIsInGameMode)
     {
         // A game-mode line that may yet prove to be all stars or the Option menu stays held.
-        const bool isHolding { ! mLine.mHasPrompt && ! mLine.mText.empty()
-                               && (isAllStars(mLine.mText) || kOptionMenu.starts_with(mLine.mText)) };
-        if (! isHolding)
+        const bool isHoldingStars { ! mLine.mHasPrompt && isAllStars(mLine.mText) };
+        const bool isHoldingMenu { ! mLine.mHasPrompt && kOptionMenu.starts_with(mLine.mText) };
+        if (! isHoldingStars && ! isHoldingMenu)
             flushPending(out);
         return;
     }
@@ -323,7 +387,7 @@ void Decoder::onWireByte(std::uint8_t byte, std::vector<Event>& out)
     switch (mTelnetState)
     {
         case TelnetState::kData:
-            if (byte == kIac)
+            if (byte == wire::kTelnetIac)
             {
                 mTelnetState = TelnetState::kIac;
                 return;
@@ -331,19 +395,19 @@ void Decoder::onWireByte(std::uint8_t byte, std::vector<Event>& out)
             onDataByte(byte, out);
             return;
         case TelnetState::kIac:
-            if (byte == kIac)
+            if (byte == wire::kTelnetIac)
             {
                 mTelnetState = TelnetState::kData;
-                onDataByte(kIac, out);
+                onDataByte(wire::kTelnetIac, out);
                 return;
             }
-            mTelnet.assign({ std::byte { kIac }, std::byte { byte } });
-            if (byte >= kWill && byte <= kDont)
+            mTelnet.assign({ std::byte { wire::kTelnetIac }, std::byte { byte } });
+            if (byte >= wire::kTelnetWill && byte <= wire::kTelnetDont)
             {
                 mTelnetState = TelnetState::kOption;
                 return;
             }
-            if (byte == kSb)
+            if (byte == wire::kTelnetSb)
             {
                 mTelnetState = TelnetState::kSub;
                 return;
@@ -357,7 +421,7 @@ void Decoder::onWireByte(std::uint8_t byte, std::vector<Event>& out)
             emitTelnet(out);
             return;
         case TelnetState::kSub:
-            if (byte == kIac)
+            if (byte == wire::kTelnetIac)
             {
                 mTelnetState = TelnetState::kSubIac;
                 return;
@@ -365,17 +429,17 @@ void Decoder::onWireByte(std::uint8_t byte, std::vector<Event>& out)
             appendSubnegotiation(byte, out);
             return;
         case TelnetState::kSubIac:
-            if (byte == kIac)
+            if (byte == wire::kTelnetIac)
             {
                 mTelnetState = TelnetState::kSub;
-                appendSubnegotiation(kIac, out);
+                appendSubnegotiation(wire::kTelnetIac, out);
                 return;
             }
-            if (byte == kSe)
+            if (byte == wire::kTelnetSe)
             {
                 mTelnetState = TelnetState::kData;
-                mTelnet.push_back(std::byte { kIac });
-                mTelnet.push_back(std::byte { kSe });
+                mTelnet.push_back(std::byte { wire::kTelnetIac });
+                mTelnet.push_back(std::byte { wire::kTelnetSe });
                 emitTelnet(out);
                 return;
             }
@@ -402,7 +466,7 @@ void Decoder::appendSubnegotiation(std::uint8_t byte, std::vector<Event>& out)
 
 void Decoder::emitTelnet(std::vector<Event>& out)
 {
-    std::vector<std::byte> bytes { std::move(mTelnet) };
+    types::Bytes bytes { std::move(mTelnet) };
     mTelnet.clear();
     emit(TelnetEvent { .mBytes = std::move(bytes) }, out);
 }
@@ -413,13 +477,13 @@ void Decoder::onDataByte(std::uint8_t byte, std::vector<Event>& out)
 {
     if (mIsSwallowingWidth)
     {
-        if (byte >= kHighFirst)
+        if (byte >= wire::kFirstHighByte)
         {
             mIsSwallowingWidth = false;
         }
         else
         {
-            if (byte != kLf)
+            if (byte != wire::kLf)
                 return;
             // The swallowed width notice's own line end: a hidden line ended.
             mHasLineEndSincePartial = true;
@@ -444,7 +508,7 @@ void Decoder::onDataByte(std::uint8_t byte, std::vector<Event>& out)
         return;
     }
 
-    if (byte == kClose)
+    if (byte == wire::kTelnetIac)
     {
         mEscape = EscapeState::kNone;
         if (mIsInHeader)
@@ -465,7 +529,7 @@ void Decoder::onDataByte(std::uint8_t byte, std::vector<Event>& out)
     if (mEscape != EscapeState::kNone && onEscapeByte(byte, out))
         return;
 
-    if (isPrintableAscii(byte) || byte == kTab || (byte >= kHighFirst && byte < kHeaderFirst))
+    if (isPrintableAscii(byte) || byte == wire::kTab || (byte >= wire::kFirstHighByte && byte < kHeaderFirst))
     {
         onText(byte, out);
         return;
@@ -475,13 +539,13 @@ void Decoder::onDataByte(std::uint8_t byte, std::vector<Event>& out)
     endDreamword(out);
     switch (byte)
     {
-        case kEsc:
+        case wire::kEsc:
             mEscape = EscapeState::kEsc;
             return;
-        case kLf:
+        case wire::kLf:
             onLineEnd(out);
             return;
-        case kBel:
+        case wire::kBel:
             emit(BellEvent {}, out);
             return;
         default:
@@ -497,12 +561,12 @@ bool Decoder::onEscapeByte(std::uint8_t byte, std::vector<Event>& out)
         case EscapeState::kNone:
             return false;
         case EscapeState::kEsc:
-            if (byte == '-')
+            if (byte == static_cast<std::uint8_t>(kEscapeDash))
             {
                 mEscape = EscapeState::kEscDash;
                 return true;
             }
-            if (byte == '[')
+            if (byte == static_cast<std::uint8_t>(kEscapeOpenBracket))
             {
                 mEscape = EscapeState::kCsi;
                 mCsi.clear();
@@ -515,28 +579,30 @@ bool Decoder::onEscapeByte(std::uint8_t byte, std::vector<Event>& out)
             if (isDigit(byte))
             {
                 mEscape       = EscapeState::kEscDashDigits;
-                mEscapeNumber = byte - '0';
+                mEscapeNumber = byte - static_cast<std::uint8_t>(kAsciiZero);
                 return true;
             }
-            if (byte == 'C')
+            if (byte == static_cast<std::uint8_t>(kEscapeClearScreen))
                 onClearScreen(out);
-            else if (byte == 'R')
+            else if (byte == static_cast<std::uint8_t>(kEscapeReverseOn))
                 mIsEscReverse = true;
-            else if (byte == 'r')
+            else if (byte == static_cast<std::uint8_t>(kEscapeReverseOff))
                 mIsEscReverse = false;
-            else if (byte == 'K')
+            else if (byte == static_cast<std::uint8_t>(kEscapeEraseEol))
                 emit(EraseEolEvent {}, out);
-            else if (byte == 'Q')
+            else if (byte == static_cast<std::uint8_t>(kEscapeEndSession))
                 emit(EndOfSessionEvent {}, out);
             return true;
         case EscapeState::kEscDashDigits:
             if (isDigit(byte))
             {
-                mEscapeNumber = std::min((mEscapeNumber * kDecimal) + (byte - '0'), kMaxEscapeNumber);
+                const int digit { byte - static_cast<std::uint8_t>(kAsciiZero) };
+                const int nextNumber { (mEscapeNumber * kDecimal) + digit };
+                mEscapeNumber = std::min(nextNumber, kMaxEscapeNumber);
                 return true;
             }
             mEscape = EscapeState::kNone;
-            if (byte == 'W')
+            if (byte == static_cast<std::uint8_t>(kEscapeSetWidth))
             {
                 emit(WidthAckEvent { .mColumns = mEscapeNumber }, out);
                 mIsSwallowingWidth = true;
@@ -544,7 +610,7 @@ bool Decoder::onEscapeByte(std::uint8_t byte, std::vector<Event>& out)
             return true;
         case EscapeState::kCsi:
             // Clio's workaround: a CR or LF inside a CSI does not end it.
-            if (byte == kCr || byte == kLf || byte == 0)
+            if (byte == wire::kCr || byte == wire::kLf || byte == kNullByte)
                 return true;
             if (byte >= kCsiParamFirst && byte <= kCsiParamLast)
             {
@@ -565,31 +631,74 @@ bool Decoder::onEscapeByte(std::uint8_t byte, std::vector<Event>& out)
 
 void Decoder::onCsiFinal(std::uint8_t final, std::vector<Event>& out)
 {
-    if (final == 'm')
+    if (final == static_cast<std::uint8_t>(kCsiSgrFinal))
     {
         applySgr();
         return;
     }
-    if (final == 'J' && (mCsi.empty() || mCsi == "2"))
+    if (final == static_cast<std::uint8_t>(kCsiClearScreenFinal)
+        && (mCsi.empty() || mCsi == kCsiClearScreenParameter))
         onClearScreen(out);
+}
+
+void Decoder::resetAnsiStyle() noexcept
+{
+    mAnsiFg.reset();
+    mAnsiBg.reset();
+    mAnsiAttrs = 0;
+}
+
+// isPlainSgr reports whether `parameters` holds only digits and semicolons. A private-use prefix
+// ('>', '?', '=', '<') or a sub-parameter colon makes it another sequence that ends in 'm'.
+static bool isPlainSgr(std::string_view parameters) noexcept
+{
+    return std::ranges::all_of(parameters,
+                               [](char c)
+                               {
+                                   return c == ';' || (c >= '0' && c <= '9');
+                               });
+}
+
+// getExtendedColourArgCount returns how many parameters follow an extended-colour selector (38 or
+// 48) that MuckaII cannot draw: 2 for "5;n" and 4 for "2;r;g;b". Skipping them keeps their numbers
+// from being read as attributes.
+static int getExtendedColourArgCount(types::OptInt mode) noexcept
+{
+    if (mode == kSgrExtended256)
+        return kSgrExtended256Args;
+    if (mode == kSgrExtendedRgb)
+        return kSgrExtendedRgbArgs;
+    return 0;
 }
 
 void Decoder::applySgr()
 {
-    std::string_view rest { mCsi };
-    while (true)
+    if (! isPlainSgr(mCsi))
+        return;
+    std::vector<types::OptInt> items;
+    std::string_view           rest { mCsi };
+    for (bool isMore { true }; isMore;)
     {
-        const std::size_t        split { rest.find(';') };
-        const std::string_view   item { rest.substr(0, split) };
-        const std::optional<int> value { item.empty() ? std::optional<int> { kSgrReset } : parseInt(item) };
-        if (value.has_value())
-            applySgrParameter(*value);
-        if (split == std::string_view::npos)
-            return;
-        rest.remove_prefix(split + 1);
+        const std::size_t      split { rest.find(';') };
+        const std::string_view item { rest.substr(0, split) };
+        items.push_back(item.empty() ? types::OptInt { kSgrReset } : parseInt(item));
+        isMore = split != std::string_view::npos;
+        if (isMore)
+            rest.remove_prefix(split + 1);
+    }
+    for (std::size_t i {}; i < items.size(); ++i)
+    {
+        if (! items[i].has_value())
+            continue;
+        if (*items[i] == kSgrExtendedFg || *items[i] == kSgrExtendedBg)
+        {
+            const types::OptInt mode { i + 1 < items.size() ? items[i + 1] : types::OptInt {} };
+            i += static_cast<std::size_t>(getExtendedColourArgCount(mode));
+            continue;
+        }
+        applySgrParameter(*items[i]);
     }
 }
-
 void Decoder::applySgrParameter(int code)
 {
     static constexpr std::array<std::pair<int, Attr>, 5> kAttrs { {
@@ -602,9 +711,7 @@ void Decoder::applySgrParameter(int code)
 
     if (code == kSgrReset)
     {
-        mAnsiFg.reset();
-        mAnsiBg.reset();
-        mAnsiAttrs = 0;
+        resetAnsiStyle();
         return;
     }
     for (const auto& [on, attr] : kAttrs)
@@ -730,7 +837,7 @@ void Decoder::applyHeaderRole(Role role, const CodeInfo* code, std::vector<Event
 void Decoder::pushFrame(const Header& header, const CodeInfo* code, Colour currentFg, Colour currentBg)
 {
     const Role role { code != nullptr ? code->mRole : Role::kNone };
-    Frame      frame { .mCode = code, .mHeader = header };
+    Frame      frame { .mCode = code, .mHeader = header, .mFg = currentFg, .mBg = currentBg };
     if (code == nullptr)
     {
         // An unlisted header pushes white on black.
@@ -795,6 +902,9 @@ void Decoder::pushFrame(const Header& header, const CodeInfo* code, Colour curre
         mReply.mHasStaminaColour = true;
     }
 
+    // A C1 frame sets the colour afresh, as the latest colour sent wins in Clio. Attributes go too,
+    // so a bold left on before the frame cannot promote the frame's exact colour.
+    resetAnsiStyle();
     mStack.push_back(frame);
 }
 
@@ -812,6 +922,7 @@ void Decoder::onClose(std::vector<Event>& out)
 
     const Frame frame { mStack.back() };
     mStack.pop_back();
+    resetAnsiStyle();
     if (mOptions.mWillEmitWireTier)
         emit(CloseEvent { .mIsPopped = true }, out);
 
@@ -830,16 +941,19 @@ void Decoder::finishReading()
     std::string digits;
     for (const char c : mReading)
     {
-        if (c != ',')
+        if (c != kReadingGroupSeparator)
             digits.push_back(c);
     }
-    const bool isNumber { ! digits.empty()
-                          && std::ranges::all_of(digits,
-                                                 [](char c)
-                                                 {
-                                                     return c >= '0' && c <= '9';
-                                                 }) };
-    const std::optional<int> value { isNumber ? parseInt(digits) : std::nullopt };
+    bool isNumber { ! digits.empty() };
+    for (const char c : digits)
+    {
+        if (c < '0' || c > '9')
+        {
+            isNumber = false;
+            break;
+        }
+    }
+    const types::OptInt value { isNumber ? parseInt(digits) : std::nullopt };
 
     mLine.mHasReadings = true;
     if (value.has_value())
@@ -869,7 +983,8 @@ void Decoder::onText(std::uint8_t byte, std::vector<Event>& out)
     }
     if (mIsCollectingDreamword)
     {
-        if (byte >= 'a' && byte <= 'z' && mDreamword.size() < kMaxDreamword)
+        if (byte >= static_cast<std::uint8_t>(kAsciiLowerA) && byte <= static_cast<std::uint8_t>(kAsciiLowerZ)
+            && mDreamword.size() < kMaxDreamword)
             mDreamword.push_back(c);
         else
             endDreamword(out);
@@ -895,7 +1010,7 @@ void Decoder::onText(std::uint8_t byte, std::vector<Event>& out)
 void Decoder::onDisplayedText(char c, const Style& style, std::vector<Event>& out)
 {
     appendRun(mPending, c, style);
-    if (! mLine.mLabelEnd.has_value() && (c == '"' || hasFrameWithId(kTellId)))
+    if (! mLine.mLabelEnd.has_value() && (c == kTellQuote || hasFrameWithId(kTellId)))
         mLine.mLabelEnd = mLine.mText.size();
     mLine.mText.push_back(c);
     mLine.mHasPrintable = true;
@@ -943,7 +1058,7 @@ void Decoder::onLineEnd(std::vector<Event>& out)
     }
     if (! mIsInGameMode)
     {
-        if (const std::optional<int> columns { parseWidthNotice(mLine.mText) }; columns.has_value())
+        if (const types::OptInt columns { parseWidthNotice(mLine.mText) }; columns.has_value())
         {
             mPending.clear();
             flushDeferred(out);
@@ -964,10 +1079,10 @@ void Decoder::endDisplayedLine(std::vector<Event>& out)
         emitTeller(out);
     if (mLine.mHasReadings)
     {
-        emit(CodeStatsEvent { .mStamina    = mLine.mStamina,
-                              .mMaxStamina = mLine.mMaxStamina,
-                              .mScore      = mLine.mScore },
-             out);
+        CodeStatsEvent stats { .mStamina = mLine.mStamina };
+        stats.mMaxStamina = mLine.mMaxStamina;
+        stats.mScore      = mLine.mScore;
+        emit(stats, out);
     }
     if (mLine.mIsRoomName)
         emit(RoomNameEvent { .mText = mLine.mText }, out);
@@ -990,7 +1105,7 @@ void Decoder::emitTeller(std::vector<Event>& out)
     if (tells == std::string::npos || tells < 1 || label.starts_with(kYouTell))
         return;
 
-    const std::size_t space { label.find_first_of(" \t") };
+    const std::size_t space { label.find_first_of(kWhitespaceSeparators) };
     std::string       name { label.substr(0, std::min(space, tells)) };
     if (name.empty() || toLower(name) == kSomeone)
         return;
@@ -1035,14 +1150,14 @@ void Decoder::endDreamword(std::vector<Event>& out)
 
 void Decoder::queueCodeEvents(const Header& header, const CodeInfo* code)
 {
-    if (std::optional<std::vector<int>> params { findSoundParams(header) }; params.has_value())
+    if (OptSoundParams params { findSoundParams(header) }; params.has_value())
         mDeferred.emplace_back(
             SoundCodeEvent { .mFamily = header.mNumbers[0], .mParams = std::move(*params) });
 
-    if (code != nullptr && (code->mId == "06 04" || code->mId == "06 06"))
+    if (code != nullptr && (code->mId == kResetSignalIdOne || code->mId == kResetSignalIdTwo))
         mDeferred.emplace_back(ResetSignalEvent { .mId = code->mId });
 
-    if (const std::optional<std::string_view> spell { findSpellId(code) }; spell.has_value())
+    if (const types::OptStringView spell { findSpellId(code) }; spell.has_value())
     {
         mDeferred.emplace_back(SpellPhraseEvent { .mId = *spell, .mPhrase = std::string {} });
         mIsCollectingPhrase = true;
@@ -1136,18 +1251,20 @@ void Decoder::onAccountLine(std::vector<Event>& out)
     const Role                      role { mReply.mCode != nullptr ? mReply.mCode->mRole : Role::kNone };
     if (role == Role::kClientMode && lines.size() == kClientModeLines)
     {
-        emit(ClientModeEvent { .mLicence  = std::string { trim(lines[0]) },
-                               .mMinLevel = parseInt(trim(lines[1])).value_or(0),
-                               .mMaxLevel = parseInt(trim(lines[2])).value_or(0),
-                               .mAccount  = std::string { trim(lines[3]) },
-                               .mPrivs    = parseInt(trim(lines[4])).value_or(kUnknownPrivilege) },
-             out);
+        ClientModeEvent event;
+        event.mLicence  = trim(lines[0]);
+        event.mMinLevel = parseInt(trim(lines[1])).value_or(0);
+        event.mMaxLevel = parseInt(trim(lines[2])).value_or(0);
+        event.mAccount  = trim(lines[3]);
+        event.mPrivs    = parseInt(trim(lines[4])).value_or(kUnknownPrivilege);
+        emit(std::move(event), out);
     }
     else if (role == Role::kAccountChange && lines.size() == kAccountChangeLines)
     {
-        emit(AccountChangeEvent { .mAccount = std::string { trim(lines[0]) },
-                                  .mPrivs   = parseInt(trim(lines[1])).value_or(kUnknownPrivilege) },
-             out);
+        AccountChangeEvent event;
+        event.mAccount = trim(lines[0]);
+        event.mPrivs   = parseInt(trim(lines[1])).value_or(kUnknownPrivilege);
+        emit(std::move(event), out);
     }
 }
 
@@ -1171,27 +1288,26 @@ void Decoder::finishFes(std::vector<Event>& out)
                       {
                           return parseFlag(fields[index]);
                       } };
-    const std::array<std::optional<int>, 10> numbers {
+    const std::array<types::OptInt, 10> numbers {
         number(kFesStamina),   number(kFesMaxStamina),   number(kFesStrength), number(kFesMaxStrength),
         number(kFesDexterity), number(kFesMaxDexterity), number(kFesMagic),    number(kFesMaxMagic),
         number(kFesScore),     number(kFesReset),
     };
-    const std::array<std::optional<bool>, 4> flags {
+    const std::array<types::OptBool, 4> flags {
         flag(kFesBlind), flag(kFesDeaf), flag(kFesCrippled), flag(kFesDumb)
     };
-    if (! std::ranges::all_of(numbers,
-                              [](const std::optional<int>& value)
-                              {
-                                  return value.has_value();
-                              })
-        || ! std::ranges::all_of(flags,
-                                 [](const std::optional<bool>& value)
-                                 {
-                                     return value.has_value();
-                                 }))
-        return;
+    for (const types::OptInt& numberValue : numbers)
+    {
+        if (! numberValue.has_value())
+            return;
+    }
+    for (const types::OptBool& flagValue : flags)
+    {
+        if (! flagValue.has_value())
+            return;
+    }
 
-    std::optional<char> weather;
+    types::OptChar weather;
     if (fields.size() >= kFesFieldsWithWeather && fields[kFesWeather].size() == 1)
         weather = fields[kFesWeather].front();
 
@@ -1276,7 +1392,10 @@ void Decoder::finishInventory(std::vector<Event>& out)
             isCarried = true;
             continue;
         }
-        (isCarried ? inventory.mCarried : inventory.mRoom).emplace_back(entry);
+        if (isCarried)
+            inventory.mCarried.emplace_back(entry);
+        else
+            inventory.mRoom.emplace_back(entry);
     }
     if (inventory.mRoom.size() == 1 && inventory.mRoom.front() == kRoomBlind)
     {
@@ -1371,6 +1490,8 @@ void Decoder::exitGame(bool willFlushPending, std::vector<Event>& out)
     mIsCollectingPhrase = false;
     mStack.clear();
     mSaved.clear();
+    resetAnsiStyle();
+    mIsEscReverse = false;
     mBaseFg.reset();
     mBaseBg.reset();
     mIsCapturing        = false;
@@ -1404,20 +1525,22 @@ Style Decoder::getStyle() const noexcept
 
 bool Decoder::hasFrame(Role role) const noexcept
 {
-    return std::ranges::any_of(mStack,
-                               [role](const Frame& frame)
-                               {
-                                   return frame.mCode != nullptr && frame.mCode->mRole == role;
-                               });
+    for (const Frame& frame : mStack)
+    {
+        if (frame.mCode != nullptr && frame.mCode->mRole == role)
+            return true;
+    }
+    return false;
 }
 
 bool Decoder::hasFrameWithId(std::string_view id) const noexcept
 {
-    return std::ranges::any_of(mStack,
-                               [id](const Frame& frame)
-                               {
-                                   return frame.mCode != nullptr && frame.mCode->mId == id;
-                               });
+    for (const Frame& frame : mStack)
+    {
+        if (frame.mCode != nullptr && frame.mCode->mId == id)
+            return true;
+    }
+    return false;
 }
 
 Decoder::Reply Decoder::getReplyKind(Role role) noexcept

@@ -6,6 +6,7 @@ namespace muckaii::mud
 {
 namespace
 {
+// findExact finds a code row whose complete number sequence matches.
 const CodeInfo* findExact(std::span<const std::uint8_t> numbers) noexcept
 {
     if (numbers.empty() || numbers.size() > kMaxIdNumbers)

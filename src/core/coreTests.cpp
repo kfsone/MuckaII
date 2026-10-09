@@ -1,3 +1,5 @@
+#include "muckaii/base/types.hpp"
+#include "muckaii/base/wire.hpp"
 #include "muckaii/core/core.hpp"
 #include "muckaii/core/fakeServer/fakeMudServer.hpp"
 #include "muckaii/persistence/wireLog.hpp"
@@ -7,6 +9,7 @@
 
 #include <sqlite3.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -27,37 +30,74 @@ namespace fake = muckaii::core::fake;
 
 namespace
 {
+// kRepoRoot locates the captured game transcript used by the login test.
 const std::filesystem::path kRepoRoot { MUCKAII_REPO_ROOT };
 
-// Test credentials. Nothing here is a real account.
+// kAccount is the dummy account id submitted to the loopback server.
 constexpr std::string_view kAccount { "Z1234567" };
+// kPassword is the dummy password submitted to the loopback server.
 constexpr std::string_view kPassword { "secretpw" };
+// kPersona is the public game name used to finish the login transcript.
 constexpr std::string_view kPersona { "Kayfez" };
+// kTelnetTtypeOption identifies the terminal-type negotiation option in the transcript.
+constexpr std::uint8_t kTelnetTtypeOption { 0x18 };
+// kTelnetNawsOption identifies the terminal-size negotiation option in the transcript.
+constexpr std::uint8_t kTelnetNawsOption { 0x1F };
+// kTelnetSgaOption identifies the suppress-go-ahead option in the transcript.
+constexpr std::uint8_t kTelnetSgaOption { 0x03 };
+// kTelnetEchoOption identifies the echo option in the transcript.
+constexpr std::uint8_t kTelnetEchoOption { 0x01 };
+// kTtypeSendQualifier requests the terminal type from the server.
+constexpr std::uint8_t kTtypeSendQualifier { 0x01 };
+// kTtypeIsQualifier identifies the terminal-type response.
+constexpr std::uint8_t kTtypeIsQualifier { 0x00 };
+// kNawsHighByte is the high byte of the small dimensions in this transcript.
+constexpr std::uint8_t kNawsHighByte { 0x00 };
+// kTestColumns is the negotiated terminal width in the transcript.
+constexpr std::uint8_t kTestColumns { 80 };
+// kTestRows is the negotiated terminal height in the transcript.
+constexpr std::uint8_t kTestRows { 21 };
+// kClientModeCtrlF is the control byte used by the client-mode entry sequence.
+constexpr std::uint8_t kClientModeCtrlF { 0x06 };
+// kTranscriptCodeLead opens the tagged markup block in the login transcript.
+constexpr std::uint8_t kTranscriptCodeLead { 0xFA };
+// kTranscriptCodeEnd marks the end of the tagged markup block in the transcript.
+constexpr std::uint8_t kTranscriptCodeEnd { 0xFF };
+// kAccountMaskNote identifies the wire-log annotation for a masked account id.
+constexpr std::string_view kAccountMaskNote { "masked: account id" };
+// kPasswordMaskNote identifies the wire-log annotation for a masked password.
+constexpr std::string_view kPasswordMaskNote { "masked: password" };
+// kPreLoginMaskNote identifies a wire-log annotation for type-ahead input.
+constexpr std::string_view kPreLoginMaskNote { "masked: line before login" };
 
-std::vector<std::byte> bytes(std::initializer_list<int> values)
+// bytes converts integer byte values into an owned wire sequence.
+types::Bytes bytes(std::initializer_list<int> values)
 {
-    std::vector<std::byte> out;
+    types::Bytes out;
     for (const int value : values)
         out.push_back(std::byte { static_cast<std::uint8_t>(value) });
     return out;
 }
 
-std::vector<std::byte> concat(std::initializer_list<std::vector<std::byte>> parts)
+// concat joins byte sequences without changing their order.
+types::Bytes concat(std::initializer_list<types::Bytes> parts)
 {
-    std::vector<std::byte> out;
-    for (const std::vector<std::byte>& part : parts)
+    types::Bytes out;
+    for (const types::Bytes& part : parts)
         out.insert(out.end(), part.begin(), part.end());
     return out;
 }
 
-std::vector<std::byte> text(std::string_view value)
+// text converts the supplied characters to their wire bytes.
+types::Bytes text(std::string_view value)
 {
-    std::vector<std::byte> out;
+    types::Bytes out;
     for (const char c : value)
         out.push_back(std::byte { static_cast<std::uint8_t>(c) });
     return out;
 }
 
+// toString preserves a byte span as a string for test comparisons.
 std::string toString(std::span<const std::byte> value)
 {
     std::string out;
@@ -70,33 +110,65 @@ std::string toString(std::span<const std::byte> value)
 // prompts (3.1, the account prompt split across two reads), the Option menu and client-mode entry
 // (3.2), its 95 block and width notice, persona selection typed by the player (3.4), then the game
 // replayed from a capture.
+// makeLoginScript builds the loopback login transcript and captured game replay.
 std::vector<fake::ScriptStep> makeLoginScript()
 {
+    std::string widthText { "-" };
+    widthText += std::to_string(kTestColumns);
+    widthText += "W[New terminal width is ";
+    widthText += std::to_string(kTestColumns);
+    widthText += "]\r\nOption (H for help): ";
+    const types::Bytes            widthNotice { concat({ bytes({ wire::kEsc }), text(widthText) }) };
     std::vector<fake::ScriptStep> script {
         // DO TTYPE, DO NAWS, WILL SGA, WILL ECHO.
-        fake::send(bytes({ 0xFF, 0xFD, 0x18, 0xFF, 0xFD, 0x1F, 0xFF, 0xFB, 0x03, 0xFF, 0xFB, 0x01 })),
+        fake::send(bytes({ wire::kTelnetIac,
+                           wire::kTelnetDo,
+                           kTelnetTtypeOption,
+                           wire::kTelnetIac,
+                           wire::kTelnetDo,
+                           kTelnetNawsOption,
+                           wire::kTelnetIac,
+                           wire::kTelnetWill,
+                           kTelnetSgaOption,
+                           wire::kTelnetIac,
+                           wire::kTelnetWill,
+                           kTelnetEchoOption })),
         // WILL TTYPE; WILL NAWS and NAWS 80 x 21; DO SGA. WILL ECHO gets nothing.
-        fake::expect(bytes({ 0xFF,
-                             0xFB,
-                             0x18,
-                             0xFF,
-                             0xFB,
-                             0x1F,
-                             0xFF,
-                             0xFA,
-                             0x1F,
-                             0x00,
-                             80,
-                             0x00,
-                             21,
-                             0xFF,
-                             0xF0,
-                             0xFF,
-                             0xFD,
-                             0x03 })),
+        fake::expect(bytes({ wire::kTelnetIac,
+                             wire::kTelnetWill,
+                             kTelnetTtypeOption,
+                             wire::kTelnetIac,
+                             wire::kTelnetWill,
+                             kTelnetNawsOption,
+                             wire::kTelnetIac,
+                             wire::kTelnetSb,
+                             kTelnetNawsOption,
+                             kNawsHighByte,
+                             kTestColumns,
+                             kNawsHighByte,
+                             kTestRows,
+                             wire::kTelnetIac,
+                             wire::kTelnetSe,
+                             wire::kTelnetIac,
+                             wire::kTelnetDo,
+                             kTelnetSgaOption })),
         // TTYPE SEND gets TTYPE IS "ansi".
-        fake::send(bytes({ 0xFF, 0xFA, 0x18, 0x01, 0xFF, 0xF0 })),
-        fake::expect(bytes({ 0xFF, 0xFA, 0x18, 0x00, 'a', 'n', 's', 'i', 0xFF, 0xF0 })),
+        fake::send(bytes({ wire::kTelnetIac,
+                           wire::kTelnetSb,
+                           kTelnetTtypeOption,
+                           kTtypeSendQualifier,
+                           wire::kTelnetIac,
+                           wire::kTelnetSe })),
+        fake::expect(bytes({ wire::kTelnetIac,
+                             wire::kTelnetSb,
+                             kTelnetTtypeOption,
+                             kTtypeIsQualifier,
+                             'a',
+                             'n',
+                             's',
+                             'i',
+                             wire::kTelnetIac,
+                             wire::kTelnetSe })),
         fake::send("\r\nWelcome to the fake MUD2 server.\r\n\r\nAccount "),
         fake::pause(150ms),
         fake::send("ID: "),
@@ -107,14 +179,36 @@ std::vector<fake::ScriptStep> makeLoginScript()
                    + " logged in on tty1.\r\n[Checking mail...]\r\nThis reset is number 1.\r\n\r\nOption (H "
                      "for help): "),
         // NAWS again, then $-[ ESC ^F $-N/T80$-].
-        fake::expect(bytes({ 0xFF, 0xFA, 0x1F, 0x00, 80,   0x00, 21,  0xFF, 0xF0, 0x1B, 0x2D, 0x5B,
-                             0x1B, 0x06, 0x1B, 0x2D, 0x4E, '/',  'T', '8',  '0',  0x1B, 0x2D, 0x5D })),
+        fake::expect(bytes({ wire::kTelnetIac,
+                             wire::kTelnetSb,
+                             kTelnetNawsOption,
+                             kNawsHighByte,
+                             kTestColumns,
+                             kNawsHighByte,
+                             kTestRows,
+                             wire::kTelnetIac,
+                             wire::kTelnetSe,
+                             wire::kEsc,
+                             '-',
+                             '[',
+                             wire::kEsc,
+                             kClientModeCtrlF,
+                             wire::kEsc,
+                             '-',
+                             'N',
+                             '/',
+                             'T',
+                             '8',
+                             '0',
+                             wire::kEsc,
+                             '-',
+                             ']' })),
         // <95> five lines </>, then ESC-80W and its notice, then the Option menu again.
         fake::send(
-            concat({ bytes({ 0xFA, 0xFF, 0xFF }),
+            concat({ bytes({ kTranscriptCodeLead, kTranscriptCodeEnd, kTranscriptCodeEnd }),
                      text("Unlicensed product!\r\n1\r\n4\r\n" + std::string { kAccount } + "\r\n1\r\n"),
-                     bytes({ 0xFF, 0xFF }),
-                     text("\x1b-80W[New terminal width is 80]\r\nOption (H for help): ") })),
+                     bytes({ kTranscriptCodeEnd, kTranscriptCodeEnd }),
+                     widthNotice })),
         fake::expect("p\r\n"),
         fake::send("p\r\nPersonae available to you are: " + std::string { kPersona }
                    + ".\r\nBy what name shall I call you? "),
@@ -126,9 +220,11 @@ std::vector<fake::ScriptStep> makeLoginScript()
     return script;
 }
 
+// Collector stores event batches and wakes tests waiting for them.
 class Collector
 {
 public:
+    // getSink creates a sink that appends event batches to this collector.
     core::EventSink getSink()
     {
         return [this](std::vector<session::SessionEvent> batch)
@@ -142,18 +238,19 @@ public:
         };
     }
 
+    // waitFor blocks until a stored event satisfies predicate or timeout expires.
     bool waitFor(const std::function<bool(const session::SessionEvent&)>& predicate,
                  std::chrono::milliseconds                                timeout)
     {
         std::unique_lock lock { mMutex };
-        return mChanged.wait_for(lock,
-                                 timeout,
-                                 [this, &predicate]()
-                                 {
-                                     return std::ranges::any_of(mEvents, predicate);
-                                 });
+        const auto       hasMatch = [this, &predicate]()
+        {
+            return std::ranges::any_of(mEvents, predicate);
+        };
+        return mChanged.wait_for(lock, timeout, hasMatch);
     }
 
+    // getEvents returns a snapshot of the collected events.
     std::vector<session::SessionEvent> getEvents()
     {
         const std::scoped_lock lock { mMutex };
@@ -166,24 +263,28 @@ private:
     std::vector<session::SessionEvent> mEvents;
 };
 
+// isClientMode recognizes a client-mode event.
 bool isClientMode(const session::SessionEvent& event)
 {
     const auto* mud { std::get_if<mud::Event>(&event) };
     return mud != nullptr && std::holds_alternative<mud::ClientModeEvent>(mud->mPayload);
 }
 
+// isGameFlow recognizes the transition into game flow.
 bool isGameFlow(const session::SessionEvent& event)
 {
     const auto* flow { std::get_if<session::FlowEvent>(&event) };
     return flow != nullptr && flow->mState == session::FlowState::kGame;
 }
 
+// isClosed recognizes a closed connection event.
 bool isClosed(const session::SessionEvent& event)
 {
     const auto* connection { std::get_if<session::ConnectionEvent>(&event) };
     return connection != nullptr && connection->mState == session::ConnectionState::kClosed;
 }
 
+// makeTempDatabase removes stale test files and returns a database path.
 std::filesystem::path makeTempDatabase(const std::string& name)
 {
     const std::filesystem::path directory { std::filesystem::temp_directory_path() / "muckaiiCoreTests" };
@@ -194,12 +295,14 @@ std::filesystem::path makeTempDatabase(const std::string& name)
     return directory / (name + ".db");
 }
 
+// LogRow holds one persisted wire-log row needed by assertions.
 struct LogRow
 {
-    std::string mData;
-    int         mDirection {};
+    std::string                mData;
+    persistence::WireDirection mDirection { persistence::WireDirection::kReceived };
 };
 
+// readWireLog reads wire directions and payloads for integration assertions.
 std::vector<LogRow> readWireLog(const std::filesystem::path& path)
 {
     sqlite3* database {};
@@ -212,61 +315,97 @@ std::vector<LogRow> readWireLog(const std::filesystem::path& path)
     std::vector<LogRow> rows;
     while (sqlite3_step(query) == SQLITE_ROW)
     {
-        const auto* data { static_cast<const char*>(sqlite3_column_blob(query, 1)) };
+        const auto*       data { static_cast<const char*>(sqlite3_column_blob(query, 1)) };
+        const std::size_t length { static_cast<std::size_t>(sqlite3_column_bytes(query, 1)) };
+        const std::string payload { data != nullptr ? data : "", length };
         rows.push_back(
-            LogRow { .mData      = std::string { data != nullptr ? data : "",
-                                                 static_cast<std::size_t>(sqlite3_column_bytes(query, 1)) },
-                     .mDirection = sqlite3_column_int(query, 0) });
+            LogRow { .mData      = payload,
+                     .mDirection = static_cast<persistence::WireDirection>(sqlite3_column_int(query, 0)) });
     }
     sqlite3_finalize(query);
     sqlite3_close(database);
     return rows;
 }
 
+// makeCredentials supplies non-production credentials for the fake server.
 session::Credentials makeCredentials()
 {
-    return session::Credentials { .mAccount   = std::string { kAccount },
-                                  .mPassword  = std::string { kPassword },
-                                  .mLoginName = "mud" };
+    session::Credentials credentials;
+    credentials.mAccount   = std::string { kAccount };
+    credentials.mPassword  = std::string { kPassword };
+    credentials.mLoginName = "mud";
+    return credentials;
 }
 
-std::unique_ptr<core::Core> makeCore(std::uint16_t                        port,
-                                     Collector&                           collector,
-                                     std::optional<std::filesystem::path> log,
-                                     session::Credentials                 credentials = makeCredentials(),
-                                     std::chrono::milliseconds            timeout     = 5s)
+// CoreOptions contains the connection settings for a core integration test.
+struct CoreOptions
+{
+    std::uint16_t                        mPort {};
+    std::optional<std::filesystem::path> mLog;
+    session::Credentials                 mCredentials { makeCredentials() };
+    std::chrono::milliseconds            mTimeout { 5s };
+};
+
+// makeCore configures a client core for the scripted loopback server.
+std::unique_ptr<core::Core> makeCore(const CoreOptions& options, Collector& collector)
 {
     core::Builder builder;
     builder.setHost("127.0.0.1")
-        .setPort(port)
-        .setCredentials(credentials)
+        .setPort(options.mPort)
+        .setCredentials(options.mCredentials)
         .setColumns(80)
         .setClientVersion("test")
-        .setConnectTimeout(timeout)
+        .setConnectTimeout(options.mTimeout)
         .setSink(collector.getSink());
-    if (log.has_value())
-        builder.setWireLog(*log);
+    if (options.mLog.has_value())
+        builder.setWireLog(*options.mLog);
     return builder.build();
 }
 
-// Logs in through the fake server and waits for game mode.
+// enterGame completes scripted login and waits for game mode.
 void enterGame(core::Core& core, Collector& collector, fake::FakeMudServer& server)
 {
     ASSERT_TRUE(core.start());
-    // Persona selection is typed by the player, after client mode is entered.
     ASSERT_TRUE(collector.waitFor(isClientMode, 15s)) << server.getError();
-    // Login is complete: core's published verdict is "not masked", so both stay recallable.
     EXPECT_FALSE(core.submitLine("p"));
     EXPECT_FALSE(core.submitLine(std::string { kPersona }));
     ASSERT_TRUE(collector.waitFor(isGameFlow, 15s)) << server.getError();
 }
 
+// isHoldTextEvent recognizes the marker event that gates the shutdown test.
+bool isHoldTextEvent(const session::SessionEvent& event)
+{
+    const auto* mudEvent { std::get_if<mud::Event>(&event) };
+    if (mudEvent == nullptr)
+        return false;
+    const auto* textEvent { std::get_if<mud::TextEvent>(&mudEvent->mPayload) };
+    return textEvent != nullptr && textEvent->mText == "hold";
+}
+
+// waitForFlag waits until flag becomes true or the deadline expires.
+bool waitForFlag(std::condition_variable&  changed,
+                 std::mutex&               mutex,
+                 const bool&               flag,
+                 std::chrono::milliseconds timeout)
+{
+    std::unique_lock lock { mutex };
+    const auto       deadline { std::chrono::steady_clock::now() + timeout };
+    while (! flag)
+    {
+        if (changed.wait_until(lock, deadline) == std::cv_status::timeout)
+            return flag;
+    }
+    return true;
+}
+
+// masked returns the wire-log placeholder bytes for one sensitive line.
 std::string masked(std::string_view line)
 {
     return std::string(line.size(), '*') + "\r\n";
 }
 } // namespace
 
+// CoreIntegration_LogsInEntersGameAndMasksTheWireLog checks login reaches game mode and credentials are masked in the wire log.
 TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
 {
     const std::filesystem::path         database { makeTempDatabase("login") };
@@ -275,7 +414,8 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
     ASSERT_NE(server.getPort(), 0);
 
     Collector                         collector;
-    const std::unique_ptr<core::Core> core { makeCore(server.getPort(), collector, database) };
+    const std::unique_ptr<core::Core> core { makeCore(
+        CoreOptions { .mPort = server.getPort(), .mLog = database }, collector) };
     enterGame(*core, collector, server);
     ASSERT_TRUE(server.waitDone(15s));
     EXPECT_EQ(server.getError(), "");
@@ -293,12 +433,12 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
     for (const LogRow& row : rows)
     {
         EXPECT_EQ(row.mData.find(kPassword), std::string::npos) << "the password reached the wire log";
-        if (row.mDirection == 1)
+        if (row.mDirection == persistence::WireDirection::kSent)
         {
             EXPECT_EQ(row.mData.find(kAccount), std::string::npos) << "the account ID reached a sent record";
             sent.append(row.mData);
         }
-        if (row.mDirection == 2)
+        if (row.mDirection == persistence::WireDirection::kAnnotation)
             annotations.push_back(row.mData);
     }
     std::string expectedSent { toString(fake::getExpectedBytes(script)) };
@@ -309,15 +449,16 @@ TEST(CoreIntegration, LogsInEntersGameAndMasksTheWireLog)
         expectedSent.replace(expectedSent.find(clear), clear.size(), masked(line));
     }
     EXPECT_EQ(sent, expectedSent);
-    EXPECT_NE(std::ranges::find(annotations, "masked: account id"), annotations.end());
-    EXPECT_NE(std::ranges::find(annotations, "masked: password"), annotations.end());
-    EXPECT_EQ(std::ranges::count(annotations, "masked: line before login"), 0);
+    EXPECT_NE(std::ranges::find(annotations, kAccountMaskNote), annotations.end());
+    EXPECT_NE(std::ranges::find(annotations, kPasswordMaskNote), annotations.end());
+    EXPECT_EQ(std::ranges::count(annotations, kPreLoginMaskNote), 0);
     EXPECT_NE(sent.find("p\r\n" + std::string { kPersona } + "\r\n"), std::string::npos);
     EXPECT_NE(std::ranges::find(annotations, "terminal width confirmed: 80"), annotations.end());
 }
 
 // Type-ahead: lines typed before the connection exists wait in the FIFO, reach the socket in order,
 // and are masked in the wire log though no prompt was live when they were typed.
+// CoreIntegration_TypeAheadIsSentInOrderAndMasked checks type-ahead lines reach the socket in order and remain masked.
 TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
 {
     const std::filesystem::path         database { makeTempDatabase("typeAhead") };
@@ -332,7 +473,8 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
 
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(
-        server.getPort(), collector, database, session::Credentials {}) };
+        CoreOptions { .mPort = server.getPort(), .mLog = database, .mCredentials = session::Credentials {} },
+        collector) };
     // Type-ahead is judged masked (and kept out of recall) before it ever reaches the socket.
     EXPECT_TRUE(core->submitLine("Z7654321"));
     core->submitLine("hunter22");
@@ -356,11 +498,11 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
     {
         EXPECT_EQ(row.mData.find("Z7654321"), std::string::npos) << "type-ahead reached the wire log";
         EXPECT_EQ(row.mData.find("hunter22"), std::string::npos) << "type-ahead reached the wire log";
-        if (row.mDirection == 1)
+        if (row.mDirection == persistence::WireDirection::kSent)
             sent.append(row.mData);
-        if (row.mDirection == 2 && row.mData == "masked: line before login")
+        if (row.mDirection == persistence::WireDirection::kAnnotation && row.mData == kPreLoginMaskNote)
             ++preGameNotes;
-        if (row.mDirection == 2 && row.mData == "masked: account id")
+        if (row.mDirection == persistence::WireDirection::kAnnotation && row.mData == kAccountMaskNote)
             ++preGameNotes;
     }
     EXPECT_EQ(sent, masked("Z7654321") + masked("hunter22") + masked("look"));
@@ -369,9 +511,12 @@ TEST(CoreIntegration, TypeAheadIsSentInOrderAndMasked)
 
 // Invariant #1 at the socket, with several UI-side producers: every line arrives whole, never
 // split by another, and each producer's lines arrive in the order it submitted them.
+// CoreIntegration_LinesFromSeveralProducersArriveWholeAndInEachProducersOrder checks concurrent producers deliver whole lines while preserving each producer order.
 TEST(CoreIntegration, LinesFromSeveralProducersArriveWholeAndInEachProducersOrder)
 {
+    // kProducers is the number of concurrent command sources in this ordering test.
     constexpr int kProducers { 4 };
+    // kLinesEach is the number of lines submitted by each producer.
     constexpr int kLinesEach { 150 };
 
     std::vector<std::string> expectedLines;
@@ -392,7 +537,7 @@ TEST(CoreIntegration, LinesFromSeveralProducersArriveWholeAndInEachProducersOrde
     ASSERT_NE(server.getPort(), 0);
 
     Collector                         collector;
-    const std::unique_ptr<core::Core> core { makeCore(server.getPort(), collector, std::nullopt) };
+    const std::unique_ptr<core::Core> core { makeCore(CoreOptions { .mPort = server.getPort() }, collector) };
     enterGame(*core, collector, server);
 
     std::atomic<bool>        isGo {};
@@ -416,7 +561,7 @@ TEST(CoreIntegration, LinesFromSeveralProducersArriveWholeAndInEachProducersOrde
     EXPECT_EQ(server.getError(), "");
     core->stop();
 
-    const std::vector<std::byte> received { server.getReceived() };
+    const types::Bytes received { server.getReceived() };
     ASSERT_GE(received.size(), loginBytes + totalBytes);
     const std::string burst { toString(std::span { received }.subspan(loginBytes, totalBytes)) };
 
@@ -442,6 +587,7 @@ TEST(CoreIntegration, LinesFromSeveralProducersArriveWholeAndInEachProducersOrde
 }
 
 // Ctrl+C right after Enter: lines already submitted are written before the socket closes.
+// CoreIntegration_StopWritesLinesAlreadySubmitted checks shutdown flushes lines submitted before stop.
 TEST(CoreIntegration, StopWritesLinesAlreadySubmitted)
 {
     std::string tail;
@@ -468,44 +614,22 @@ TEST(CoreIntegration, StopWritesLinesAlreadySubmitted)
         .setSink(
             [&](std::vector<session::SessionEvent> batch)
             {
-                const bool isHold { std::ranges::any_of(
-                    batch,
-                    [](const session::SessionEvent& event)
-                    {
-                        const auto* mud { std::get_if<mud::Event>(&event) };
-                        const auto* text { mud != nullptr ? std::get_if<mud::TextEvent>(&mud->mPayload)
-                                                          : nullptr };
-                        return text != nullptr && text->mText == "hold";
-                    }) };
+                const bool isHold { std::ranges::any_of(batch, isHoldTextEvent) };
                 collect(std::move(batch));
                 if (! isHold)
                     return;
                 std::unique_lock lock { gateMutex };
                 isHeld = true;
                 gateChanged.notify_all();
-                gateChanged.wait(lock,
-                                 [&isReleased]()
-                                 {
-                                     return isReleased;
-                                 });
+                while (! isReleased)
+                    gateChanged.wait(lock);
             });
     const std::unique_ptr<core::Core> core { builder.build() };
     ASSERT_TRUE(core->start());
-    {
-        std::unique_lock lock { gateMutex };
-        ASSERT_TRUE(gateChanged.wait_for(lock,
-                                         15s,
-                                         [&isHeld]()
-                                         {
-                                             return isHeld;
-                                         }));
-    }
+    ASSERT_TRUE(waitForFlag(gateChanged, gateMutex, isHeld, 15s));
     for (int i { 0 }; i < 50; ++i)
         core->submitLine("say last " + std::to_string(i));
-    std::thread stopper { [&core]()
-                          {
-                              core->stop();
-                          } };
+    std::thread stopper { &core::Core::stop, core.get() };
     std::this_thread::sleep_for(200ms);
     {
         const std::scoped_lock lock { gateMutex };
@@ -519,6 +643,7 @@ TEST(CoreIntegration, StopWritesLinesAlreadySubmitted)
 }
 
 // Ctrl+C while the connect is still pending returns at once, not at the 15 s timeout.
+// CoreIntegration_StopDuringConnectReturnsPromptly checks shutdown interrupts a pending connection and reports its unsent line.
 TEST(CoreIntegration, StopDuringConnectReturnsPromptly)
 {
     const transport::Network                        network;
@@ -543,7 +668,7 @@ TEST(CoreIntegration, StopDuringConnectReturnsPromptly)
 
     Collector                         collector;
     const std::unique_ptr<core::Core> core { makeCore(
-        listener->getPort(), collector, std::nullopt, makeCredentials(), 15s) };
+        CoreOptions { .mPort = listener->getPort(), .mTimeout = 15s }, collector) };
     core->submitLine("never sent");
     ASSERT_TRUE(core->start());
     std::this_thread::sleep_for(300ms);
@@ -574,6 +699,7 @@ TEST(CoreIntegration, StopDuringConnectReturnsPromptly)
     EXPECT_TRUE(isReported);
 }
 
+// CoreIntegration_ReportsARefusedConnection checks a refused connection is published as a closed flow.
 TEST(CoreIntegration, ReportsARefusedConnection)
 {
     // A port that was just listening and now is not.
@@ -587,7 +713,7 @@ TEST(CoreIntegration, ReportsARefusedConnection)
         port = listener->getPort();
     }
     Collector                         collector;
-    const std::unique_ptr<core::Core> core { makeCore(port, collector, std::nullopt) };
+    const std::unique_ptr<core::Core> core { makeCore(CoreOptions { .mPort = port }, collector) };
     ASSERT_TRUE(core->start());
     EXPECT_TRUE(collector.waitFor(
         [](const session::SessionEvent& event)

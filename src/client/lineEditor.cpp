@@ -1,5 +1,7 @@
 #include "muckaii/client/lineEditor.hpp"
 
+#include "muckaii/base/wire.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <utility>
@@ -8,17 +10,24 @@ namespace muckaii::client
 {
 namespace
 {
-constexpr std::uint8_t kContinuationMask { 0xC0 };
-constexpr std::uint8_t kContinuation { 0x80 };
 
+// isContinuation reports whether `c` is a UTF-8 continuation byte.
 bool isContinuation(char c) noexcept
 {
-    return (static_cast<std::uint8_t>(c) & kContinuationMask) == kContinuation;
+    return (static_cast<std::uint8_t>(c) & wire::kUtf8ContinuationMask) == wire::kUtf8Continuation;
 }
 
+// isSpace reports whether `c` is a space or tab.
 bool isSpace(char c) noexcept
 {
     return c == ' ' || c == '\t';
+}
+
+// trim returns `text` without leading or trailing spaces and tabs.
+// isCodePointLead reports whether `c` begins a UTF-8 code point.
+bool isCodePointLead(char c) noexcept
+{
+    return ! isContinuation(c);
 }
 
 std::string_view trim(std::string_view text) noexcept
@@ -30,6 +39,7 @@ std::string_view trim(std::string_view text) noexcept
     return text;
 }
 
+// getPrevious returns the preceding UTF-8 code point boundary, or zero.
 std::size_t getPrevious(std::string_view text, std::size_t at) noexcept
 {
     if (at == 0)
@@ -40,6 +50,7 @@ std::size_t getPrevious(std::string_view text, std::size_t at) noexcept
     return at;
 }
 
+// getNext returns the following UTF-8 code point boundary, or the text size.
 std::size_t getNext(std::string_view text, std::size_t at) noexcept
 {
     if (at >= text.size())
@@ -53,11 +64,7 @@ std::size_t getNext(std::string_view text, std::size_t at) noexcept
 
 std::size_t countCodePoints(std::string_view utf8) noexcept
 {
-    return static_cast<std::size_t>(std::ranges::count_if(utf8,
-                                                          [](char c)
-                                                          {
-                                                              return ! isContinuation(c);
-                                                          }));
+    return static_cast<std::size_t>(std::ranges::count_if(utf8, isCodePointLead));
 }
 
 void LineEditor::insert(std::string_view utf8)

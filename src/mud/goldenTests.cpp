@@ -26,6 +26,7 @@ const std::vector<std::string> kCaptures {
 
 // A record MuckaII writes that the golden lacks: inserted before the golden's 0-based line
 // `mBeforeLine`, which must be the `line_end` of the same line.
+// KnownDifference records one known extra event inserted into a golden stream.
 struct KnownDifference
 {
     std::string mCapture;
@@ -67,6 +68,7 @@ const std::vector<KnownDifference> kKnownDifferences {
           "You are in a small, claustrophobic, earthen tunnel, curving from the north to the southeast. " },
 };
 
+// readLines loads a text file as separate lines.
 std::vector<std::string> readLines(const std::filesystem::path& path)
 {
     std::ifstream            file { path, std::ios::binary };
@@ -77,6 +79,7 @@ std::vector<std::string> readLines(const std::filesystem::path& path)
     return lines;
 }
 
+// loadCapture reads one named capture for replay tests.
 std::vector<golden::CaptureRecord> loadCapture(const std::string& name)
 {
     const auto records { golden::readCapture(kRepoRoot / "docs" / "evidence" / "captures" / (name + ".c1")) };
@@ -84,6 +87,7 @@ std::vector<golden::CaptureRecord> loadCapture(const std::string& name)
     return records.value_or(std::vector<golden::CaptureRecord> {});
 }
 
+// describeDiff formats the first differing lines of two golden streams.
 std::string describeDiff(const std::vector<std::string>& expected, const std::vector<std::string>& actual)
 {
     const std::size_t common { std::min(expected.size(), actual.size()) };
@@ -102,15 +106,33 @@ std::string describeDiff(const std::vector<std::string>& expected, const std::ve
     return text.str();
 }
 
+// getCaptureTestName converts a capture filename into a valid parameter-test suffix.
+std::string getCaptureTestName(std::string_view capture)
+{
+    std::string testName;
+    for (const char c : capture)
+        testName.push_back(c == '-' ? '_' : c);
+    return testName;
+}
+
+// parseCaptureText parses a test string using the capture grammar's byte representation.
+golden::OptCaptureRecords parseCaptureText(std::string_view text)
+{
+    return golden::parseCapture(std::as_bytes(std::span { text.data(), text.size() }));
+}
+
+// GoldenReplay runs capture-based checks for each configured capture.
 class GoldenReplay : public testing::TestWithParam<std::string>
 {
 };
 
+// GoldenReplay checks replayed events match the checked-in golden after its documented differences.
 TEST_P(GoldenReplay, MatchesGoldenExceptKnownDifferences)
 {
-    const std::string        name { GetParam() };
-    std::vector<std::string> expected { readLines(kRepoRoot / "docs" / "evidence" / "golden"
-                                                  / (name + ".jsonl")) };
+    const std::string           name { GetParam() };
+    const std::filesystem::path goldenDirectory { kRepoRoot / "docs" / "evidence" / "golden" };
+    const std::filesystem::path goldenPath { goldenDirectory / (name + ".jsonl") };
+    std::vector<std::string>    expected { readLines(goldenPath) };
     ASSERT_FALSE(expected.empty()) << name;
     const bool isStartInGame { expected.front().find(R"("start_in_game":true)") != std::string::npos };
 
@@ -133,8 +155,8 @@ TEST_P(GoldenReplay, MatchesGoldenExceptKnownDifferences)
         const std::string lineEnd { R"({"ev":"line_end","rx":)" + std::to_string(difference.mRx) + "," };
         ASSERT_TRUE(expected[difference.mBeforeLine].starts_with(lineEnd))
             << name << " line " << difference.mBeforeLine << " is not the line_end the difference names";
-        const std::string inserted { golden::toJson(muckaii::mud::RoomLongEvent { .mText = difference.mText },
-                                                    difference.mRx) };
+        const muckaii::mud::RoomLongEvent event { .mText = difference.mText };
+        const std::string                 inserted { golden::toJson(event, difference.mRx) };
         expected.insert(expected.begin() + static_cast<std::ptrdiff_t>(difference.mBeforeLine), inserted);
     }
 
@@ -149,19 +171,20 @@ TEST_P(GoldenReplay, MatchesGoldenExceptKnownDifferences)
 
 // Chunking invariance: one byte per feed() and one record per feed() give the same events, wire
 // tier included, compared before any run merging.
+// GoldenReplay checks feeding a capture one byte at a time produces the same events as whole records.
 TEST_P(GoldenReplay, ByteAtATimeEqualsWholeRecord)
 {
     const std::string                        name { GetParam() };
     const std::vector<golden::CaptureRecord> records { loadCapture(name) };
 
-    const auto whole { golden::replay(records,
-                                      golden::ReplayOptions { .mIsStartInGame    = true,
-                                                              .mWillEmitWireTier = true,
-                                                              .mIsByteAtATime    = false }) };
-    const auto bytes { golden::replay(records,
-                                      golden::ReplayOptions { .mIsStartInGame    = true,
-                                                              .mWillEmitWireTier = true,
-                                                              .mIsByteAtATime    = true }) };
+    golden::ReplayOptions wholeOptions;
+    wholeOptions.mWillEmitWireTier = true;
+    const auto whole { golden::replay(records, wholeOptions) };
+
+    golden::ReplayOptions byteOptions;
+    byteOptions.mWillEmitWireTier = true;
+    byteOptions.mIsByteAtATime    = true;
+    const auto bytes { golden::replay(records, byteOptions) };
     ASSERT_EQ(whole.size(), bytes.size()) << name;
     for (std::size_t i { 0 }; i < whole.size(); ++i)
     {
@@ -177,12 +200,10 @@ INSTANTIATE_TEST_SUITE_P(Captures,
                          testing::ValuesIn(kCaptures),
                          [](const testing::TestParamInfo<std::string>& info)
                          {
-                             std::string testName;
-                             for (const char c : info.param)
-                                 testName.push_back(c == '-' ? '_' : c);
-                             return testName;
+                             return getCaptureTestName(info.param);
                          });
 
+// GoldenCaptures checks the configured capture list includes every capture file on disk.
 TEST(GoldenCaptures, EveryCaptureIsReplayed)
 {
     std::vector<std::string> onDisk;
@@ -198,19 +219,16 @@ TEST(GoldenCaptures, EveryCaptureIsReplayed)
     EXPECT_EQ(onDisk, listed);
 }
 
+// GoldenCaptures checks the capture parser rejects malformed records and preserves valid escaped bytes.
 TEST(GoldenCaptures, CaptureGrammarViolationsAreRefused)
 {
-    const auto parse { [](std::string_view text)
-                       {
-                           return golden::parseCapture(std::as_bytes(std::span { text.data(), text.size() }));
-                       } };
-    EXPECT_TRUE(parse("1 rx a\\r\\n\n").has_value());
-    EXPECT_FALSE(parse("1 rx a").has_value());
-    EXPECT_FALSE(parse("1 xx a\n").has_value());
-    EXPECT_FALSE(parse("1 rx a\\q\n").has_value());
-    EXPECT_FALSE(parse("x rx a\n").has_value());
-    EXPECT_FALSE(parse("1 rx a\n\n").has_value());
-    const auto records { parse("12 rx a\\\\b\\r\\n\n13 tx c\n") };
+    EXPECT_TRUE(parseCaptureText("1 rx a\\r\\n\n").has_value());
+    EXPECT_FALSE(parseCaptureText("1 rx a").has_value());
+    EXPECT_FALSE(parseCaptureText("1 xx a\n").has_value());
+    EXPECT_FALSE(parseCaptureText("1 rx a\\q\n").has_value());
+    EXPECT_FALSE(parseCaptureText("x rx a\n").has_value());
+    EXPECT_FALSE(parseCaptureText("1 rx a\n\n").has_value());
+    const auto records { parseCaptureText("12 rx a\\\\b\\r\\n\n13 tx c\n") };
     ASSERT_TRUE(records.has_value());
     ASSERT_EQ(records->size(), 2U);
     EXPECT_EQ((*records)[0].mTimestampMs, 12U);

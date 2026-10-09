@@ -1,3 +1,4 @@
+#include "muckaii/base/types.hpp"
 #include "muckaii/persistence/sha256.hpp"
 #include "muckaii/persistence/wireLog.hpp"
 
@@ -11,12 +12,15 @@
 #include <vector>
 
 using namespace muckaii::persistence;
+namespace types = muckaii::types;
 using namespace std::chrono_literals;
 
 namespace
 {
+// toHex renders a digest as lowercase hexadecimal.
 std::string toHex(const Sha256Digest& digest)
 {
+    // kHex maps a digest nibble to its lowercase hexadecimal character.
     static constexpr std::string_view kHex { "0123456789abcdef" };
     std::string                       hex;
     for (const std::uint8_t byte : digest)
@@ -27,18 +31,20 @@ std::string toHex(const Sha256Digest& digest)
     return hex;
 }
 
-std::vector<std::byte> bytes(std::string_view text)
+// bytes converts test text into its byte representation.
+types::Bytes bytes(std::string_view text)
 {
-    std::vector<std::byte> out;
+    types::Bytes out;
     for (const char c : text)
         out.push_back(std::byte { static_cast<std::uint8_t>(c) });
     return out;
 }
 
+// makeTempDatabase clears stale SQLite files and returns a test path.
 std::filesystem::path makeTempDatabase(const std::string& name)
 {
-    const std::filesystem::path directory { std::filesystem::temp_directory_path()
-                                            / "muckaiiPersistenceTests" };
+    const auto testRoot { std::filesystem::temp_directory_path() / "muckaiiPersistenceTests" };
+    const std::filesystem::path directory { testRoot };
     std::filesystem::create_directories(directory);
     const std::filesystem::path path { directory / (name + ".db") };
     std::error_code             error;
@@ -48,41 +54,43 @@ std::filesystem::path makeTempDatabase(const std::string& name)
     return path;
 }
 
+// Row holds the selected fields of a wire-log record.
 struct Row
 {
-    std::int64_t mRun {};
-    std::int64_t mSeq {};
-    int          mDirection {};
-    std::string  mData;
+    std::int64_t  mRun {};
+    std::int64_t  mSeq {};
+    WireDirection mDirection { WireDirection::kReceived };
+    std::string   mData;
 };
 
+// readWireLog reads stored rows in run and sequence order.
 std::vector<Row> readWireLog(const std::filesystem::path& path)
 {
     sqlite3* database {};
     EXPECT_EQ(sqlite3_open_v2(toUtf8(path).c_str(), &database, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
     sqlite3_stmt* query {};
-    EXPECT_EQ(sqlite3_prepare_v2(database,
-                                 "SELECT run, seq, direction, data FROM wire_log ORDER BY run, seq;",
-                                 -1,
-                                 &query,
-                                 nullptr),
-              SQLITE_OK);
+    // kReadWireLogSql selects the fields used to verify persisted wire records.
+    constexpr const char* kReadWireLogSql {
+        "SELECT run, seq, direction, data FROM wire_log ORDER BY run, seq;"
+    };
+    EXPECT_EQ(sqlite3_prepare_v2(database, kReadWireLogSql, -1, &query, nullptr), SQLITE_OK);
     std::vector<Row> rows;
     while (sqlite3_step(query) == SQLITE_ROW)
     {
-        const auto* data { static_cast<const char*>(sqlite3_column_blob(query, 3)) };
-        rows.push_back(
-            Row { .mRun       = sqlite3_column_int64(query, 0),
-                  .mSeq       = sqlite3_column_int64(query, 1),
-                  .mDirection = sqlite3_column_int(query, 2),
-                  .mData      = std::string { data != nullptr ? data : "",
-                                              static_cast<std::size_t>(sqlite3_column_bytes(query, 3)) } });
+        const auto*       data { static_cast<const char*>(sqlite3_column_blob(query, 3)) };
+        const auto        length { static_cast<std::size_t>(sqlite3_column_bytes(query, 3)) };
+        const std::string payload { data != nullptr ? data : "", length };
+        rows.push_back(Row { .mRun       = sqlite3_column_int64(query, 0),
+                             .mSeq       = sqlite3_column_int64(query, 1),
+                             .mDirection = static_cast<WireDirection>(sqlite3_column_int(query, 2)),
+                             .mData      = payload });
     }
     sqlite3_finalize(query);
     sqlite3_close(database);
     return rows;
 }
 
+// countRows returns the first integer from a read-only database query.
 int countRows(const std::filesystem::path& path, const char* sql)
 {
     sqlite3* database {};
@@ -95,6 +103,7 @@ int countRows(const std::filesystem::path& path, const char* sql)
     return count;
 }
 
+// makeRecord builds a received record with sequence-based test time.
 WireRecord makeRecord(std::uint64_t sequence, std::string_view data)
 {
     return WireRecord { .mSequence    = sequence,
@@ -103,11 +112,25 @@ WireRecord makeRecord(std::uint64_t sequence, std::string_view data)
                         .mDirection   = WireDirection::kReceived };
 }
 
+// makeRecord constructs a wire record with explicit timestamp and direction fields.
+WireRecord
+makeRecord(std::uint64_t sequence, std::int64_t timestamp, std::string_view data, WireDirection direction)
+{
+    WireRecord record;
+    record.mSequence    = sequence;
+    record.mTimestampMs = timestamp;
+    record.mData        = bytes(data);
+    record.mDirection   = direction;
+    return record;
+}
+
 // Another connection holding the database's write lock, as a second MuckaII instance does while it
 // writes.
+// WriteLock holds an immediate SQLite write transaction for contention tests.
 class WriteLock
 {
 public:
+    // WriteLock opens path and begins an immediate transaction.
     explicit WriteLock(const std::filesystem::path& path)
     {
         EXPECT_EQ(sqlite3_open_v2(toUtf8(path).c_str(), &mDatabase, SQLITE_OPEN_READWRITE, nullptr),
@@ -115,6 +138,7 @@ public:
         EXPECT_EQ(sqlite3_exec(mDatabase, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr), SQLITE_OK);
     }
 
+    // ~WriteLock releases the held database lock.
     ~WriteLock()
     {
         release();
@@ -125,6 +149,7 @@ public:
     WriteLock(WriteLock&&)                 = delete;
     WriteLock& operator=(WriteLock&&)      = delete;
 
+    // release rolls back the lock transaction and closes its database.
     void release()
     {
         if (mDatabase == nullptr)
@@ -139,6 +164,7 @@ private:
 };
 
 // A database whose schema exists, so a lock taken on it is the only obstacle.
+// createSchema initializes an empty wire-log database before lock tests.
 void createSchema(const std::filesystem::path& path)
 {
     WireLog log { path };
@@ -147,6 +173,7 @@ void createSchema(const std::filesystem::path& path)
 }
 } // namespace
 
+// Sha256_MatchesTheFipsExamples checks the digest matches representative FIPS SHA-256 examples.
 TEST(Sha256, MatchesTheFipsExamples)
 {
     EXPECT_EQ(toHex(sha256(bytes(""))), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -158,28 +185,17 @@ TEST(Sha256, MatchesTheFipsExamples)
               "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
 }
 
+// WireLog_StoresRecordsInOrderWithPayloadsOnce checks records retain sequence order while identical payloads are stored once.
 TEST(WireLog, StoresRecordsInOrderWithPayloadsOnce)
 {
     const std::filesystem::path path { makeTempDatabase("ordered") };
     {
         WireLog log { path };
         log.beginRun(RunInfo { .mHost = "127.0.0.1", .mClientVersion = "test", .mStartedMs = 1 });
-        EXPECT_TRUE(log.append(WireRecord { .mSequence    = 0,
-                                            .mTimestampMs = 2,
-                                            .mData        = bytes("room\r\n"),
-                                            .mDirection   = WireDirection::kReceived }));
-        EXPECT_TRUE(log.append(WireRecord { .mSequence    = 1,
-                                            .mTimestampMs = 3,
-                                            .mData        = bytes("n\r\n"),
-                                            .mDirection   = WireDirection::kSent }));
-        EXPECT_TRUE(log.append(WireRecord { .mSequence    = 2,
-                                            .mTimestampMs = 4,
-                                            .mData        = bytes("room\r\n"),
-                                            .mDirection   = WireDirection::kReceived }));
-        EXPECT_TRUE(log.append(WireRecord { .mSequence    = 3,
-                                            .mTimestampMs = 5,
-                                            .mData        = bytes("a note"),
-                                            .mDirection   = WireDirection::kAnnotation }));
+        EXPECT_TRUE(log.append(makeRecord(0, 2, "room\r\n", WireDirection::kReceived)));
+        EXPECT_TRUE(log.append(makeRecord(1, 3, "n\r\n", WireDirection::kSent)));
+        EXPECT_TRUE(log.append(makeRecord(2, 4, "room\r\n", WireDirection::kReceived)));
+        EXPECT_TRUE(log.append(makeRecord(3, 5, "a note", WireDirection::kAnnotation)));
         log.endRun(6);
         ASSERT_TRUE(log.flush(5s));
         EXPECT_TRUE(log.takeNotices().empty());
@@ -188,10 +204,10 @@ TEST(WireLog, StoresRecordsInOrderWithPayloadsOnce)
     const std::vector<Row> rows { readWireLog(path) };
     ASSERT_EQ(rows.size(), 4U);
     EXPECT_EQ(rows[0].mData, "room\r\n");
-    EXPECT_EQ(rows[1].mDirection, 1);
+    EXPECT_EQ(rows[1].mDirection, WireDirection::kSent);
     EXPECT_EQ(rows[1].mData, "n\r\n");
     EXPECT_EQ(rows[2].mData, "room\r\n");
-    EXPECT_EQ(rows[3].mDirection, 2);
+    EXPECT_EQ(rows[3].mDirection, WireDirection::kAnnotation);
     for (std::size_t i { 0 }; i < rows.size(); ++i)
         EXPECT_EQ(rows[i].mSeq, static_cast<std::int64_t>(i));
     EXPECT_EQ(countRows(path, "SELECT COUNT(*) FROM payload;"), 3);
@@ -199,6 +215,7 @@ TEST(WireLog, StoresRecordsInOrderWithPayloadsOnce)
     EXPECT_EQ(countRows(path, "SELECT COUNT(*) FROM schema_step;"), kSchemaSteps);
 }
 
+// WireLog_TwoRunsShareOneDatabase checks separate runs share one wire-log database.
 TEST(WireLog, TwoRunsShareOneDatabase)
 {
     const std::filesystem::path path { makeTempDatabase("shared") };
@@ -215,6 +232,7 @@ TEST(WireLog, TwoRunsShareOneDatabase)
     EXPECT_EQ(countRows(path, "SELECT COUNT(*) FROM schema_step;"), kSchemaSteps);
 }
 
+// WireLog_AnOpenFailureIsReportedOnceAndNothingIsKept checks an open failure is reported once and stores no records.
 TEST(WireLog, AnOpenFailureIsReportedOnceAndNothingIsKept)
 {
     const std::filesystem::path directory { makeTempDatabase("notADatabase") };
@@ -230,21 +248,13 @@ TEST(WireLog, AnOpenFailureIsReportedOnceAndNothingIsKept)
 }
 
 // SQLite is handed UTF-8, never the ANSI code page.
+// WireLog_OpensAPathOutsideTheAnsiCodePage checks database paths are passed to SQLite as UTF-8.
 TEST(WireLog, OpensAPathOutsideTheAnsiCodePage)
 {
     // U+00E9 and U+4E2D: the second is in no Western ANSI code page.
-    const std::filesystem::path directory { std::filesystem::temp_directory_path() / "muckaiiPersistenceTests"
-                                            / std::filesystem::path { std::u8string {
-                                                u8'c',
-                                                u8'a',
-                                                u8'f',
-                                                char8_t { 0xC3 },
-                                                char8_t { 0xA9 },
-                                                u8' ',
-                                                char8_t { 0xE4 },
-                                                char8_t { 0xB8 },
-                                                char8_t { 0xAD },
-                                            } } };
+    const std::u8string name { u8"caf\u00E9 \u4E2D" };
+    const auto          testRoot { std::filesystem::temp_directory_path() / "muckaiiPersistenceTests" };
+    const std::filesystem::path directory { testRoot / name };
     std::error_code             error;
     std::filesystem::remove_all(directory, error);
     const std::filesystem::path path { directory / "log.db" };
@@ -261,6 +271,7 @@ TEST(WireLog, OpensAPathOutsideTheAnsiCodePage)
 }
 
 // A lock held by another instance delays the log; it never stops it (persistence.md "Wire log").
+// WireLog_ALockedDatabaseIsRetriedNotAbandoned checks database lock contention retries the queued batch.
 TEST(WireLog, ALockedDatabaseIsRetriedNotAbandoned)
 {
     const std::filesystem::path path { makeTempDatabase("busy") };
@@ -284,6 +295,7 @@ TEST(WireLog, ALockedDatabaseIsRetriedNotAbandoned)
 }
 
 // The queue is bounded: past kMaxQueuedRecords a record is refused at once, never waited for.
+// WireLog_AFullQueueRefusesRecordsWithoutBlocking checks the record queue rejects overflow without waiting.
 TEST(WireLog, AFullQueueRefusesRecordsWithoutBlocking)
 {
     const std::filesystem::path path { makeTempDatabase("full") };
@@ -307,6 +319,7 @@ TEST(WireLog, AFullQueueRefusesRecordsWithoutBlocking)
 }
 
 // Closing waits a bounded time even when the writer cannot make progress.
+// WireLog_ClosingIsBoundedWhileTheDatabaseIsLocked checks destruction remains bounded while the database is locked.
 TEST(WireLog, ClosingIsBoundedWhileTheDatabaseIsLocked)
 {
     const std::filesystem::path path { makeTempDatabase("closing") };
@@ -323,6 +336,7 @@ TEST(WireLog, ClosingIsBoundedWhileTheDatabaseIsLocked)
 }
 
 // The byte bound refuses records long before the record bound when they are large.
+// WireLog_TheQueueIsBoundedInBytes checks payload bytes enforce the wire-log queue bound.
 TEST(WireLog, TheQueueIsBoundedInBytes)
 {
     const std::filesystem::path path { makeTempDatabase("bytes") };
@@ -343,6 +357,7 @@ TEST(WireLog, TheQueueIsBoundedInBytes)
 
 // The schema's references hold: with foreign keys on (WireLog turns them on and reads the pragma
 // back, refusing to log otherwise), a wire row naming no run or no payload is refused.
+// WireLog_TheSchemaEnforcesItsReferences checks foreign keys reject wire rows without a run or payload.
 TEST(WireLog, TheSchemaEnforcesItsReferences)
 {
     const std::filesystem::path path { makeTempDatabase("references") };
@@ -361,6 +376,7 @@ TEST(WireLog, TheSchemaEnforcesItsReferences)
     EXPECT_EQ(countRows(path, "SELECT COUNT(*) FROM wire;"), 0);
 }
 
+// DataDirectory_TheDefaultDatabaseIsInDotMuckaii checks the default database resolves under the user data directory.
 TEST(DataDirectory, TheDefaultDatabaseIsInDotMuckaii)
 {
     const std::optional<std::filesystem::path> path { findDefaultDatabasePath() };

@@ -1,5 +1,6 @@
 #include "muckaii/core/fakeServer/fakeMudServer.hpp"
 
+#include "muckaii/base/types.hpp"
 #include "muckaii/mud/golden/golden.hpp"
 
 #include <algorithm>
@@ -12,22 +13,32 @@ namespace
 {
 using namespace std::chrono_literals;
 
+// kAcceptTimeout bounds how long the fake server waits for its single client.
 constexpr std::chrono::milliseconds kAcceptTimeout { 10s };
+// kExpectTimeout bounds a client-byte expectation.
 constexpr std::chrono::milliseconds kExpectTimeout { 10s };
+// kPollSlice keeps fake-server waits responsive to shutdown.
 constexpr std::chrono::milliseconds kPollSlice { 50ms };
-constexpr std::size_t               kReadSize { 4096 };
-constexpr std::size_t               kShownBytes { 48 };
+// kReadSize bounds each read from the scripted client.
+constexpr std::size_t kReadSize { 4096 };
+// kShownBytes limits byte excerpts in expectation errors.
+constexpr std::size_t kShownBytes { 48 };
+// kListenFailure explains why the fake server has no listening port.
+constexpr std::string_view kListenFailure { "cannot listen on 127.0.0.1" };
 
-std::vector<std::byte> toBytes(std::string_view text)
+// toBytes copies each text character into a wire byte.
+types::Bytes toBytes(std::string_view text)
 {
-    std::vector<std::byte> bytes;
+    types::Bytes bytes;
     for (const char c : text)
         bytes.push_back(std::byte { static_cast<std::uint8_t>(c) });
     return bytes;
 }
 
+// describe formats a bounded uppercase hexadecimal excerpt for diagnostics.
 std::string describe(std::span<const std::byte> bytes)
 {
+    // kHex maps a nibble to its uppercase diagnostic digit.
     static constexpr std::string_view kHex { "0123456789ABCDEF" };
     std::string                       text;
     for (std::size_t i { 0 }; i < std::min(bytes.size(), kShownBytes); ++i)
@@ -49,7 +60,7 @@ ScriptStep send(std::string_view text)
     return send(toBytes(text));
 }
 
-ScriptStep send(std::vector<std::byte> bytes)
+ScriptStep send(types::Bytes bytes)
 {
     return ScriptStep {
         .mBytes = std::move(bytes), .mPause = {}, .mCount = 0, .mKind = ScriptStep::Kind::kSend
@@ -61,7 +72,7 @@ ScriptStep expect(std::string_view text)
     return expect(toBytes(text));
 }
 
-ScriptStep expect(std::vector<std::byte> bytes)
+ScriptStep expect(types::Bytes bytes)
 {
     return ScriptStep {
         .mBytes = std::move(bytes), .mPause = {}, .mCount = 0, .mKind = ScriptStep::Kind::kExpect
@@ -82,9 +93,8 @@ ScriptStep pause(std::chrono::milliseconds duration)
 
 std::vector<ScriptStep> replayCapture(const std::filesystem::path& capture, std::chrono::milliseconds gap)
 {
-    std::vector<ScriptStep>                                      steps;
-    const std::optional<std::vector<mud::golden::CaptureRecord>> records { mud::golden::readCapture(
-        capture) };
+    std::vector<ScriptStep>              steps;
+    const mud::golden::OptCaptureRecords records { mud::golden::readCapture(capture) };
     if (! records.has_value())
         return steps;
     for (const mud::golden::CaptureRecord& record : *records)
@@ -97,9 +107,9 @@ std::vector<ScriptStep> replayCapture(const std::filesystem::path& capture, std:
     return steps;
 }
 
-std::vector<std::byte> getExpectedBytes(const std::vector<ScriptStep>& script)
+types::Bytes getExpectedBytes(const std::vector<ScriptStep>& script)
 {
-    std::vector<std::byte> bytes;
+    types::Bytes bytes;
     for (const ScriptStep& step : script)
     {
         if (step.mKind == ScriptStep::Kind::kExpect)
@@ -115,14 +125,11 @@ FakeMudServer::FakeMudServer(std::vector<ScriptStep> script)
     if (! mListener.has_value())
     {
         mIsDone = true;
-        mError  = "cannot listen on 127.0.0.1";
+        mError  = kListenFailure;
         return;
     }
     mPort   = mListener->getPort();
-    mThread = std::thread { [this]()
-                            {
-                                run();
-                            } };
+    mThread = std::thread { &FakeMudServer::run, this };
 }
 
 FakeMudServer::~FakeMudServer()
@@ -138,12 +145,11 @@ FakeMudServer::~FakeMudServer()
 bool FakeMudServer::waitDone(std::chrono::milliseconds timeout)
 {
     std::unique_lock lock { mMutex };
-    return mChanged.wait_for(lock,
-                             timeout,
-                             [this]()
-                             {
-                                 return mIsDone;
-                             });
+    const auto       isDone = [this]()
+    {
+        return mIsDone;
+    };
+    return mChanged.wait_for(lock, timeout, isDone);
 }
 
 std::string FakeMudServer::getError()
@@ -152,7 +158,7 @@ std::string FakeMudServer::getError()
     return mError;
 }
 
-std::vector<std::byte> FakeMudServer::getReceived()
+types::Bytes FakeMudServer::getReceived()
 {
     const std::scoped_lock lock { mMutex };
     return mReceived;
@@ -180,8 +186,8 @@ bool FakeMudServer::readAvailable(const transport::TcpConnection& connection)
         if (result.mStatus != transport::IoStatus::kDone)
             return false;
         const std::scoped_lock lock { mMutex };
-        mReceived.insert(
-            mReceived.end(), buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(result.mCount));
+        const auto             end { buffer.begin() + static_cast<std::ptrdiff_t>(result.mCount) };
+        mReceived.insert(mReceived.end(), buffer.begin(), end);
     }
 }
 
@@ -203,8 +209,7 @@ bool FakeMudServer::writeAll(const transport::TcpConnection& connection, std::sp
     return true;
 }
 
-bool FakeMudServer::awaitExpected(const transport::TcpConnection& connection,
-                                  const std::vector<std::byte>&   bytes)
+bool FakeMudServer::awaitExpected(const transport::TcpConnection& connection, const types::Bytes& bytes)
 {
     const auto deadline { std::chrono::steady_clock::now() + kExpectTimeout };
     while (true)
@@ -214,8 +219,8 @@ bool FakeMudServer::awaitExpected(const transport::TcpConnection& connection,
             const std::scoped_lock lock { mMutex };
             if (mReceived.size() >= mCursor + bytes.size())
             {
-                const std::span<const std::byte> got { std::span { mReceived }.subspan(mCursor,
-                                                                                       bytes.size()) };
+                const std::span<const std::byte> received { mReceived };
+                const std::span<const std::byte> got { received.subspan(mCursor, bytes.size()) };
                 if (! std::ranges::equal(got, bytes))
                 {
                     mError = "expected [" + describe(bytes) + "] but the client sent [" + describe(got) + "]";

@@ -9,6 +9,7 @@
 namespace muckaii::mud
 {
 // What a header does to the context stack (docs/spec/protocol.md "Context stack").
+// StackOp describes how a header changes the context stack.
 enum class StackOp : std::uint8_t
 {
     kPush,
@@ -18,6 +19,7 @@ enum class StackOp : std::uint8_t
 };
 
 // The event-level role of a code (docs/spec/c1-codes.toml `role`).
+// Role identifies the event-level purpose of a C1 code.
 enum class Role : std::uint8_t
 {
     kNone,
@@ -49,14 +51,15 @@ enum class Role : std::uint8_t
     kAccountLogout,
 };
 
-// Colour column values in c1-codes.toml that are not colour indices.
+// kNoColourChange preserves the current foreground and background; kColourFromParams reads them from the header.
 constexpr std::int8_t kNoColourChange { -1 };
 constexpr std::int8_t kColourFromParams { -2 };
 
-// The most numbers an id has (docs/spec/c1-codes.toml).
+// kMaxIdNumbers is the longest id sequence in the C1 code table.
 constexpr std::size_t kMaxIdNumbers { 3 };
 
 // One row of docs/spec/c1-codes.toml. `mNumbers` holds `mCount` numbers, then zeros.
+// CodeInfo describes one C1 code-table row.
 struct CodeInfo
 {
     std::array<std::uint8_t, kMaxIdNumbers> mNumbers;
@@ -69,22 +72,26 @@ struct CodeInfo
     Role                                    mRole;
 };
 
-// The most numbers a header may carry (docs/spec/protocol.md "C1 framing").
+// kMaxHeaderNumbers is the protocol's maximum number count in a C1 header.
 constexpr std::size_t kMaxHeaderNumbers { 4 };
 
 // A header as sent: 1 to 4 numbers, each 0-99.
+// Header stores the numbers carried by one C1 header.
 struct Header
 {
     std::array<std::uint8_t, kMaxHeaderNumbers> mNumbers {};
     std::uint8_t                                mCount {};
 
+    // operator== compares two C1 headers by their stored numbers and count.
     bool operator==(const Header&) const = default;
 };
 
 // The generated table (src/mud/codeTable.cpp, from docs/spec/c1-codes.toml).
+// getCodeTable returns the C1 code table in source order.
 [[nodiscard]] std::span<const CodeInfo> getCodeTable() noexcept;
 
 // The table row a header dispatches on, by the four matching steps of docs/spec/protocol.md
 // "Parameters". nullptr when it matches no id.
+// findCode returns the code row selected by a header, or null when none matches.
 [[nodiscard]] const CodeInfo* findCode(const Header& header) noexcept;
 } // namespace muckaii::mud

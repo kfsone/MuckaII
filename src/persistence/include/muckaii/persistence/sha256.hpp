@@ -7,11 +7,11 @@
 
 namespace muckaii::persistence
 {
+// kSha256Size is the fixed output length of a SHA-256 digest in bytes.
 constexpr std::size_t kSha256Size { 32 };
 
 using Sha256Digest = std::array<std::uint8_t, kSha256Size>;
 
-// SHA-256 (FIPS 180-4) of `data`: the content address of a wire payload (docs/spec/persistence.md
-// "Retention and deduplication").
+// sha256 returns the SHA-256 content address of data.
 [[nodiscard]] Sha256Digest sha256(std::span<const std::byte> data) noexcept;
 } // namespace muckaii::persistence

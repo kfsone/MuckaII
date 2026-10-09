@@ -1,5 +1,7 @@
 #pragma once
 
+#include "muckaii/base/types.hpp"
+
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
@@ -14,12 +16,10 @@
 #include <variant>
 #include <vector>
 
-// The wire log (docs/spec/persistence.md "Wire log"): every byte in both directions, stored by one
-// background writer thread in SQLite, payloads content-addressed. The caller (core) assigns each
-// record its run sequence and timestamp at handover; this class only stores.
+// WireLog stores all sent and received bytes on a background SQLite writer; the caller assigns sequence and time.
 namespace muckaii::persistence
 {
-// Stored values, never renumbered (persistence.md "What a record is").
+// WireDirection identifies the stored direction of one wire-log record.
 enum class WireDirection : std::uint8_t
 {
     kReceived   = 0,
@@ -27,14 +27,16 @@ enum class WireDirection : std::uint8_t
     kAnnotation = 2,
 };
 
+// WireRecord carries one sequence-numbered wire-log payload.
 struct WireRecord
 {
-    std::uint64_t          mSequence {};
-    std::int64_t           mTimestampMs {};
-    std::vector<std::byte> mData;
-    WireDirection          mDirection { WireDirection::kReceived };
+    std::uint64_t mSequence {};
+    std::int64_t  mTimestampMs {};
+    types::Bytes  mData;
+    WireDirection mDirection { WireDirection::kReceived };
 };
 
+// RunInfo identifies the connection recorded by a wire-log run.
 struct RunInfo
 {
     std::string  mHost;
@@ -42,60 +44,65 @@ struct RunInfo
     std::int64_t mStartedMs {};
 };
 
-// The schema steps this version knows (persistence.md "Schema forward-compatibility").
+// kSchemaSteps counts the wire-log schema migrations supported by this version.
 constexpr int kSchemaSteps { 1 };
+// kWireLogNoticePrefix identifies status notices from the asynchronous wire-log writer.
+constexpr std::string_view kWireLogNoticePrefix { "wire log: " };
+// kSqliteOutOfMemoryMessage is used when SQLite cannot allocate an error message.
+constexpr std::string_view kSqliteOutOfMemoryMessage { "out of memory" };
+// kSqliteUnknownErrorMessage is used when SQLite returns no diagnostic text.
+constexpr std::string_view kSqliteUnknownErrorMessage { "unknown error" };
 
-// The database file name inside ~/.muckaii/ (persistence.md "Data directory", default: line).
+// kDatabaseName is the standard SQLite file name under the user data directory.
 constexpr std::string_view kDatabaseName { "muckaii.db" };
 
-// Records waiting for the writer. A record handed over while this many wait is dropped and counted,
-// never waited for: the core thread must not stall (persistence.md "Wire log").
+// kMaxQueuedRecords bounds queued records before the core drops and counts another record.
 constexpr std::size_t kMaxQueuedRecords { 16384 };
 
-// The same bound on the bytes those records carry, so a few huge reads cannot use unbounded memory.
+// kMaxQueuedBytes bounds payload storage even when a small number of records are large.
 constexpr std::size_t kMaxQueuedBytes { std::size_t { 64 } * 1024 * 1024 };
 
-// ~/.muckaii/muckaii.db (persistence.md "Data directory"): %USERPROFILE% on Windows, $HOME
-// elsewhere. nullopt when that variable is unset or empty.
+// findDefaultDatabasePath resolves the standard user database path, or returns empty without a home.
 [[nodiscard]] std::optional<std::filesystem::path> findDefaultDatabasePath();
 
-// UTF-8 text of a path, for SQLite and for messages (never the ANSI code page).
+// toUtf8 converts a filesystem path to the encoding SQLite accepts on every platform.
 [[nodiscard]] std::string toUtf8(const std::filesystem::path& path);
 
+// WireLog stores wire records on one background writer thread.
 class WireLog
 {
 public:
-    // Starts the writer thread, which opens (creating if needed) the database at `path`. Never
-    // fails here: an open failure is reported through takeNotices() and the log keeps nothing.
+    // WireLog starts a writer for path and reports any open failure through takeNotices().
     explicit WireLog(std::filesystem::path path);
 
-    // Waits a bounded time for queued records, then stops: the writer finishes the batch in hand
-    // and the rest is dropped.
+    // ~WireLog waits boundedly, then stops after the current batch.
     ~WireLog();
     WireLog(const WireLog&)            = delete;
     WireLog& operator=(const WireLog&) = delete;
     WireLog(WireLog&&)                 = delete;
     WireLog& operator=(WireLog&&)      = delete;
 
-    // Hand-over, from the core thread. Each only takes the lock for a push.
+    // beginRun queues the start metadata for a new connection.
     void beginRun(RunInfo info);
+    // endRun queues the connection end timestamp.
     void endRun(std::int64_t endedMs);
 
-    // False when the record was dropped because kMaxQueuedRecords records, or kMaxQueuedBytes
-    // bytes with it, would be waiting.
+    // append queues a record or returns false when either queue bound would be exceeded.
     [[nodiscard]] bool append(WireRecord record);
 
-    // Waits up to `timeout` for every queued record to be stored. False on timeout.
+    // flush waits up to timeout for all queued jobs to be stored.
     [[nodiscard]] bool flush(std::chrono::milliseconds timeout);
 
-    // One-time reports for the terminal: an open failure, a write failure, a newer schema.
+    // takeNotices transfers pending writer reports to the caller.
     [[nodiscard]] std::vector<std::string> takeNotices();
 
 private:
+    // BeginJob queues the metadata that opens a wire-log run.
     struct BeginJob
     {
         RunInfo mInfo;
     };
+    // EndJob queues the timestamp that closes a wire-log run.
     struct EndJob
     {
         std::int64_t mEndedMs {};
@@ -104,11 +111,14 @@ private:
 
     class Database;
 
+    // run opens the database and drains queued jobs on the writer thread.
     void run();
+    // notice queues a one-time report for the core thread.
     void notice(std::string text);
+    // push queues a non-record job and wakes the writer.
     void push(Job job);
 
-    // Waits `delay`, or less if stopping. False when stopping.
+    // backOff waits for delay and returns false if shutdown interrupts the wait.
     [[nodiscard]] bool backOff(std::chrono::milliseconds delay);
 
     std::filesystem::path    mPath;

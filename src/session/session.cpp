@@ -1,5 +1,8 @@
 #include "muckaii/session/session.hpp"
 
+#include "muckaii/base/types.hpp"
+#include "muckaii/base/wire.hpp"
+
 #include <algorithm>
 #include <array>
 #include <string>
@@ -9,42 +12,109 @@ namespace muckaii::session
 {
 namespace
 {
-constexpr std::uint8_t kEsc { 0x1B };
+// Ctrl+F, the byte that asks the shell to enter client mode (connection.md 3.2).
+// kCtrlF is the client-mode control byte sent after ESC.
 constexpr std::uint8_t kCtrlF { 0x06 };
-constexpr std::uint8_t kIac { 0xFF };
-constexpr char         kFirstPrintable { 0x20 };
-constexpr char         kLastPrintable { 0x7E };
+
+// The bracketing escapes of a client-mode request: ESC '-' <final> (connection.md 3.2, written
+// `$-[ ... $-]`), and the final that separates the entry from the width command.
+constexpr char kClientIntroducer { '-' };
+constexpr char kClientBegin { '[' };
+constexpr char kClientNext { 'N' };
+constexpr char kClientEnd { ']' };
+
+// The width command the server takes inside a client-mode request: /T<columns>.
+// kWidthCommand is the server command prefix that sets terminal width.
+constexpr std::string_view kWidthCommand { "/T" };
+// kClientWrapCommand disables server wrapping after client mode starts.
+constexpr std::string_view kClientWrapCommand { "/F+" };
+
+// kLineEnd terminates each text line sent to MUD2.
+constexpr std::string_view kLineEnd { "\r\n" };
 
 // Clio's anchored literals (connection.md 3.1, default: line). "login: " matches anywhere; the
 // others only at the start of a line.
-constexpr std::string_view                kShellLogin { "login: " };
-constexpr std::string_view                kAccountPrompt { "Account ID: " };
+// kShellLogin is the shell prompt text that receives the configured login name.
+constexpr std::string_view kShellLogin { "login: " };
+// kAccountPrompt begins the recognized account ID prompt.
+constexpr std::string_view kAccountPrompt { "Account ID: " };
+// kPasswordPrompts are the recognized password prompt prefixes.
 constexpr std::array<std::string_view, 2> kPasswordPrompts { "Password:", "password:" };
+// kOptionPrompts are the recognized option menu prefixes.
 constexpr std::array<std::string_view, 2> kOptionPrompts { "Option: ", "Option (H for help): " };
+// kAccountMaskNote is the wire-log annotation for a masked account ID.
+constexpr std::string_view kAccountMaskNote { "masked: account id" };
+// kPasswordMaskNote is the wire-log annotation for a masked password.
+constexpr std::string_view kPasswordMaskNote { "masked: password" };
+// kBeforeLoginMaskNote is the wire-log annotation for a line sent before login.
+constexpr std::string_view kBeforeLoginMaskNote { "masked: line before login" };
+// kWidthConfirmedNote starts the annotation for a confirmed terminal width.
+constexpr std::string_view kWidthConfirmedNote { "terminal width confirmed: " };
 
-void appendText(std::vector<std::byte>& out, std::string_view text)
+// appendText appends `text`'s characters to `out` as bytes.
+void appendText(types::Bytes& out, std::string_view text)
 {
     for (const char c : text)
         out.push_back(std::byte { static_cast<std::uint8_t>(c) });
 }
 
-void appendEscape(std::vector<std::byte>& out, char final)
+// appendEscape appends the client escape ESC '-' `final`.
+void appendEscape(types::Bytes& out, char final)
 {
-    out.push_back(std::byte { kEsc });
-    out.push_back(std::byte { '-' });
+    out.push_back(std::byte { wire::kEsc });
+    out.push_back(std::byte { static_cast<std::uint8_t>(kClientIntroducer) });
     out.push_back(std::byte { static_cast<std::uint8_t>(final) });
 }
-void appendWidth(std::vector<std::byte>& out, int columns)
+
+// appendWidthCommand appends "/T<columns>".
+void appendWidthCommand(types::Bytes& out, int columns)
 {
-    appendEscape(out, '[');
-    appendText(out, "/T" + std::to_string(columns));
-    appendEscape(out, ']');
+    appendText(out, kWidthCommand);
+    appendText(out, std::to_string(columns));
+}
+
+// appendWidth appends a bracketed width request, which sets the width once client mode is on.
+void appendWidth(types::Bytes& out, int columns)
+{
+    appendEscape(out, kClientBegin);
+    appendWidthCommand(out, columns);
+    appendEscape(out, kClientEnd);
+}
+
+// isPrintableChar reports whether `c` is a printable 7-bit character.
+bool isPrintableChar(char c) noexcept
+{
+    return wire::isPrintable(static_cast<std::uint8_t>(c));
+}
+
+// getColumnsCeiling returns the most columns `maxColumns` allows before the terminal's own width
+// is considered: unset takes the default, and client-side wrap takes the usual maximum.
+// getColumnsCeiling selects the configured or default upper width limit.
+// startsWithPrompt reports whether a live line begins with one of the recognized prompts.
+template <std::size_t Size>
+bool startsWithPrompt(std::string_view line, const std::array<std::string_view, Size>& prompts) noexcept
+{
+    for (const std::string_view prompt : prompts)
+    {
+        if (line.starts_with(prompt))
+            return true;
+    }
+    return false;
+}
+
+int getColumnsCeiling(types::OptInt maxColumns) noexcept
+{
+    if (! maxColumns.has_value())
+        return kDefaultColumns;
+    if (isClientWrapWidth(maxColumns))
+        return kMaxColumns;
+    return *maxColumns;
 }
 } // namespace
 
-std::vector<std::byte> getLoggedBytes(const Outbound& outbound)
+types::Bytes getLoggedBytes(const Outbound& outbound)
 {
-    std::vector<std::byte> bytes { outbound.mBytes };
+    types::Bytes bytes { outbound.mBytes };
     if (outbound.mMask == Mask::kNone)
         return bytes;
     std::size_t end { bytes.size() };
@@ -61,22 +131,18 @@ std::string_view getMaskNote(Mask mask) noexcept
         case Mask::kNone:
             return {};
         case Mask::kAccountId:
-            return "masked: account id";
+            return kAccountMaskNote;
         case Mask::kPassword:
-            return "masked: password";
+            return kPasswordMaskNote;
         case Mask::kBeforeLogin:
-            return "masked: line before login";
+            return kBeforeLoginMaskNote;
     }
     return {};
 }
 
 bool isValidCredential(std::string_view text) noexcept
 {
-    return std::ranges::all_of(text,
-                               [](char c)
-                               {
-                                   return c >= kFirstPrintable && c <= kLastPrintable;
-                               });
+    return std::ranges::all_of(text, isPrintableChar);
 }
 
 bool isUserOrigin(Origin origin) noexcept
@@ -105,7 +171,7 @@ void wipeSecret(std::string& secret) noexcept
     secret.clear();
 }
 
-void wipeSecret(std::vector<std::byte>& secret) noexcept
+void wipeSecret(types::Bytes& secret) noexcept
 {
     volatile std::byte* const bytes { secret.data() };
     for (std::size_t i { 0 }; i < secret.size(); ++i)
@@ -119,42 +185,46 @@ Credentials::~Credentials()
     wipeSecret(mPassword);
 }
 
-int getEffectiveColumns(int fits, std::optional<int> maxColumns) noexcept
+int getEffectiveColumns(int fits, types::OptInt maxColumns) noexcept
 {
-    const int ceiling { maxColumns.value_or(kDefaultColumns) };
+    const int ceiling { getColumnsCeiling(maxColumns) };
     return std::clamp(std::min(ceiling, fits), kMinColumns, kMaxColumns);
 }
 
-std::vector<std::byte> makeClientModeEntry(int columns)
+types::Bytes makeClientModeEntry(int columns)
 {
-    std::vector<std::byte> out;
-    appendEscape(out, '[');
-    out.push_back(std::byte { kEsc });
+    types::Bytes out;
+    appendEscape(out, kClientBegin);
+    out.push_back(std::byte { wire::kEsc });
     out.push_back(std::byte { kCtrlF });
-    appendEscape(out, 'N');
-    appendText(out, "/T" + std::to_string(columns));
-    appendEscape(out, ']');
+    appendEscape(out, kClientNext);
+    appendWidthCommand(out, columns);
+    appendEscape(out, kClientEnd);
     return out;
 }
 
-std::vector<std::byte> makeLine(std::string_view text)
+types::Bytes makeLine(std::string_view text)
 {
-    std::vector<std::byte> out;
+    types::Bytes out;
     out.reserve(text.size() + 2);
     for (const char c : text)
     {
         const std::byte byte { static_cast<std::uint8_t>(c) };
         out.push_back(byte);
-        if (byte == std::byte { kIac })
+        if (byte == std::byte { wire::kTelnetIac })
             out.push_back(byte);
     }
-    appendText(out, "\r\n");
+    appendText(out, kLineEnd);
     return out;
 }
 
-Session::Session(const Credentials& credentials, int columns)
+Session::Session(const Credentials& credentials, int columns, bool isClientWrap)
     : mCredentials { credentials }
-    , mTelnet { columns }
+    // NEW-ENVIRON only advertises a login name MuckaII would itself send at the shell `login:`
+    // prompt (connection.md 2.1/3.1): the same validity check as drivePrompts() below.
+    , mTelnet { columns,
+                isValidCredential(mCredentials.mLoginName) ? mCredentials.mLoginName : std::string {} }
+    , mIsClientWrap { isClientWrap }
 {
 }
 
@@ -207,11 +277,12 @@ void Session::setColumns(int columns)
 {
     if (columns == mTelnet.getColumns())
         return;
-    if (std::vector<std::byte> naws { mTelnet.setColumns(columns) }; ! naws.empty())
+    if (types::Bytes naws { mTelnet.setColumns(columns) }; ! naws.empty())
         queue(std::move(naws), Origin::kTelnet);
-    if (mFlowState == FlowState::kGame)
+    // `/F+` already told the server not to wrap at all; resending `/T` would turn wrapping back on.
+    if (mFlowState == FlowState::kGame && ! mIsClientWrap)
     {
-        std::vector<std::byte> width;
+        types::Bytes width;
         appendWidth(width, columns);
         queue(std::move(width), Origin::kWidth);
     }
@@ -219,11 +290,13 @@ void Session::setColumns(int columns)
 
 std::size_t Session::getTypedCount() const noexcept
 {
-    return static_cast<std::size_t>(std::ranges::count_if(mOutbound,
-                                                          [](const Outbound& outbound)
-                                                          {
-                                                              return outbound.mOrigin == Origin::kTyped;
-                                                          }));
+    std::size_t count {};
+    for (const Outbound& outbound : mOutbound)
+    {
+        if (outbound.mOrigin == Origin::kTyped)
+            ++count;
+    }
+    return count;
 }
 
 Outbound Session::takeOutbound()
@@ -246,7 +319,7 @@ void Session::handleEvent(const mud::Event& event, std::vector<SessionEvent>& ou
             using T = std::decay_t<decltype(payload)>;
             if constexpr (std::is_same_v<T, mud::TelnetEvent>)
             {
-                if (std::vector<std::byte> reply { mTelnet.onCommand(payload.mBytes) }; ! reply.empty())
+                if (types::Bytes reply { mTelnet.onCommand(payload.mBytes) }; ! reply.empty())
                     queue(std::move(reply), Origin::kTelnet);
             }
             else if constexpr (std::is_same_v<T, mud::TextEvent>)
@@ -269,7 +342,9 @@ void Session::handleEvent(const mud::Event& event, std::vector<SessionEvent>& ou
             }
             else if constexpr (std::is_same_v<T, mud::WidthAckEvent>)
             {
-                mAnnotations.push_back("terminal width confirmed: " + std::to_string(payload.mColumns));
+                const std::string width { std::to_string(payload.mColumns) };
+                const std::string note { std::string { kWidthConfirmedNote } + width };
+                mAnnotations.push_back(note);
             }
             else if constexpr (std::is_same_v<T, mud::GameEnterEvent>)
             {
@@ -293,9 +368,10 @@ void Session::drivePrompts()
     if (isOptionPrompt())
         mIsLoginComplete = true;
 
-    const bool hasLoginName { ! mCredentials.mLoginName.empty()
-                              && isValidCredential(mCredentials.mLoginName) };
-    if (hasLoginName && ! mHasSentLoginName && mLine.find(kShellLogin) != std::string::npos)
+    const bool hasLoginName { ! mCredentials.mLoginName.empty() };
+    const bool isLoginNameValid { isValidCredential(mCredentials.mLoginName) };
+    if (hasLoginName && isLoginNameValid && ! mHasSentLoginName
+        && mLine.find(kShellLogin) != std::string::npos)
     {
         mHasSentLoginName = true;
         queue(makeLine(mCredentials.mLoginName), Origin::kLogin);
@@ -326,9 +402,14 @@ void Session::drivePrompts()
     {
         // NAWS is resent immediately before client-mode entry, once per login (connection.md 3.2).
         mHasEnteredClientMode = true;
-        if (std::optional<std::vector<std::byte>> naws { mTelnet.findNawsForClientMode() }; naws.has_value())
+        if (types::OptBytes naws { mTelnet.findNawsForClientMode() }; naws.has_value())
             queue(std::move(*naws), Origin::kTelnet);
         queue(makeClientModeEntry(mTelnet.getColumns()), Origin::kLogin);
+        // A terminal width of 0 means "don't wrap at all; MuckaII wraps for display" (connection.md
+        // 4, DECISION, source: director): `/F+` is a typed line at the Option menu, same as any
+        // other option command, sent once right after client-mode entry.
+        if (mIsClientWrap)
+            queue(makeLine(kClientWrapCommand), Origin::kLogin);
     }
 }
 
@@ -340,7 +421,7 @@ void Session::setFlow(FlowState state, std::vector<SessionEvent>& out)
     out.emplace_back(FlowEvent { .mState = state });
 }
 
-void Session::queue(std::vector<std::byte> bytes, Origin origin, Mask mask)
+void Session::queue(types::Bytes bytes, Origin origin, Mask mask)
 {
     // The one place every send passes: a sensitive user-originated send is masked, whatever path
     // queued it (persistence.md "Wire log").
@@ -370,20 +451,11 @@ bool Session::isAccountPrompt() const noexcept
 
 bool Session::isPasswordPrompt() const noexcept
 {
-    return mFlowState != FlowState::kGame
-           && std::ranges::any_of(kPasswordPrompts,
-                                  [this](std::string_view prompt)
-                                  {
-                                      return mLine.starts_with(prompt);
-                                  });
+    return mFlowState != FlowState::kGame && startsWithPrompt(mLine, kPasswordPrompts);
 }
 
 bool Session::isOptionPrompt() const noexcept
 {
-    return std::ranges::any_of(kOptionPrompts,
-                               [this](std::string_view prompt)
-                               {
-                                   return mLine.starts_with(prompt);
-                               });
+    return startsWithPrompt(mLine, kOptionPrompts);
 }
 } // namespace muckaii::session

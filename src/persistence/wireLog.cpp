@@ -1,5 +1,6 @@
 #include "muckaii/persistence/wireLog.hpp"
 
+#include "muckaii/base/types.hpp"
 #include "muckaii/persistence/sha256.hpp"
 
 #include <sqlite3.h>
@@ -27,17 +28,22 @@ namespace muckaii::persistence
 {
 namespace
 {
-// SQLite's own wait on a lock is kept short; the writer's backoff below waits longer, and stays
-// interruptible by shutdown.
-constexpr int                       kBusyTimeoutMs { 250 };
+// kBusyTimeoutMs bounds SQLite's lock wait before the interruptible retry delay.
+constexpr int kBusyTimeoutMs { 250 };
+// kFirstBackOff starts the retry delay after a transient database lock.
 constexpr std::chrono::milliseconds kFirstBackOff { 50 };
+// kMaxBackOff caps exponential waits between attempts to store a batch.
 constexpr std::chrono::milliseconds kMaxBackOff { 2000 };
+// kCloseWait bounds the flush attempted by the WireLog destructor.
 constexpr std::chrono::milliseconds kCloseWait { 3000 };
-// Jobs stored per transaction, which bounds the writer's work after shutdown is asked for.
+// kMaxBatch limits the number of queued jobs stored in one transaction.
 constexpr std::size_t kMaxBatch { 512 };
-constexpr int         kPrimaryCodeMask { 0xFF };
+// kPrimaryCodeMask extracts SQLite's primary result code from an extended result.
+constexpr int kPrimaryCodeMask { 0xFF };
+// kForeignKeysNotEnforced names the failure reported when SQLite ignores the foreign-key pragma.
+constexpr char kForeignKeysNotEnforced[] { "foreign keys are not enforced" };
 
-// Each step is forward-only and runs once; a released step is never edited (persistence.md).
+// kSteps contains the ordered wire-log schema migrations supported by this version.
 constexpr std::array<std::string_view, kSchemaSteps> kSteps {
     "CREATE TABLE run ("
     " id INTEGER PRIMARY KEY,"
@@ -60,6 +66,7 @@ constexpr std::array<std::string_view, kSchemaSteps> kSteps {
     " FROM wire AS w JOIN payload AS p ON p.hash = w.payload;",
 };
 
+// getNowMs returns system-clock milliseconds since its epoch.
 std::int64_t getNowMs() noexcept
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -67,18 +74,19 @@ std::int64_t getNowMs() noexcept
         .count();
 }
 
-// An SQLite result: its code and, on failure, its message.
+// Status carries an SQLite result code and its diagnostic text.
 struct Status
 {
     int         mCode { SQLITE_OK };
     std::string mMessage;
 
+    // isOk accepts SQLite success and completed-step results.
     [[nodiscard]] bool isOk() const noexcept
     {
         return mCode == SQLITE_OK || mCode == SQLITE_DONE;
     }
 
-    // Another connection holds the lock: transient, so the writer retries (persistence.md).
+    // isBusy reports lock contention that the writer retries.
     [[nodiscard]] bool isBusy() const noexcept
     {
         const int primary { mCode & kPrimaryCodeMask };
@@ -86,16 +94,20 @@ struct Status
     }
 };
 
+// ConnectionCloser releases an owned SQLite connection.
 struct ConnectionCloser
 {
+    // operator() closes a connection through SQLite's deferred-close API.
     void operator()(sqlite3* connection) const noexcept
     {
         sqlite3_close_v2(connection);
     }
 };
 
+// StatementFinalizer releases an owned SQLite statement.
 struct StatementFinalizer
 {
+    // operator() finalizes a prepared statement.
     void operator()(sqlite3_stmt* statement) const noexcept
     {
         sqlite3_finalize(statement);
@@ -105,6 +117,7 @@ struct StatementFinalizer
 using ConnectionPtr = std::unique_ptr<sqlite3, ConnectionCloser>;
 using StatementPtr  = std::unique_ptr<sqlite3_stmt, StatementFinalizer>;
 
+// getNextBackOff doubles delay without exceeding the configured maximum.
 std::chrono::milliseconds getNextBackOff(std::chrono::milliseconds delay) noexcept
 {
     return std::min(delay * 2, kMaxBackOff);
@@ -141,11 +154,11 @@ std::optional<std::filesystem::path> findDefaultDatabasePath()
     return std::filesystem::path { home } / ".muckaii" / std::string { kDatabaseName };
 }
 
-// The writer thread's database: opened, migrated and written only on that thread.
+// Database owns the SQLite connection and performs all database work on the writer thread.
 class WireLog::Database
 {
 public:
-    // Opens and migrates.
+    // open creates the database connection, applies pragmas, and migrates its schema.
     [[nodiscard]] Status open(const std::filesystem::path& path, std::vector<std::string>& notices)
     {
         close();
@@ -157,15 +170,19 @@ public:
             name.c_str(), &raw, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) };
         mConnection.reset(raw);
         if (code != SQLITE_OK)
-            return Status { .mCode    = code,
-                            .mMessage = raw != nullptr ? sqlite3_errmsg(raw) : "out of memory" };
+        {
+            std::string message { kSqliteOutOfMemoryMessage };
+            if (raw != nullptr)
+                message = sqlite3_errmsg(raw);
+            return Status { .mCode = code, .mMessage = std::move(message) };
+        }
         sqlite3_busy_timeout(raw, kBusyTimeoutMs);
         if (Status status { execute("PRAGMA foreign_keys=ON;") }; ! status.isOk())
             return status;
         // The pragma is silently a no-op inside a transaction or in a build without foreign keys:
         // read it back.
         if (readInteger("PRAGMA foreign_keys;") != 1)
-            return Status { .mCode = SQLITE_ERROR, .mMessage = "foreign keys are not enforced" };
+            return Status { .mCode = SQLITE_ERROR, .mMessage = kForeignKeysNotEnforced };
         if (Status status { execute("PRAGMA journal_mode=WAL;") }; ! status.isOk())
             return status;
         if (Status status { migrate(notices) }; ! status.isOk())
@@ -179,10 +196,10 @@ public:
         return {};
     }
 
-    // Stores a batch in one transaction. On failure nothing of it is kept, so it can be retried.
+    // store commits one batch atomically or rolls it back for a retry.
     [[nodiscard]] Status store(const std::vector<Job>& jobs)
     {
-        const std::optional<std::int64_t> runBefore { mRunId };
+        const types::OptInt64 runBefore { mRunId };
         if (Status status { execute("BEGIN IMMEDIATE;") }; ! status.isOk())
             return status;
         for (const Job& job : jobs)
@@ -203,6 +220,7 @@ public:
     }
 
 private:
+    // close releases prepared statements before closing their SQLite connection.
     void close() noexcept
     {
         mInsertRun.reset();
@@ -212,24 +230,28 @@ private:
         mConnection.reset();
     }
 
-    [[nodiscard]] Status rollBack(Status status, std::optional<std::int64_t> runBefore)
+    // rollBack abandons the active transaction and restores the prior run identifier.
+    [[nodiscard]] Status rollBack(Status status, types::OptInt64 runBefore)
     {
         static_cast<void>(execute("ROLLBACK;"));
         mRunId = runBefore;
         return status;
     }
 
+    // execute runs one SQL statement and retains SQLite's error message on failure.
     [[nodiscard]] Status execute(const char* sql) const
     {
         char*     message {};
         const int code { sqlite3_exec(mConnection.get(), sql, nullptr, nullptr, &message) };
         if (code == SQLITE_OK)
             return {};
-        Status status { .mCode = code, .mMessage = message != nullptr ? message : "unknown error" };
+        Status status { .mCode    = code,
+                        .mMessage = message != nullptr ? message : kSqliteUnknownErrorMessage.data() };
         sqlite3_free(message);
         return status;
     }
 
+    // prepare replaces statement with a compiled form of sql.
     [[nodiscard]] bool prepare(StatementPtr& statement, const char* sql) const
     {
         sqlite3_stmt* raw {};
@@ -238,6 +260,7 @@ private:
         return isPrepared;
     }
 
+    // step executes a prepared statement and clears its bindings for reuse.
     [[nodiscard]] Status step(const StatementPtr& statement) const
     {
         const int code { sqlite3_step(statement.get()) };
@@ -248,11 +271,14 @@ private:
         return {};
     }
 
+    // migrate applies each missing schema step once and reports a newer schema.
     [[nodiscard]] Status migrate(std::vector<std::string>& notices) const
     {
-        if (Status status { execute("CREATE TABLE IF NOT EXISTS schema_step (step INTEGER PRIMARY KEY, "
-                                    "applied_ms INTEGER NOT NULL);") };
-            ! status.isOk())
+        // kCreateSchemaSteps creates the migration ledger for wire-log schema changes.
+        constexpr const char* kCreateSchemaSteps {
+            "CREATE TABLE IF NOT EXISTS schema_step (step INTEGER PRIMARY KEY, applied_ms INTEGER NOT NULL);"
+        };
+        if (Status status { execute(kCreateSchemaSteps) }; ! status.isOk())
             return status;
 
         for (int step { 1 }; step <= kSchemaSteps; ++step)
@@ -266,9 +292,9 @@ private:
                 static_cast<void>(execute("COMMIT;"));
                 continue;
             }
-            const std::string sql { std::string { kSteps[static_cast<std::size_t>(step - 1)] }
-                                    + "INSERT INTO schema_step (step, applied_ms) VALUES ("
-                                    + std::to_string(step) + ", " + std::to_string(getNowMs()) + ");" };
+            std::string sql { kSteps[static_cast<std::size_t>(step - 1)] };
+            sql += "INSERT INTO schema_step (step, applied_ms) VALUES (";
+            sql += std::to_string(step) + ", " + std::to_string(getNowMs()) + ");";
             if (Status status { execute(sql.c_str()) }; ! status.isOk())
             {
                 static_cast<void>(execute("ROLLBACK;"));
@@ -284,14 +310,18 @@ private:
         const std::set<int> applied { readSteps() };
         if (! applied.empty() && *applied.rbegin() > kSchemaSteps)
         {
-            notices.emplace_back("wire log: the database was written by a newer MuckaII; logging carries on "
-                                 "with the tables this version knows");
+            // kNewerSchemaNotice explains why logging continues with the known tables only.
+            constexpr std::string_view kNewerSchemaNotice {
+                "wire log: the database was written by a newer MuckaII; logging carries on "
+                "with the tables this version knows"
+            };
+            notices.emplace_back(kNewerSchemaNotice);
         }
         return {};
     }
 
-    // The first column of the first row; nullopt when there is none.
-    [[nodiscard]] std::optional<int> readInteger(const char* sql) const
+    // readInteger returns the first integer result, or empty when the query has no row.
+    [[nodiscard]] types::OptInt readInteger(const char* sql) const
     {
         StatementPtr query;
         if (! prepare(query, sql) || sqlite3_step(query.get()) != SQLITE_ROW)
@@ -299,6 +329,7 @@ private:
         return sqlite3_column_int(query.get(), 0);
     }
 
+    // readSteps returns the schema step numbers already applied.
     [[nodiscard]] std::set<int> readSteps() const
     {
         std::set<int> steps;
@@ -310,6 +341,7 @@ private:
         return steps;
     }
 
+    // storeBegin inserts run metadata and remembers the generated identifier.
     [[nodiscard]] Status storeBegin(const RunInfo& info)
     {
         sqlite3_bind_int64(mInsertRun.get(), 1, info.mStartedMs);
@@ -321,6 +353,7 @@ private:
         return {};
     }
 
+    // storeRecord content-addresses the payload and inserts its sequence metadata.
     [[nodiscard]] Status storeRecord(const WireRecord& record) const
     {
         if (! mRunId.has_value())
@@ -345,6 +378,7 @@ private:
         return step(mInsertWire);
     }
 
+    // storeEnd marks the active run ended and clears its in-memory identifier.
     [[nodiscard]] Status storeEnd(std::int64_t endedMs)
     {
         if (! mRunId.has_value())
@@ -356,22 +390,19 @@ private:
         return status;
     }
 
-    ConnectionPtr               mConnection;
-    StatementPtr                mInsertRun;
-    StatementPtr                mEndRun;
-    StatementPtr                mInsertPayload;
-    StatementPtr                mInsertWire;
-    std::optional<std::int64_t> mRunId;
+    ConnectionPtr   mConnection;
+    StatementPtr    mInsertRun;
+    StatementPtr    mEndRun;
+    StatementPtr    mInsertPayload;
+    StatementPtr    mInsertWire;
+    types::OptInt64 mRunId;
 };
 
 WireLog::WireLog(std::filesystem::path path)
     : mPath { std::move(path) }
 {
     // Started here, not in the initialiser list, so every member is constructed before it runs.
-    mThread = std::thread { [this]()
-                            {
-                                run();
-                            } };
+    mThread = std::thread { &WireLog::run, this };
 }
 
 WireLog::~WireLog()
@@ -423,12 +454,11 @@ void WireLog::push(Job job)
 bool WireLog::flush(std::chrono::milliseconds timeout)
 {
     std::unique_lock lock { mMutex };
-    return mIdle.wait_for(lock,
-                          timeout,
-                          [this]()
-                          {
-                              return mJobs.empty() && ! mIsBusy;
-                          });
+    const auto       isIdle = [this]()
+    {
+        return mJobs.empty() && ! mIsBusy;
+    };
+    return mIdle.wait_for(lock, timeout, isIdle);
 }
 
 std::vector<std::string> WireLog::takeNotices()
@@ -446,12 +476,11 @@ void WireLog::notice(std::string text)
 bool WireLog::backOff(std::chrono::milliseconds delay)
 {
     std::unique_lock lock { mMutex };
-    return ! mWake.wait_for(lock,
-                            delay,
-                            [this]()
-                            {
-                                return mIsStopping;
-                            });
+    const auto       isStopping = [this]()
+    {
+        return mIsStopping;
+    };
+    return ! mWake.wait_for(lock, delay, isStopping);
 }
 
 void WireLog::run()
@@ -475,7 +504,7 @@ void WireLog::run()
     bool isFailed { ! opened.isOk() };
     if (isFailed)
     {
-        notice("wire log: cannot open " + toUtf8(mPath) + " (" + opened.mMessage
+        notice(std::string { kWireLogNoticePrefix } + "cannot open " + toUtf8(mPath) + " (" + opened.mMessage
                + "); no records are kept for this run");
     }
 
@@ -484,11 +513,11 @@ void WireLog::run()
         std::vector<Job> jobs;
         {
             std::unique_lock lock { mMutex };
-            mWake.wait(lock,
-                       [this]()
-                       {
-                           return mIsStopping || ! mJobs.empty();
-                       });
+            const auto       hasWork = [this]()
+            {
+                return mIsStopping || ! mJobs.empty();
+            };
+            mWake.wait(lock, hasWork);
             if (mIsStopping || mJobs.empty())
                 return;
             const std::size_t count { std::min(mJobs.size(), kMaxBatch) };
@@ -513,7 +542,7 @@ void WireLog::run()
             if (! stored.isBusy())
             {
                 isFailed = true;
-                notice("wire log: a write failed (" + stored.mMessage
+                notice(std::string { kWireLogNoticePrefix } + "a write failed (" + stored.mMessage
                        + "); the log stops for the rest of the run");
                 break;
             }

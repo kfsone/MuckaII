@@ -1,4 +1,4 @@
-muckaiiLibrary(mud SOURCES codes.cpp codeTable.cpp decoder.cpp)
+muckaiiLibrary(mud SOURCES codes.cpp codeTable.cpp decoder.cpp DEPENDS base)
 
 # Test support (docs/build.md "Targets"): the capture reader, the capture replay and the golden
 # serialiser.

@@ -1,5 +1,6 @@
 #include "muckaii/core/core.hpp"
 
+#include "muckaii/base/types.hpp"
 #include "muckaii/client/client.hpp"
 #include "muckaii/persistence/wireLog.hpp"
 #include "muckaii/transport/socket.hpp"
@@ -12,19 +13,40 @@ namespace muckaii::core
 {
 namespace
 {
-constexpr std::size_t               kReadSize { 65536 };
+// kReadSize bounds each socket read and the reactor's on-heap input buffer.
+constexpr std::size_t kReadSize { 65536 };
+// kPollTimeout bounds how long the reactor waits before checking queued work again.
 constexpr std::chrono::milliseconds kPollTimeout { 250 };
-// Reads per reactor turn, so a flooding server never starves the FIFO and the writes behind it.
+// kMaxReadsPerTurn keeps a flooding peer from starving the FIFO and pending writes.
 constexpr int kMaxReadsPerTurn { 16 };
-// How long stop() keeps writing lines already submitted (bounded, then the rest is reported).
+// kStopFlush bounds shutdown writes before unsent lines are reported.
 constexpr std::chrono::milliseconds kStopFlush { 2000 };
-constexpr std::string_view          kServerClosed { "The server closed the connection." };
-constexpr std::string_view          kSocketError { "The connection failed." };
-constexpr std::string_view          kLocalClose { "Disconnected." };
-constexpr std::string_view          kNoDataDirectory {
+// kServerClosed is the reason reported when the peer ends the socket.
+constexpr std::string_view kServerClosed { "The server closed the connection." };
+// kSocketError is the common reason reported for a socket failure.
+constexpr std::string_view kSocketError { "The connection failed." };
+// kLocalClose is the reason reported after local shutdown.
+constexpr std::string_view kLocalClose { "Disconnected." };
+// kNoDataDirectory explains why the default wire log cannot be created.
+constexpr std::string_view kNoDataDirectory {
     "wire log: no home directory (USERPROFILE or HOME is not set); no records are kept for this run"
 };
+// kNetworkStartFailure reports failure to initialize the socket subsystem.
+constexpr std::string_view kNetworkStartFailure { "The network could not be started." };
+// kConnectFailurePrefix begins the notice for an unsuccessful TCP connection.
+constexpr std::string_view kConnectFailurePrefix { "Cannot connect to " };
+// kDroppedRecordSuffix explains a wire-log queue drop.
+constexpr std::string_view kDroppedRecordSuffix { " records dropped here; the writer fell behind" };
+// kSingleLineCount selects singular wording for one unsent line.
+constexpr std::size_t kSingleLineCount { 1 };
+// kUnsentSingleLine describes one line that did not reach the socket.
+constexpr std::string_view kUnsentSingleLine { " typed line was" };
+// kUnsentMultipleLines describes multiple lines that did not reach the socket.
+constexpr std::string_view kUnsentMultipleLines { " typed lines were" };
+// kUnsentNoticeSuffix separates the line count from its failure reason.
+constexpr std::string_view kUnsentNoticeSuffix { " not sent: " };
 
+// getWallMs returns the system-clock time in milliseconds since its epoch.
 std::int64_t getWallMs() noexcept
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -32,31 +54,49 @@ std::int64_t getWallMs() noexcept
         .count();
 }
 
-std::vector<std::byte> toBytes(std::string_view text)
+// toBytes copies the low byte of each character into an owned byte sequence.
+types::Bytes toBytes(std::string_view text)
 {
-    std::vector<std::byte> bytes;
+    types::Bytes bytes;
     bytes.reserve(text.size());
     for (const char c : text)
         bytes.push_back(std::byte { static_cast<std::uint8_t>(c) });
     return bytes;
 }
 
+// getRemaining clamps a deadline duration to zero once it has elapsed.
 std::chrono::milliseconds getRemaining(std::chrono::steady_clock::time_point deadline) noexcept
 {
     const auto left { deadline - std::chrono::steady_clock::now() };
     return std::max(std::chrono::duration_cast<std::chrono::milliseconds>(left),
                     std::chrono::milliseconds { 0 });
 }
+
+// makeDroppedNotice describes the number of records refused by the wire-log queue.
+std::string makeDroppedNotice(std::uint64_t count)
+{
+    return std::string { persistence::kWireLogNoticePrefix } + std::to_string(count)
+           + std::string { kDroppedRecordSuffix };
+}
+
+// makeUnsentNotice describes typed lines that shutdown could not send.
+std::string makeUnsentNotice(std::size_t count, std::string_view reason)
+{
+    const std::string_view lineWord { count == kSingleLineCount ? kUnsentSingleLine : kUnsentMultipleLines };
+    return std::to_string(count) + std::string { lineWord } + std::string { kUnsentNoticeSuffix }
+           + std::string { reason };
+}
 } // namespace
 
-// Everything the core thread owns for one connection.
+// Reactor owns the socket, session, and wire-log handover for one connection.
 class Core::Reactor
 {
 public:
+    // Reactor moves the credentials into its session and opens the configured wire log.
     explicit Reactor(Core& core)
         : mCore { core }
         , mWake { *core.mWake }
-        , mSession { core.mConfig.mCredentials, core.mConfig.mColumns }
+        , mSession { core.mConfig.mCredentials, core.mConfig.mColumns, core.mConfig.mIsClientWrap }
     {
         // The session holds the only copy the core needs.
         session::wipeSecret(core.mConfig.mCredentials.mAccount);
@@ -71,6 +111,7 @@ public:
             mWireLog = std::make_unique<persistence::WireLog>(*path);
     }
 
+    // run connects, delivers events, and closes the single connection.
     void run()
     {
         const transport::Network network;
@@ -81,15 +122,15 @@ public:
 
         if (! network.isReady())
         {
-            close("The network could not be started.");
+            close(std::string { kNetworkStartFailure });
             return;
         }
 
-        transport::ConnectResult connected { transport::connectTcp(mCore.mConfig.mHost,
-                                                                   mCore.mConfig.mPort,
-                                                                   mCore.mConfig.mConnectTimeout,
-                                                                   mCore.mWake,
-                                                                   mCore.mIsStopping) };
+        const std::string&              host { mCore.mConfig.mHost };
+        const std::uint16_t             port { mCore.mConfig.mPort };
+        const std::chrono::milliseconds timeout { mCore.mConfig.mConnectTimeout };
+        transport::ConnectResult        connected { transport::connectTcp(
+            host, port, timeout, mCore.mWake, mCore.mIsStopping) };
         if (connected.mIsCancelled)
         {
             close(std::string { kLocalClose });
@@ -97,7 +138,7 @@ public:
         }
         if (! connected.mConnection.has_value())
         {
-            close("Cannot connect to " + mCore.mConfig.mHost + ": " + connected.mError);
+            close(std::string { kConnectFailurePrefix } + mCore.mConfig.mHost + ": " + connected.mError);
             return;
         }
         mConnection = std::move(*connected.mConnection);
@@ -108,9 +149,11 @@ public:
         mHasRun        = true;
         if (mWireLog)
         {
-            mWireLog->beginRun(persistence::RunInfo { .mHost          = mCore.mConfig.mHost,
-                                                      .mClientVersion = mCore.mConfig.mClientVersion,
-                                                      .mStartedMs     = mStartedMs });
+            persistence::RunInfo info;
+            info.mHost          = mCore.mConfig.mHost;
+            info.mClientVersion = mCore.mConfig.mClientVersion;
+            info.mStartedMs     = mStartedMs;
+            mWireLog->beginRun(info);
         }
         mSession.onConnected(mBatch);
         deliver();
@@ -123,8 +166,10 @@ public:
     }
 
 private:
-    // One reactor turn after another, in architecture.md's order: read and decode; drain the wake
-    // socket and the FIFO into the session's queue; write the queue.
+    using LogDirection = persistence::WireDirection;
+    using LogBytes     = std::span<const std::byte>;
+
+    // loop handles socket readiness and FIFO work until the connection ends.
     std::string loop()
     {
         while (true)
@@ -137,7 +182,7 @@ private:
 
             if (ready.mIsReadable)
             {
-                if (std::optional<std::string> closed { readSome() }; closed.has_value())
+                if (types::OptString closed { readSome() }; closed.has_value())
                     return *closed;
             }
             else if (ready.mHasError)
@@ -156,7 +201,7 @@ private:
             }
             drainFifo();
 
-            if (std::optional<std::string> failed { writeQueue() }; failed.has_value())
+            if (types::OptString failed { writeQueue() }; failed.has_value())
                 return *failed;
 
             collectAnnotations();
@@ -165,9 +210,8 @@ private:
         }
     }
 
-    // Reads until the socket would block, or kMaxReadsPerTurn reads. Each read is one wire record
-    // and one event batch.
-    std::optional<std::string> readSome()
+    // readSome logs and decodes up to kMaxReadsPerTurn socket reads.
+    types::OptString readSome()
     {
         for (int i { 0 }; i < kMaxReadsPerTurn; ++i)
         {
@@ -188,6 +232,7 @@ private:
         return std::nullopt;
     }
 
+    // drainFifo applies frontend commands to the session in their queued order.
     void drainFifo()
     {
         std::vector<Command> commands;
@@ -208,9 +253,8 @@ private:
         }
     }
 
-    // Writes the queue in order. Each socket write is one sent record; a masked send is always its
-    // own write, so masking never splits a coalesced write.
-    std::optional<std::string> writeQueue()
+    // writeQueue sends session output in order and records each successful socket write.
+    types::OptString writeQueue()
     {
         while (mIsWriting || mSession.hasOutbound())
         {
@@ -247,7 +291,7 @@ private:
         return std::nullopt;
     }
 
-    // Lines submitted before stop() are written, within kStopFlush.
+    // flushOnStop writes already-submitted lines within the bounded shutdown interval.
     void flushOnStop()
     {
         drainFifo();
@@ -272,7 +316,7 @@ private:
         deliver();
     }
 
-    // Typed lines that never reached the socket are said to be lost, never dropped silently.
+    // reportUnsent records and publishes a notice for typed lines that never reached the socket.
     void reportUnsent(std::string_view why)
     {
         std::size_t unsent { mSession.getTypedCount() };
@@ -280,23 +324,21 @@ private:
             ++unsent;
         {
             const std::scoped_lock lock { mCore.mMutex };
-            unsent += static_cast<std::size_t>(
-                std::ranges::count_if(mCore.mFifo,
-                                      [](const Command& command)
-                                      {
-                                          return std::holds_alternative<SubmitCommand>(command);
-                                      }));
+            const auto             isSubmit = [](const Command& command)
+            {
+                return std::holds_alternative<SubmitCommand>(command);
+            };
+            unsent += static_cast<std::size_t>(std::ranges::count_if(mCore.mFifo, isSubmit));
             mCore.mFifo.clear();
         }
         if (unsent == 0)
             return;
-        const std::string text { std::to_string(unsent)
-                                 + (unsent == 1 ? " typed line was" : " typed lines were")
-                                 + " not sent: " + std::string { why } };
+        const std::string text { makeUnsentNotice(unsent, why) };
         record(persistence::WireDirection::kAnnotation, toBytes(text));
         mBatch.emplace_back(session::NoticeEvent { .mText = text });
     }
 
+    // close reports pending lines and publishes the final connection state.
     void close(std::string reason)
     {
         reportUnsent(reason);
@@ -305,26 +347,21 @@ private:
         deliver();
     }
 
-    // Record time: the run's wall-clock start plus steady time since, so timestamps never run
-    // backwards within a run (persistence.md "What a record is").
+    // getRecordMs combines the run start with steady elapsed time to avoid timestamp regressions.
     [[nodiscard]] std::int64_t getRecordMs() const noexcept
     {
         const auto elapsed { std::chrono::steady_clock::now() - mStartedSteady };
         return mStartedMs + std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
     }
 
-    // Core assigns each record its run sequence and timestamp at handover (architecture.md). A
-    // record the writer cannot take is dropped and counted; its sequence number stays used, so the
-    // gap shows, and the next record that fits is preceded by an annotation giving the count. The
-    // count annotation itself, when refused, uses no sequence number and is tried again later.
+    // record assigns sequence and time, counting any payload the bounded writer queue refuses.
     void record(persistence::WireDirection direction, std::span<const std::byte> bytes)
     {
         if (! mWireLog || ! mHasRun)
             return;
         if (mDropped > 0)
         {
-            const std::string note { "wire log: " + std::to_string(mDropped)
-                                     + " records dropped here; the writer fell behind" };
+            const std::string note { makeDroppedNotice(mDropped) };
             if (handOver(persistence::WireDirection::kAnnotation, toBytes(note), false))
                 mDropped = 0;
         }
@@ -335,32 +372,34 @@ private:
         {
             mHasReportedDrop = true;
             mBatch.emplace_back(session::NoticeEvent {
-                .mText = "wire log: the writer has fallen behind; records are being dropped, each counted in "
-                         "the log" });
+                .mText =
+                    std::string { persistence::kWireLogNoticePrefix }
+                    + "the writer has fallen behind; records are being dropped, each counted in the log" });
         }
     }
 
-    // False when refused; `isSequenceUsedOnDrop` says whether a refusal still uses the number.
-    [[nodiscard]] bool handOver(persistence::WireDirection direction,
-                                std::span<const std::byte> bytes,
-                                bool                       isSequenceUsedOnDrop)
+    // handOver submits one timestamped record and applies the requested drop-sequence policy.
+    [[nodiscard]] bool handOver(LogDirection direction, LogBytes bytes, bool usesDropSequence)
     {
-        const bool isTaken { mWireLog->append(
-            persistence::WireRecord { .mSequence    = mSequence,
-                                      .mTimestampMs = getRecordMs(),
-                                      .mData        = std::vector<std::byte> { bytes.begin(), bytes.end() },
-                                      .mDirection   = direction }) };
-        if (isTaken || isSequenceUsedOnDrop)
+        persistence::WireRecord record {};
+        record.mSequence    = mSequence;
+        record.mTimestampMs = getRecordMs();
+        record.mData.assign(bytes.begin(), bytes.end());
+        record.mDirection = direction;
+        const bool isTaken { mWireLog->append(std::move(record)) };
+        if (isTaken || usesDropSequence)
             ++mSequence;
         return isTaken;
     }
 
+    // collectAnnotations transfers session annotations into the wire log.
     void collectAnnotations()
     {
         for (const std::string& note : mSession.takeAnnotations())
             record(persistence::WireDirection::kAnnotation, toBytes(note));
     }
 
+    // collectNotices transfers writer notices into the next event batch.
     void collectNotices()
     {
         if (! mWireLog)
@@ -369,6 +408,7 @@ private:
             mBatch.emplace_back(session::NoticeEvent { .mText = std::move(text) });
     }
 
+    // deliver publishes the input-sensitivity verdict before sending the event batch.
     void deliver()
     {
         // Published before the batch, so a frontend never holds a newer flow than this verdict.
@@ -388,7 +428,7 @@ private:
     transport::TcpConnection              mConnection;
     std::vector<session::SessionEvent>    mBatch;
     session::Outbound                     mWriting; // the send being written, when mIsWriting
-    std::vector<std::byte>                mLogged;  // mWriting as the wire log stores it
+    types::Bytes                          mLogged;  // mWriting as the wire log stores it
     std::chrono::steady_clock::time_point mStartedSteady;
     std::size_t                           mWritten {};
     std::uint64_t                         mSequence {};
@@ -422,10 +462,7 @@ bool Core::start()
     if (! wake.has_value())
         return false;
     mWake   = std::make_shared<const transport::WakeSocket>(std::move(*wake));
-    mThread = std::thread { [this]()
-                            {
-                                run();
-                            } };
+    mThread = std::thread { &Core::run, this };
     return true;
 }
 
@@ -488,6 +525,12 @@ Builder& Builder::setCredentials(const session::Credentials& credentials)
 Builder& Builder::setColumns(int columns)
 {
     mConfig.mColumns = columns;
+    return *this;
+}
+
+Builder& Builder::setClientWrap(bool isClientWrap)
+{
+    mConfig.mIsClientWrap = isClientWrap;
     return *this;
 }
 

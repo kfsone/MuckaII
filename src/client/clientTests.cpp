@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <random>
@@ -14,11 +15,13 @@ using muckaii::client::countCodePoints;
 using muckaii::client::LineEditor;
 using muckaii::client::toSevenBit;
 
+// SevenBitFilter_KeepsPrintableAscii checks that the filter preserves printable ASCII.
 TEST(SevenBitFilter, KeepsPrintableAscii)
 {
     EXPECT_EQ(toSevenBit("get all, n.e"), "get all, n.e");
 }
 
+// SevenBitFilter_TransliteratesTypographicPunctuation checks that typographic punctuation becomes its ASCII transliteration.
 TEST(SevenBitFilter, TransliteratesTypographicPunctuation)
 {
     // U+2019 right single quote, U+201C/U+201D double quotes, U+2014 em dash, U+2026 ellipsis.
@@ -26,11 +29,13 @@ TEST(SevenBitFilter, TransliteratesTypographicPunctuation)
               "don't \"hi\" - ok...");
 }
 
+// SevenBitFilter_TabBecomesASpace checks that a TAB becomes one space.
 TEST(SevenBitFilter, TabBecomesASpace)
 {
     EXPECT_EQ(toSevenBit("a\tb"), "a b");
 }
 
+// SevenBitFilter_DropsEverythingElse checks that unsupported and malformed input bytes are dropped.
 TEST(SevenBitFilter, DropsEverythingElse)
 {
     // U+00E9 e-acute, U+1F600 an emoji, a control byte, DEL, a stray continuation byte, and 255.
@@ -39,6 +44,7 @@ TEST(SevenBitFilter, DropsEverythingElse)
 
 // -- LineEditor (input.md; Invariant #1 point 1) -----------------------------------------------
 
+// LineEditor_TypingAndEnterHandTheBufferOverExactly checks that Enter returns the exact buffer while history stores its trimmed form.
 TEST(LineEditor, TypingAndEnterHandTheBufferOverExactly)
 {
     LineEditor editor;
@@ -53,6 +59,7 @@ TEST(LineEditor, TypingAndEnterHandTheBufferOverExactly)
     EXPECT_EQ(editor.getHistory().back(), "look");
 }
 
+// LineEditor_EditsAtTheCursorByCodePoint checks that cursor edits preserve UTF-8 code point boundaries.
 TEST(LineEditor, EditsAtTheCursorByCodePoint)
 {
     LineEditor editor;
@@ -78,6 +85,7 @@ TEST(LineEditor, EditsAtTheCursorByCodePoint)
     EXPECT_EQ(editor.getCursor(), 2U);
 }
 
+// LineEditor_DownWithNoRecallKeepsTheDraft checks that Down leaves a draft unchanged when no history entry is recalled.
 TEST(LineEditor, DownWithNoRecallKeepsTheDraft)
 {
     LineEditor editor;
@@ -88,6 +96,7 @@ TEST(LineEditor, DownWithNoRecallKeepsTheDraft)
     EXPECT_EQ(editor.getText(), "kill ra");
 }
 
+// LineEditor_UpThenDownRestoresTheDraft checks that Down restores the draft after recalling an entry.
 TEST(LineEditor, UpThenDownRestoresTheDraft)
 {
     LineEditor editor;
@@ -105,8 +114,7 @@ TEST(LineEditor, UpThenDownRestoresTheDraft)
     EXPECT_EQ(editor.getText(), "kill ra");
 }
 
-// Editing a recalled entry, then Up or Down, keeps the edit: going back shows it again. The stored
-// entry is unchanged.
+// LineEditor_AnEditedRecallSurvivesMovingAway checks that an edited history entry is restored when revisited without changing stored history.
 TEST(LineEditor, AnEditedRecallSurvivesMovingAway)
 {
     LineEditor editor;
@@ -137,6 +145,7 @@ TEST(LineEditor, AnEditedRecallSurvivesMovingAway)
     EXPECT_EQ(editor.getText(), "south");
 }
 
+// LineEditor_HistoryClampsStoresDuplicatesAndHoldsTwoHundred checks that history keeps duplicates, clamps at the oldest entry and retains only 200 lines.
 TEST(LineEditor, HistoryClampsStoresDuplicatesAndHoldsTwoHundred)
 {
     LineEditor editor;
@@ -165,6 +174,7 @@ TEST(LineEditor, HistoryClampsStoresDuplicatesAndHoldsTwoHundred)
     EXPECT_EQ(editor.getHistory().front(), "100");
 }
 
+// LineEditor_BlankAndSensitiveLinesAreNotStored checks that blank and sensitive submissions stay out of recall history.
 TEST(LineEditor, BlankAndSensitiveLinesAreNotStored)
 {
     LineEditor editor;
@@ -175,6 +185,7 @@ TEST(LineEditor, BlankAndSensitiveLinesAreNotStored)
     EXPECT_TRUE(editor.getHistory().empty());
 }
 
+// LineEditor_EscapeEmptiesTheBoxAndEndsTheRecall checks that Escape clears both the buffer and recall state.
 TEST(LineEditor, EscapeEmptiesTheBoxAndEndsTheRecall)
 {
     LineEditor editor;
@@ -186,6 +197,7 @@ TEST(LineEditor, EscapeEmptiesTheBoxAndEndsTheRecall)
     EXPECT_FALSE(editor.isRecalling());
 }
 
+// LineEditor_CountsCodePoints checks that UTF-8 leading bytes determine the code point count.
 TEST(LineEditor, CountsCodePoints)
 {
     EXPECT_EQ(countCodePoints("caf\xC3\xA9 \xF0\x9F\x98\x80"), 6U);
@@ -195,6 +207,7 @@ namespace
 {
 using CodePoints = std::vector<std::string>;
 
+// join concatenates UTF-8 code points into their byte string.
 std::string join(const CodePoints& points)
 {
     std::string text;
@@ -203,6 +216,7 @@ std::string join(const CodePoints& points)
     return text;
 }
 
+// getBytes returns the byte offset after the first `count` code points.
 std::size_t getBytes(const CodePoints& points, std::size_t count)
 {
     std::size_t bytes { 0 };
@@ -211,17 +225,20 @@ std::size_t getBytes(const CodePoints& points, std::size_t count)
     return bytes;
 }
 
+// isWhitespace reports whether `point` is a space or tab code point.
 bool isWhitespace(const std::string& point)
 {
     return point == " " || point == "\t";
 }
 
-// The input.md rules stated as a model, written from the spec rather than from LineEditor: the
-// recall list plus the draft is a row of places, each holding the text the box shows there. Up
-// and Down move between places (stopping at either end; Down from the draft does nothing). Edits
-// change the text of the place shown, and nothing else. Enter hands over that text, stores it
-// trimmed of spaces and tabs unless blank or sensitive (200 kept), and every place goes back to
-// its stored entry with an empty draft. Escape does the same without handing anything over.
+// isNonWhitespace reports whether a point can make a submitted line nonblank.
+bool isNonWhitespace(const std::string& point)
+{
+    return ! isWhitespace(point);
+}
+
+// SpecModel applies the line-editor contract independently so randomized events can compare the
+// implementation against a separate history, draft and cursor model.
 struct SpecModel
 {
     std::vector<CodePoints> mStored;
@@ -229,11 +246,13 @@ struct SpecModel
     std::size_t             mAt {};                    // the place shown
     std::size_t             mCursor {};
 
+    // getShown returns the text at the model's current history or draft position.
     CodePoints& getShown()
     {
         return mPlaces[mAt];
     }
 
+    // restart restores stored history and an empty draft after submission or Escape.
     void restart()
     {
         mPlaces = mStored;
@@ -242,18 +261,21 @@ struct SpecModel
         mCursor = 0;
     }
 
+    // moveTo selects a history or draft position and places its cursor at the end.
     void moveTo(std::size_t place)
     {
         mAt     = place;
         mCursor = getShown().size();
     }
 
+    // type inserts one code point at the model cursor.
     void type(const std::string& point)
     {
         getShown().insert(getShown().begin() + static_cast<std::ptrdiff_t>(mCursor), point);
         ++mCursor;
     }
 
+    // enter submits the current text and updates model history according to sensitivity.
     std::string enter(bool isSensitive)
     {
         const CodePoints line { getShown() };
@@ -265,8 +287,9 @@ struct SpecModel
             --last;
         if (first < last && ! isSensitive)
         {
-            mStored.emplace_back(line.begin() + static_cast<std::ptrdiff_t>(first),
-                                 line.begin() + static_cast<std::ptrdiff_t>(last));
+            const auto begin { line.begin() + static_cast<std::ptrdiff_t>(first) };
+            const auto end { line.begin() + static_cast<std::ptrdiff_t>(last) };
+            mStored.emplace_back(begin, end);
             if (mStored.size() > LineEditor::kHistorySize)
                 mStored.erase(mStored.begin());
         }
@@ -275,6 +298,7 @@ struct SpecModel
     }
 };
 
+// Key identifies one input event understood by the independent editor model.
 enum class Key : std::uint8_t
 {
     kType,
@@ -295,8 +319,7 @@ constexpr std::array<std::string_view, 8> kPoints {
 };
 } // namespace
 
-// Invariant #1 point 1: at every Enter the line handed over equals the text the keystrokes built,
-// over long random keystroke sequences with every key the editor knows.
+// LineEditor_RandomKeystrokesMatchTheSpecModelAtEveryEnter checks that random input sequences agree with the independent model at every Enter.
 TEST(LineEditor, RandomKeystrokesMatchTheSpecModelAtEveryEnter)
 {
     std::mt19937                               random { 20261004U };
@@ -385,9 +408,7 @@ TEST(LineEditor, RandomKeystrokesMatchTheSpecModelAtEveryEnter)
     }
 }
 
-// Invariant #1 point 1, second half: whatever edits, cursor moves and recalls happen in between,
-// the lines handed over, concatenated, equal what a plain text box given the same keystrokes holds
-// at each Enter. Up then Down returns to the line being typed, cursor at its end.
+// LineEditor_LinesConcatenateToTheKeystrokeStream checks that submitted lines concatenate to the text stream produced by the same keystrokes.
 TEST(LineEditor, LinesConcatenateToTheKeystrokeStream)
 {
     std::mt19937                               random { 120130U };
@@ -464,12 +485,7 @@ TEST(LineEditor, LinesConcatenateToTheKeystrokeStream)
             const std::string line { join(box) };
             expected.append(line).push_back('\n');
             handed.append(editor.submit(false)).push_back('\n');
-            hasHistory = hasHistory
-                         || std::ranges::any_of(box,
-                                                [](const std::string& point)
-                                                {
-                                                    return ! isWhitespace(point);
-                                                });
+            hasHistory = hasHistory || std::ranges::any_of(box, isNonWhitespace);
             box.clear();
             cursor = 0;
         }
