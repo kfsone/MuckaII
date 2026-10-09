@@ -1,5 +1,10 @@
 #pragma once
 
+#include "muckaii/base/types.hpp"
+#include "muckaii/persistence/profileStore.hpp"
+
+#include "numbers.hpp"
+
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -8,26 +13,36 @@
 
 namespace muckaii::tui
 {
-constexpr std::uint16_t kDefaultPort { 23 };
+// OptPath is a file path that may be absent.
+using OptPath = std::optional<std::filesystem::path>;
 
-// The command line (docs/spec/connection.md 6).
+// Options contains parsed command-line values and whether startup selects direct connect.
 struct Options
 {
-    std::string                          mHost;
-    std::string                          mAccount;
-    std::optional<std::string>           mPassword;
-    std::optional<std::filesystem::path> mWireLog;
-    std::optional<int>                   mMaxColumns;
-    std::uint16_t                        mPort { kDefaultPort };
-    bool                                 mIsHelp {};
+    types::OptString mProfileName; // --profile: select a saved profile
+    std::string      mHost;
+    std::string      mAccount;
+    types::OptString mPassword;
+    types::OptString mLoginName; // --user: override the telnet login name
+    OptPath          mWireLog;
+    types::OptInt    mMaxColumns;
+    std::uint16_t    mPort { kDefaultPort };
+    bool             mIsHelp {};
+
+    // True when any of --profile --host --port --user --account --password was given
+    // (connection.md 6 FACT): connect once at startup, never saved. False opens the Profile List.
+    bool mIsDirectConnect {};
 };
 
-// Parses `args` (args[0] is the program). nullopt with `error` set on an unknown flag, a missing
-// value, an account ID or password MUD2 cannot receive (not printable 7-bit), or no --host.
+// parseArguments parses the program arguments; it returns nullopt and sets `error` for an unknown
+// flag, missing value or non-printable credential. Without a direct-connect flag it selects the
+// Profile List, so `--host` is not mandatory.
 [[nodiscard]] std::optional<Options> parseArguments(std::span<char* const> args, std::string& error);
 
-// The password to log in with, strongest first: --password, then the MUCKAII_PASSWORD value
-// `environment`. nullopt when neither is given: the frontend asks at the terminal.
-[[nodiscard]] std::optional<std::string> findGivenPassword(const Options&                    options,
-                                                           const std::optional<std::string>& environment);
+// findGivenPassword chooses `--password` before `environment`, returning nullopt when neither exists.
+[[nodiscard]] types::OptString findGivenPassword(const Options& options, const types::OptString& environment);
+
+// applyProfile fills unset command-line values from `profile`; explicit values win, and an empty
+// profile password does not replace the current value.
+void applyProfile(Options& options, const persistence::Profile& profile);
 } // namespace muckaii::tui

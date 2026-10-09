@@ -1,24 +1,45 @@
 #include "options.hpp"
 
+#include "muckaii/base/types.hpp"
 #include "muckaii/session/session.hpp"
+
+#include "numbers.hpp"
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <string_view>
 
 namespace muckaii::tui
 {
 namespace
 {
-// What one command-line word is (connection.md 6): not a flag, a flag MuckaII does not know, or
-// one of these.
+// kFirstOptionArgument is the first argv entry after the program name.
+constexpr std::size_t kFirstOptionArgument { 1 };
+
+// kFlagNameCount is the number of recognized long-option spellings.
+constexpr std::size_t kFlagNameCount { 9 };
+
+// kUnknownFlagPrefix begins the diagnostic for an unsupported option.
+constexpr std::string_view kUnknownFlagPrefix { "unknown flag " };
+
+// kMissingValuePrefix begins the diagnostic for an option without a value.
+constexpr std::string_view kMissingValuePrefix { "missing value for " };
+
+// kCredentialErrorSuffix explains the required command-line credential characters.
+constexpr std::string_view kCredentialErrorSuffix { " takes printable 7-bit characters only" };
+
+// kMaxColumnsError describes the accepted server column range.
+constexpr std::string_view kMaxColumnsError { "--max-columns takes a number from 20 to 160" };
+
+// Flag classifies a command-line word before its value is parsed.
 enum class Flag : std::uint8_t
 {
     kNotAFlag,
     kUnknown,
+    kProfile,
     kHost,
     kPort,
+    kUser,
     kAccount,
     kPassword,
     kMaxColumns,
@@ -26,6 +47,7 @@ enum class Flag : std::uint8_t
     kHelp,
 };
 
+// toLower folds ASCII letters in a command-line flag to lowercase.
 std::string toLower(std::string_view text)
 {
     std::string lower;
@@ -34,27 +56,21 @@ std::string toLower(std::string_view text)
     return lower;
 }
 
-std::optional<int> parseInt(std::string_view text) noexcept
-{
-    int        value {};
-    const auto parsed { std::from_chars(text.data(), text.data() + text.size(), value) };
-    if (parsed.ec != std::errc {} || parsed.ptr != text.data() + text.size())
-        return std::nullopt;
-    return value;
-}
-
-// A flag is -name with any number of leading dashes, case-insensitive, followed by its value
-// (connection.md 6). Words that are not flags are ignored.
+// getFlag recognizes known dash-prefixed options without regard to case.
 Flag getFlag(std::string_view arg)
 {
+    // Name associates one option spelling with its parsed flag.
     struct Name
     {
         std::string_view mText;
         Flag             mFlag {};
     };
-    static constexpr std::array<Name, 7> kNames { {
+    // kNames maps each recognized command-line spelling to its flag.
+    static constexpr std::array<Name, kFlagNameCount> kNames { {
+        { .mText = "profile", .mFlag = Flag::kProfile },
         { .mText = "host", .mFlag = Flag::kHost },
         { .mText = "port", .mFlag = Flag::kPort },
+        { .mText = "user", .mFlag = Flag::kUser },
         { .mText = "account", .mFlag = Flag::kAccount },
         { .mText = "password", .mFlag = Flag::kPassword },
         { .mText = "max-columns", .mFlag = Flag::kMaxColumns },
@@ -74,7 +90,7 @@ Flag getFlag(std::string_view arg)
 std::optional<Options> parseArguments(std::span<char* const> args, std::string& error)
 {
     Options options;
-    for (std::size_t i { 1 }; i < args.size(); ++i)
+    for (std::size_t i { kFirstOptionArgument }; i < args.size(); ++i)
     {
         const std::string_view arg { args[i] };
         const Flag             flag { getFlag(arg) };
@@ -82,7 +98,7 @@ std::optional<Options> parseArguments(std::span<char* const> args, std::string& 
             continue;
         if (flag == Flag::kUnknown)
         {
-            error = "unknown flag " + std::string { arg };
+            error = std::string { kUnknownFlagPrefix } + std::string { arg };
             return std::nullopt;
         }
         if (flag == Flag::kHelp)
@@ -95,24 +111,33 @@ std::optional<Options> parseArguments(std::span<char* const> args, std::string& 
         const Flag next { i + 1 < args.size() ? getFlag(args[i + 1]) : Flag::kNotAFlag };
         if (i + 1 >= args.size() || (next != Flag::kNotAFlag && next != Flag::kUnknown))
         {
-            error = "missing value for " + std::string { arg };
+            error = std::string { kMissingValuePrefix } + std::string { arg };
             return std::nullopt;
         }
         const std::string_view value { args[++i] };
+        if (flag == Flag::kProfile || flag == Flag::kHost || flag == Flag::kPort || flag == Flag::kUser
+            || flag == Flag::kAccount || flag == Flag::kPassword)
+            options.mIsDirectConnect = true; // connection.md 6 FACT
         switch (flag)
         {
+            case Flag::kProfile:
+                options.mProfileName = std::string { value };
+                break;
             case Flag::kHost:
                 options.mHost = value;
                 break;
+            case Flag::kUser:
             case Flag::kAccount:
             case Flag::kPassword:
                 // A credential with a control or high byte would end or corrupt its line.
                 if (! session::isValidCredential(value))
                 {
-                    error = std::string { arg } + " takes printable 7-bit characters only";
+                    error = std::string { arg } + std::string { kCredentialErrorSuffix };
                     return std::nullopt;
                 }
-                if (flag == Flag::kAccount)
+                if (flag == Flag::kUser)
+                    options.mLoginName = std::string { value };
+                else if (flag == Flag::kAccount)
                     options.mAccount = value;
                 else
                     options.mPassword = std::string { value };
@@ -122,11 +147,11 @@ std::optional<Options> parseArguments(std::span<char* const> args, std::string& 
                 break;
             case Flag::kMaxColumns:
             {
-                const std::optional<int> columns { parseInt(value) };
+                const types::OptInt columns { parseInt(value) };
                 if (! columns.has_value() || *columns < session::kMinColumns
                     || *columns > session::kMaxColumns)
                 {
-                    error = "--max-columns takes a number from 20 to 160";
+                    error = std::string { kMaxColumnsError };
                     return std::nullopt;
                 }
                 options.mMaxColumns = columns;
@@ -135,9 +160,8 @@ std::optional<Options> parseArguments(std::span<char* const> args, std::string& 
             case Flag::kPort:
             {
                 // Out of range or not a number: ignored without warning (connection.md 6).
-                const std::optional<int> port { parseInt(value) };
-                constexpr int            kMaxPort { 65535 };
-                if (port.has_value() && *port >= 1 && *port <= kMaxPort)
+                const types::OptInt port { parseInt(value) };
+                if (port.has_value() && isValidPort(*port))
                     options.mPort = static_cast<std::uint16_t>(*port);
                 break;
             }
@@ -147,19 +171,29 @@ std::optional<Options> parseArguments(std::span<char* const> args, std::string& 
                 break;
         }
     }
-    if (! options.mIsHelp && options.mHost.empty())
-    {
-        error = "--host is required";
-        return std::nullopt;
-    }
     return options;
 }
 
-std::optional<std::string> findGivenPassword(const Options&                    options,
-                                             const std::optional<std::string>& environment)
+types::OptString findGivenPassword(const Options& options, const types::OptString& environment)
 {
     if (options.mPassword.has_value())
         return options.mPassword;
     return environment;
+}
+void applyProfile(Options& options, const persistence::Profile& profile)
+{
+    if (options.mHost.empty())
+    {
+        options.mHost = profile.mHost;
+        options.mPort = static_cast<std::uint16_t>(profile.mPort);
+    }
+    if (options.mAccount.empty())
+        options.mAccount = profile.mAccount;
+    if (! options.mPassword.has_value() && ! profile.mPassword.empty())
+        options.mPassword = profile.mPassword;
+    if (! options.mMaxColumns.has_value())
+        options.mMaxColumns = profile.mMaxColumns;
+    if (! options.mLoginName.has_value())
+        options.mLoginName = profile.mLoginName;
 }
 } // namespace muckaii::tui

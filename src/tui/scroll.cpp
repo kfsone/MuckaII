@@ -1,5 +1,8 @@
 #include "scroll.hpp"
 
+#include "muckaii/base/types.hpp"
+#include "muckaii/base/wire.hpp"
+
 #include <algorithm>
 #include <array>
 #include <string_view>
@@ -10,18 +13,29 @@ namespace muckaii::tui
 {
 namespace
 {
-constexpr std::size_t  kMaxLines { 5000 };
-constexpr std::size_t  kTabStop { 8 };
-constexpr std::uint8_t kBrightOffset { 8 };
-constexpr std::uint8_t kHighFirst { 0x80 };
+// kMaxLines bounds retained scrollback so old lines cannot grow memory without limit.
+constexpr std::size_t kMaxLines { 5000 };
 
-// One cell of a rendered row: a 7-bit character and its style.
+// kTabStop is the number of columns between expanded tab stops.
+constexpr std::size_t kTabStop { 8 };
+
+// kBrightOffset maps an ANSI base colour to its bright palette entry.
+constexpr std::uint8_t kBrightOffset { 8 };
+
+// kNoGlyph is shown for a high byte that has no terminal character.
+constexpr char kNoGlyph { '?' };
+
+// kDisconnectedPrefix starts a client-generated connection-closed line.
+constexpr std::string_view kDisconnectedPrefix { "Disconnected: " };
+
+// Cell stores one rendered 7-bit character and its MUD2 style.
 struct Cell
 {
     mud::Style mStyle;
     char       mChar {};
 };
 
+// appendRuns merges adjacent runs with the same style while appending them to `to`.
 void appendRuns(std::vector<mud::Run>& to, const std::vector<mud::Run>& from)
 {
     for (const mud::Run& run : from)
@@ -33,8 +47,7 @@ void appendRuns(std::vector<mud::Run>& to, const std::vector<mud::Run>& from)
     }
 }
 
-// Tabs expand to the next multiple of 8 columns, counted across runs (protocol.md "Hard wrap"). A
-// byte 0x80-0x9A has no glyph in the terminal and shows as '?'.
+// toCells expands tabs across runs and replaces bytes without a terminal glyph with question marks.
 std::vector<Cell> toCells(const std::vector<mud::Run>& runs)
 {
     std::vector<Cell> cells;
@@ -42,24 +55,25 @@ std::vector<Cell> toCells(const std::vector<mud::Run>& runs)
     {
         for (const char c : run.mText)
         {
-            if (c == '\t')
+            if (c == static_cast<char>(wire::kTab))
             {
                 do
                     cells.push_back(Cell { .mStyle = run.mStyle, .mChar = ' ' });
                 while (cells.size() % kTabStop != 0);
                 continue;
             }
-            const bool isHigh { static_cast<std::uint8_t>(c) >= kHighFirst };
-            cells.push_back(Cell { .mStyle = run.mStyle, .mChar = isHigh ? '?' : c });
+            const bool isHigh { static_cast<std::uint8_t>(c) >= wire::kFirstHighByte };
+            cells.push_back(Cell { .mStyle = run.mStyle, .mChar = isHigh ? kNoGlyph : c });
         }
     }
     return cells;
 }
 
+// styled draws `text` with the colours and attributes from `style`.
 ftxui::Element styled(std::string_view text, const mud::Style& style)
 {
-    ftxui::Element              element { ftxui::text(text) };
-    std::optional<std::uint8_t> fg { style.mFg };
+    ftxui::Element  element { ftxui::text(text) };
+    types::OptUint8 fg { style.mFg };
     // Bold is drawn with bright promotion (ui.md 1.3).
     if (style.hasAttr(mud::Attr::kBold) && fg.has_value() && *fg < kBrightOffset)
         fg = static_cast<std::uint8_t>(*fg + kBrightOffset);
@@ -73,14 +87,10 @@ ftxui::Element styled(std::string_view text, const mud::Style& style)
         element = ftxui::underlined(element);
     if (style.hasAttr(mud::Attr::kItalic))
         element = ftxui::italic(element);
-    if (style.hasAttr(mud::Attr::kBlink))
-        element = ftxui::blink(element);
-    if (style.hasAttr(mud::Attr::kReverse))
-        element = ftxui::inverted(element);
     return element;
 }
 
-// One row: maximal same-style stretches of cells.
+// renderRow groups adjacent same-style cells into one rendered row.
 ftxui::Element renderRow(std::span<const Cell> cells)
 {
     ftxui::Elements parts;
@@ -97,6 +107,7 @@ ftxui::Element renderRow(std::span<const Cell> cells)
     return ftxui::hbox(std::move(parts));
 }
 
+// getRowCount returns the rendered row count for a line at `width` columns.
 std::size_t getRowCount(const std::vector<mud::Run>& runs, bool isRule, std::size_t width)
 {
     if (isRule)
@@ -105,7 +116,7 @@ std::size_t getRowCount(const std::vector<mud::Run>& runs, bool isRule, std::siz
     return std::max<std::size_t>(1, (cells + width - 1) / width);
 }
 
-// A count of columns or rows from the terminal, at least 1.
+// toWidth converts a terminal dimension to at least one column or row.
 std::size_t toWidth(int count) noexcept
 {
     return static_cast<std::size_t>(std::max(count, 1));
@@ -125,7 +136,7 @@ void Scroll::apply(const session::SessionEvent& event)
             else if constexpr (std::is_same_v<T, session::ConnectionEvent>)
             {
                 if (item.mState == session::ConnectionState::kClosed)
-                    addClientLine("Disconnected: " + item.mReason);
+                    addClientLine(std::string { kDisconnectedPrefix } + item.mReason);
             }
         },
         event);
