@@ -69,8 +69,10 @@ private:
     // deleteSelected removes the selected saved profile and reloads the list.
     void deleteSelected();
 
-    // onBatch applies one core event batch and updates the connected profile MRU timestamp.
+    // makeBatchHandler binds one generation of core events to the connected profile update path.
     PostedBatchHandler makeBatchHandler(std::uint64_t generation);
+
+    // onBatch applies one core event batch and updates the connected profile MRU timestamp.
     void onBatch(const std::vector<session::SessionEvent>& batch);
 
     // touchConnectedProfile updates the profile MRU timestamp once after entering Pre-game.

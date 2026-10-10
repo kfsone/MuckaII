@@ -1,4 +1,9 @@
-* text=auto eol=lf
+* text=auto
+*.cpp text eol=lf
+*.hpp text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.json text eol=lf
 # Captured MUD2 wire traffic: the server's own bytes, verbatim. Never normalised.
 *.c1 binary
 *.wav binary
